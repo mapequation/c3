@@ -1,0 +1,32 @@
+{
+  "name": "@mapequation/c3",
+  "version": "0.1.0",
+  "description": "Categorical Cantor Colors - Distinct colors for maps",
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "scripts": {
+    "build": "tsc --outDir lib",
+    "watch": "tsc --watch --outDir lib",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mapequation/c3.git"
+  },
+  "keywords": [
+    "colors"
+  ],
+  "author": "@mapequation",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/mapequation/c3/issues"
+  },
+  "homepage": "https://github.com/mapequation/c3#readme",
+  "devDependencies": {
+    "typescript": "^4.4.4"
+  },
+  "files": [
+    "/lib"
+  ]
+}
