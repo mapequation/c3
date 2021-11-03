@@ -36,19 +36,20 @@ export class WeightedNode extends Node {
 }
 
 export function generateArray(numColors: number = 10) {
-  // const numLoops = numColors > 1 ? Math.ceil(Math.log2(numColors - 1)) + 1 : 1;
   const numLoops = Math.ceil(Math.log2(numColors));
   const colors = [new Node()];
 
   for (let i = 0; i < numLoops; ++i) {
     const length = colors.length;
-    // for (let j = colors.length - 1; j >= 0; --j) {
     for (let j = 0; j < length; ++j) {
       const [first, second] = colors[j]!.split();
       colors[j] = first;
       colors.push(second);
+      if (colors.length === numColors) {
+        return colors;
+      }
     }
   }
 
-  return colors.slice(0, numColors);
+  return colors;
 }
