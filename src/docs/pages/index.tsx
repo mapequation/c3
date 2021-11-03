@@ -29,11 +29,10 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import * as d3 from "d3";
 import { generateArray } from "@mapequation/c3";
-import ColorLinear from "./components/ColorLinear";
+//import ColorLinear from "./components/ColorLinear";
 import ColorWheel from "./components/ColorWheel";
 import ColorText from "./components/ColorText";
 import ColorBar from "./components/ColorBar";
-import C3Label from "./components/C3Label";
 import SliderInput from "./components/SliderInput";
 
 type FeatureListItemProps = {
@@ -90,14 +89,7 @@ const Home: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <Container
-        as="header"
-        maxWidth="100%"
-        // bgGradient="linear(to-l, #7928CA, #FF0080)"
-        // bgGradient="linear(to-l, #FFE2BF, #FF9752)"
-        // bgGradient="linear(to-b, #F1EEEC, #F1EEEC)"
-        // bgGradient="linear(to-b, #FFE2BF, #ffffff)"
-      >
+      <Container as="header" maxWidth="100%">
         <Container centerContent mb={12} py={6}>
           <HStack>
             <Box mr={6}>
@@ -112,12 +104,7 @@ const Home: NextPage = () => {
                 C3
               </Heading>
             </Box>
-            <VStack
-              align="flex-start"
-              spacing="-1"
-              fontSize="lg"
-              //fontFamily="Menlo, Consolas, monospace"
-            >
+            <VStack align="flex-start" spacing="-1" fontSize="lg">
               <Heading fontFamily="inherit">
                 Consistent
                 {/* <C3Label text="Consistent" /> */}
@@ -260,8 +247,8 @@ const Home: NextPage = () => {
             icon={IoBarChart}
             iconColor="green.600"
           >
-            If you increase the number of colors, it doesn't change the list of
-            colors you already have.
+            If you increase the number of colors, it doesn&apos;t change the
+            list of colors you already have.
           </FeatureListItem>
           <FeatureListItem
             label="Fast"

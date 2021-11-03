@@ -123,3 +123,10 @@ export default function ColorWheel({
     </svg>
   );
 }
+
+ColorWheel.getInitialProps = function () {
+  return {
+    colors: [],
+    scheme: () => "red",
+  };
+};

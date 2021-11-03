@@ -10,7 +10,11 @@ export type ColorProps = {
 
 const gradientStops = range(200);
 
-export default function Color({ colors, scheme, animate = true }: ColorProps) {
+export default function ColorLinear({
+  colors,
+  scheme,
+  animate = true,
+}: ColorProps) {
   const duration = (animate ? 3 : 0) / colors.length;
   const { length } = colors;
   const radius = 0.5 / length;
@@ -78,3 +82,11 @@ export default function Color({ colors, scheme, animate = true }: ColorProps) {
     </div>
   );
 }
+
+ColorLinear.getInitialProps = function () {
+  return {
+    colors: [],
+    scheme: () => "red",
+  };
+};
+

@@ -8,13 +8,12 @@ export type ColorProps = {
 };
 
 export default function ColorBar({
-  colors,
+  colors = [],
   scheme,
   animate = false,
 }: ColorProps) {
   const duration = (animate ? 3 : 0) / colors.length;
   const { length } = colors;
-  const radius = 0.5 / length;
 
   return (
     <div>

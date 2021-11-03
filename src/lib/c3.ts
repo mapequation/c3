@@ -25,7 +25,12 @@ export class Node {
   }
 }
 
-export function generateArray(numColors: number = 10) {
+type Scheme = (value: number) => string;
+export class C3 {
+  constructor(public readonly scheme?: Scheme | null) {}
+}
+
+export function generateArray(numColors: number = 10): Node[] {
   const numLoops = Math.ceil(Math.log2(numColors));
   const colors = [new Node()];
 

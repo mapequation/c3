@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { Box, Button } from "@chakra-ui/react";
 import { CopyIcon } from "@chakra-ui/icons";
 import { Node } from "@mapequation/c3";
@@ -10,8 +10,11 @@ type ColorTextProps = {
   scheme: (n: number) => string;
 };
 
-export default function ColorText({ colors, scheme }: ColorTextProps) {
-  const toHex = (color: number) => d3.color(scheme(color))?.hex();
+export default function ColorText({ colors = [], scheme }: ColorTextProps) {
+  const toHex = useCallback(
+    (color: number) => d3.color(scheme(color))?.formatHex(),
+    [scheme],
+  );
 
   useEffect(() => {
     new ClipboardJS(".copy-button", {
@@ -21,7 +24,7 @@ export default function ColorText({ colors, scheme }: ColorTextProps) {
         );
       },
     });
-  }, []);
+  }, [colors, toHex]);
 
   return (
     <>
@@ -42,7 +45,9 @@ export default function ColorText({ colors, scheme }: ColorTextProps) {
         [
         {colors.map((c, i) => (
           <React.Fragment key={i}>
-            "<span style={{ color: scheme(c.start) }}>{toHex(c.start)}</span>"
+            &quot;
+            <span style={{ color: scheme(c.start) }}>{toHex(c.start)}</span>
+            &quot;
             {i + 1 < colors.length && ", "}
           </React.Fragment>
         ))}
@@ -60,3 +65,10 @@ export default function ColorText({ colors, scheme }: ColorTextProps) {
     </>
   );
 }
+
+ColorText.getInitialProps = function () {
+  return {
+    colors: [],
+    scheme: () => "red",
+  };
+};
