@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
   reactStrictMode: true,
-  basePath: "/c3",
+  basePath: process.env.NODE_ENV === "development" ? "" : "/c3",
 };

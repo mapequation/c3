@@ -1,37 +1,45 @@
-export class Node {
-  children: [Node, Node] | null = null;
+import Node from "./Node";
+import * as schemes from "d3-scale-chromatic";
+import { hsl } from "d3-color";
 
-  constructor(
-    public readonly start: number = 0,
-    public readonly end: number = 1,
-  ) {}
+export const SCHEME_NAMES = ["rainbow", "sinebow", "turbo", "greys"] as const;
+export type Scheme = typeof schemes.interpolateRainbow;
+export type SchemeName = typeof SCHEME_NAMES[number];
 
-  get size() {
-    return this.end - this.start;
+type C3Props = {
+  scheme?: Scheme | SchemeName;
+  saturation?: number;
+  lightness?: number;
+};
+
+export function getColors(
+  n: number = 16,
+  {
+    scheme = schemes.interpolateRainbow,
+    saturation = undefined,
+    lightness = undefined,
+  }: C3Props = {},
+) {
+  const s = typeof scheme === "string" ? getScheme(scheme) : scheme;
+  const colors = getStops(n).map(({ start }) => s(start));
+
+  if (saturation !== null || lightness !== null) {
+    colors.forEach((c) => {
+      const _hsl = hsl(c);
+      _hsl.s = saturation ?? 1.0;
+      _hsl.l = lightness ?? 0.5;
+      return _hsl?.rgb().toString() ?? "red";
+    });
   }
 
-  get mid() {
-    return this.start + this.size / 2;
-  }
-
-  split() {
-    if (!this.children) {
-      this.children = [
-        new Node(this.start, this.mid),
-        new Node(this.mid, this.end),
-      ];
-    }
-    return this.children;
-  }
+  return colors;
 }
 
-type Scheme = (value: number) => string;
-export class C3 {
-  constructor(public readonly scheme?: Scheme | null) {}
-}
-
-export function generateArray(numColors: number = 10): Node[] {
-  const numLoops = Math.ceil(Math.log2(numColors));
+/*
+ * Generate n color stops on the interval [0, 1].
+ */
+export function getStops(n: number = 10): Node[] {
+  const numLoops = Math.ceil(Math.log2(n));
   const colors = [new Node()];
 
   for (let i = 0; i < numLoops; ++i) {
@@ -40,11 +48,21 @@ export function generateArray(numColors: number = 10): Node[] {
       const [first, second] = colors[j]!.split();
       colors[j] = first;
       colors.push(second);
-      if (colors.length === numColors) {
+      if (colors.length === n) {
         return colors;
       }
     }
   }
 
   return colors;
+}
+
+function getScheme(scheme: SchemeName): Scheme {
+  const schemeName = `interpolate${capitalize(scheme)}`;
+  // @ts-ignore
+  return schemes[schemeName] as any as Scheme;
+}
+
+function capitalize(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }

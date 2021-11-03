@@ -61,7 +61,7 @@ export default function SliderInput({
         value={format(value)}
         onChange={onChangeStepper}
       >
-        <NumberInputField isReadOnly />
+        <NumberInputField />
         <NumberInputStepper>
           <NumberIncrementStepper />
           <NumberDecrementStepper />

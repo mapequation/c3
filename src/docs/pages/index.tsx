@@ -28,7 +28,8 @@ import type { IconType } from "react-icons";
 import type { NextPage } from "next";
 import Head from "next/head";
 import * as d3 from "d3";
-import { generateArray } from "@mapequation/c3";
+import { SCHEME_NAMES, getColors, getStops } from "@mapequation/c3";
+import type { SchemeName } from "@mapequation/c3";
 //import ColorLinear from "./components/ColorLinear";
 import ColorWheel from "./components/ColorWheel";
 import ColorText from "./components/ColorText";
@@ -65,7 +66,7 @@ const Home: NextPage = () => {
   const [schemeName, setSchemeName] =
     useState<keyof typeof d3>("interpolateSinebow");
 
-  const colors = generateArray(numColors);
+  const colors = getStops(numColors);
 
   let scheme = d3[schemeName] as typeof d3.interpolateSinebow;
 
