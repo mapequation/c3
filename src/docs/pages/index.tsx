@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, ReactChildren, ReactChild } from "react";
 import {
   Slider,
   SliderTrack,
@@ -15,6 +15,7 @@ import {
   ListItem,
   ListIcon,
   Code,
+  Flex,
 } from "@chakra-ui/react";
 import {
   IoSpeedometer,
@@ -23,6 +24,7 @@ import {
   IoShuffle,
   IoInfinite,
 } from "react-icons/io5";
+import type { IconType } from "react-icons";
 import type { NextPage } from "next";
 import Head from "next/head";
 import * as d3 from "d3";
@@ -34,13 +36,51 @@ import ColorBar from "./components/ColorBar";
 import C3Label from "./components/C3Label";
 import SliderInput from "./components/SliderInput";
 
+type FeatureListItemProps = {
+  label: string;
+  icon: IconType;
+  iconColor?: string;
+  children: ReactChild | ReactChild[] | ReactChildren | ReactChildren[];
+};
+const FeatureListItem = ({
+  label,
+  icon,
+  children,
+  iconColor = "black",
+}: FeatureListItemProps) => (
+  <ListItem display="flex" alignItems="center">
+    <ListIcon w={10} h={10} as={icon} color={iconColor} />
+    <Flex direction="column" ml={2}>
+      <Text as="strong">{label}</Text>
+      <Text as="div" color="gray.600">
+        {children}
+      </Text>
+    </Flex>
+  </ListItem>
+);
+
 const Home: NextPage = () => {
-  const [numColors, setNumColors] = useState(8);
+  const [numColors, setNumColors] = useState(6);
+  const [saturation, setSaturation] = useState(0.8);
+  const [lightness, setLightness] = useState(0.6);
   const [schemeName, setSchemeName] =
     useState<keyof typeof d3>("interpolateSinebow");
+
   const colors = generateArray(numColors);
 
-  const scheme = d3[schemeName] as typeof d3.interpolateSinebow;
+  let scheme = d3[schemeName] as typeof d3.interpolateSinebow;
+
+  const withSaturationLightness = (s: typeof scheme) => {
+    return (color: number) => {
+      if (schemeName === "interpolateGreys") return s(color);
+      const c = d3.hsl(s(color));
+      c.s = saturation;
+      c.l = lightness;
+      return c?.rgb().toString() ?? "red";
+    };
+  };
+
+  scheme = withSaturationLightness(scheme);
 
   return (
     <div>
@@ -50,36 +90,52 @@ const Home: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <Container as="header" centerContent my={12}>
-        <HStack>
-          <Box mr={6}>
-            <Heading size="4xl" letterSpacing="-17px">
-              C3
-            </Heading>
-          </Box>
-          <VStack
-            align="flex-start"
-            spacing="-1"
-            fontFamily="Menlo, Consolas, monospace"
-          >
-            <Heading size="md" fontFamily="inherit">
-              <C3Label text="Consistent" />
-            </Heading>
-            <Heading size="md" fontFamily="inherit">
-              <C3Label text="Categorical" />
-            </Heading>
-            <Heading size="md" fontFamily="inherit">
-              <C3Label text="Colors" />
-            </Heading>
-          </VStack>
-        </HStack>
-
-        <Text my={4}>
-          Deterministic colors for maps.
-          <br />
-          Inspired by the{" "}
-          <a href="//en.wikipedia.org/wiki/Cantor_set">Cantor set fractal</a>.
-        </Text>
+      <Container
+        as="header"
+        maxWidth="100%"
+        // bgGradient="linear(to-l, #7928CA, #FF0080)"
+        // bgGradient="linear(to-l, #FFE2BF, #FF9752)"
+        // bgGradient="linear(to-b, #F1EEEC, #F1EEEC)"
+        // bgGradient="linear(to-b, #FFE2BF, #ffffff)"
+      >
+        <Container centerContent mb={12} py={6}>
+          <HStack>
+            <Box mr={6}>
+              <Heading
+                fontSize="120px"
+                letterSpacing="-28px"
+                style={{
+                  textShadow:
+                    "-1px -1px 0 #eee, 1px -1px 0 #eee, -1px 1px 0 #eee, 1px 1px 0 #eee",
+                }}
+              >
+                C3
+              </Heading>
+            </Box>
+            <VStack
+              align="flex-start"
+              spacing="-1"
+              fontSize="lg"
+              //fontFamily="Menlo, Consolas, monospace"
+            >
+              <Heading fontFamily="inherit">
+                Consistent
+                {/* <C3Label text="Consistent" /> */}
+              </Heading>
+              <Heading fontFamily="inherit">
+                Categorical
+                {/* <C3Label text="Categorical" /> */}
+              </Heading>
+              <Heading fontFamily="inherit">
+                Colors
+                {/* <C3Label text="Colors" /> */}
+              </Heading>
+            </VStack>
+          </HStack>
+          <Text my={4} fontSize="3xl" color="gray.600">
+            Deterministic colors for maps
+          </Text>
+        </Container>
       </Container>
 
       <Container as="main" my={12}>
@@ -107,10 +163,50 @@ const Home: NextPage = () => {
 
         <Box mt={10}>
           <SliderInput
+            min={2}
+            max={128}
             value={numColors}
             onChange={setNumColors}
             suffix="colors"
           />
+          <Flex mt={4}>
+            <Slider
+              focusThumbOnChange={false}
+              value={saturation}
+              onChange={setSaturation}
+              min={0}
+              max={1}
+              step={0.1}
+              disabled={schemeName === "interpolateGreys"}
+            >
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb fontSize="sm" boxSize="32px">
+                {saturation}
+              </SliderThumb>
+            </Slider>
+            <Box mx={10}>Saturation</Box>
+          </Flex>
+          <Flex mt={4}>
+            <Slider
+              focusThumbOnChange={false}
+              value={lightness}
+              onChange={setLightness}
+              min={0}
+              max={1}
+              step={0.1}
+              disabled={schemeName === "interpolateGreys"}
+            >
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb fontSize="sm" boxSize="32px">
+                {lightness}
+              </SliderThumb>
+            </Slider>
+            <Box mx={10}>Lightness</Box>
+          </Flex>
         </Box>
 
         {/* <ColorLinear colors={colors} scheme={scheme} /> */}
@@ -134,32 +230,53 @@ const Home: NextPage = () => {
 
         <Heading mt={12}>Features</Heading>
 
-        <List mt={4} mb={20}>
-          <ListItem>
-            <ListIcon as={IoInfinite} />
-            <strong>Unlimited colors</strong> Generate as many colors you want
-          </ListItem>
-          <ListItem>
-            <ListIcon as={IoColorPalette} color="green.400" />
-            <strong>Any color scheme</strong> We generate color stops on the
-            interval <code>[0, 1]</code>. Perfect to use with{" "}
-            <a href="https://github.com/d3/d3-scale-chromatic">d3</a>.
-          </ListItem>
-          <ListItem>
-            <ListIcon as={IoShuffle} color="red.500" />
-            <strong>Deterministic</strong> You always get the same colors for
-            the same requested number of colors.
-          </ListItem>
-          <ListItem>
-            <ListIcon as={IoBarChart} />
-            <strong>Consistent</strong> If you increase the number of colors, it
-            doesn't change the list of colors you already have.
-          </ListItem>
-          <ListItem>
-            <ListIcon as={IoSpeedometer} color="blue.500" />
-            <strong>Fast</strong> The complexity is O(n log(n)) for n colors.
-          </ListItem>
+        <List mt={4} spacing="5">
+          <FeatureListItem
+            label="Unlimited colors"
+            icon={IoInfinite}
+            iconColor="gray.400"
+          >
+            Generate as many colors you want
+          </FeatureListItem>
+          <FeatureListItem
+            label="Any color scheme"
+            icon={IoColorPalette}
+            iconColor="yellow.400"
+          >
+            We generate color stops on the interval [0,&nbsp;1]. Perfect to use
+            with <a href="https://github.com/d3/d3-scale-chromatic">d3</a>.
+          </FeatureListItem>
+
+          <FeatureListItem
+            label="Deterministic"
+            icon={IoShuffle}
+            iconColor="red.600"
+          >
+            You always get the same colors for the same requested number of
+            colors.
+          </FeatureListItem>
+          <FeatureListItem
+            label="Consistent"
+            icon={IoBarChart}
+            iconColor="green.600"
+          >
+            If you increase the number of colors, it doesn't change the list of
+            colors you already have.
+          </FeatureListItem>
+          <FeatureListItem
+            label="Fast"
+            icon={IoSpeedometer}
+            iconColor="blue.500"
+          >
+            The complexity is O(n log(n)) for n colors.
+          </FeatureListItem>
         </List>
+
+        <Heading mt={12}>Authors</Heading>
+
+        <Text mt={4} mb={20}>
+          Daniel Edler, Anton Eriksson
+        </Text>
       </Container>
     </div>
   );

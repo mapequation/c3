@@ -18,7 +18,7 @@ export default function C3Label({ text, scheme = "sinebow" }: C3LabelProps) {
           key={i}
           style={{
             color: interpolateColor(colors[i].start),
-            WebkitTextStroke: "0.2px #333333",
+            WebkitTextStroke: "0.2px #fff",
           }}
         >
           {letter}

@@ -5,13 +5,13 @@ import {
   NumberInput,
   NumberInputField,
   NumberInputStepper,
-  SliderProps,
 } from "@chakra-ui/number-input";
 import {
   Slider,
   SliderFilledTrack,
   SliderThumb,
   SliderTrack,
+  SliderProps,
 } from "@chakra-ui/slider";
 
 type SliderInputProps = {
@@ -56,7 +56,7 @@ export default function SliderInput({
         </SliderThumb>
       </Slider>
       <NumberInput
-        maxW="120px"
+        maxW="125px"
         ml="2rem"
         value={format(value)}
         onChange={onChangeStepper}

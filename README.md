@@ -1,6 +1,6 @@
-# Categorical Cantor Colors
+# C3 - Consistent Categorical Colors
 
-A library to generate distinct categorical colors written in Typescript.
+A library to generate distinct categorical colors, written in TypeScript.
 
 [Documentation](https://mapequation.github.io/c3)
 
