@@ -1,2 +1,2 @@
 export * from "./c3";
-export * from "./Node";
+export { default as Node } from "./Node";
