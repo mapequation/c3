@@ -42,11 +42,11 @@ jobs:
         working-directory: ./src/docs
         run: |
           npm run build
-          touch ./out/.nojekyll
+          touch ../../docs/c3/.nojekyll
           
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3.7.3
         with:
-          publish_dir: src/docs/out
+          publish_dir: docs/c3
           enable_jekyll: false
           github_token: ${{ secrets.GITHUB_TOKEN }}
