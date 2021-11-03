@@ -25,16 +25,6 @@ export class Node {
   }
 }
 
-export class WeightedNode extends Node {
-  constructor(
-    start: number = 0,
-    end: number = 1,
-    public readonly weight: number = 0.5,
-  ) {
-    super(start, end);
-  }
-}
-
 export function generateArray(numColors: number = 10) {
   const numLoops = Math.ceil(Math.log2(numColors));
   const colors = [new Node()];

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Box, Button } from "@chakra-ui/react";
 import { CopyIcon } from "@chakra-ui/icons";
 import { Node } from "@mapequation/c3";
@@ -13,17 +13,20 @@ type ColorTextProps = {
 export default function ColorText({ colors, scheme }: ColorTextProps) {
   const toHex = (color: number) => d3.color(scheme(color))?.hex();
 
-  new ClipboardJS(".copy-button", {
-    text() {
-      return (
-        "[" + colors.map((c) => '"' + toHex(c.start) + '"').join(", ") + "]"
-      );
-    },
-  });
+  useEffect(() => {
+    new ClipboardJS(".copy-button", {
+      text() {
+        return (
+          "[" + colors.map((c) => '"' + toHex(c.start) + '"').join(", ") + "]"
+        );
+      },
+    });
+  }, []);
 
   return (
     <>
       <Box
+        align="left"
         w="100%"
         fontFamily="monospace"
         fontSize="md"
@@ -46,6 +49,7 @@ export default function ColorText({ colors, scheme }: ColorTextProps) {
         ]
       </Box>
       <Button
+        size="sm"
         className="copy-button"
         mt={4}
         colorScheme="blue"

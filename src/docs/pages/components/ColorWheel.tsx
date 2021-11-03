@@ -1,11 +1,14 @@
 import * as d3 from "d3";
-import type { ColorProps } from "./ColorLinear";
-import { Box } from "@chakra-ui/react";
+import { Node } from "@mapequation/c3";
 
-// width = 640, // outer width, in pixels
-// height = 400, // outer height, in pixels
-// innerRadius = Math.min(width, height) / 3, // inner radius of pie, in pixels (non-zero for donut)
-// outerRadius = Math.min(width, height) / 2, // outer radius of pie, in pixels
+type ColorProps = {
+  colors: Node[];
+  scheme: (n: number) => string;
+  animate?: boolean;
+  size?: number; // outer diameter
+  hole?: number; // hole proportion as inner to outer diameter
+  margin?: number; // margin outside outer diameter
+};
 
 const gradientStops = d3.range(100);
 
@@ -13,14 +16,22 @@ export default function ColorWheel({
   colors,
   scheme,
   animate = true,
+  size = 500,
+  hole = 0.9,
+  margin = 20,
 }: ColorProps) {
-  // Construct scales.
-  // const color = d3.scaleOrdinal(names, colors);
-
-  const innerRadius = 200;
-  const outerRadius = 250;
+  const outerRadius = (size - 2 * margin) / 2;
+  const innerRadius = outerRadius * hole;
   const midPoint = (outerRadius + innerRadius) / 2;
   const padAngle = 0;
+  const width = size;
+  const height = size;
+  const numColorsToFit = 2 ** Math.ceil(Math.log2(colors.length));
+  const radiusSpacePerCircle = (1 * (midPoint * Math.PI)) / numColorsToFit - 2;
+  const circleRadius = Math.min(margin, radiusSpacePerCircle);
+  const labelFontSize = Math.min(16, radiusSpacePerCircle);
+
+  const r = d3.scaleLinear().domain([0, 1]).range([0, midPoint]);
 
   const arcs = d3
     .pie()
@@ -38,58 +49,74 @@ export default function ColorWheel({
   const lineColor = d3.interpolateRgb("#000", "#eee");
 
   return (
-    <Box>
-      <svg
-        viewBox="0 0 500 500"
-        width="500"
-        height="500"
-        style={{ marginTop: "2em" }}
-      >
-        <g
-          strokeWidth={0}
-          transform={`translate(${outerRadius},${outerRadius})`}
-        >
-          {arcs.map((value, i) => (
-            <path
-              key={i}
-              d={arc(value as any) as string}
-              fill={scheme(i / gradientStops.length)}
-            />
-          ))}
-          {colors.map((c, i) => (
-            <g key={i}>
-              {i + 1 < colors.length && (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      width={width}
+      height={height}
+      style={{ marginTop: "2em" }}
+    >
+      <g strokeWidth={0} transform={`translate(${width / 2},${height / 2})`}>
+        {arcs.map((value, i) => (
+          <path
+            key={i}
+            d={arc(value as any) as string}
+            fill={scheme(i / gradientStops.length)}
+          />
+        ))}
+        {colors.map((c, i) => (
+          <g key={i}>
+            {i + 1 < colors.length && (
+              <>
                 <line
-                  x1={midPoint * Math.cos(θ(c.start))}
-                  y1={midPoint * Math.sin(θ(c.start))}
-                  x2={midPoint * Math.cos(θ(colors[i + 1].start))}
-                  y2={midPoint * Math.sin(θ(colors[i + 1].start))}
-                  strokeWidth={1}
-                  stroke={lineColor(c.start)}
+                  x1={r(Math.cos(θ(c.start)))}
+                  y1={r(Math.sin(θ(c.start)))}
+                  x2={r(Math.cos(θ(colors[i + 1].start)))}
+                  y2={r(Math.sin(θ(colors[i + 1].start)))}
+                  strokeWidth={3}
+                  stroke="#777"
                 />
-              )}
-              <circle
-                cx={midPoint * Math.cos(θ(c.start))}
-                cy={midPoint * Math.sin(θ(c.start))}
-                r={25}
-                fill={scheme(c.start)}
-                stroke="white"
-                strokeWidth={2}
-              />
-              <text
-                x={midPoint * Math.cos(θ(c.start))}
-                y={midPoint * Math.sin(θ(c.start))}
-                textAnchor="middle"
-                fill="white"
-                fontWeight="bold"
-                dy="0.3em"
-              >
-                {i + 1}
-              </text>
-            </g>
-          ))}
-        </g>
-      </svg>
-    </Box>
+                <line
+                  x1={r(Math.cos(θ(c.start)))}
+                  y1={r(Math.sin(θ(c.start)))}
+                  x2={r(Math.cos(θ(colors[i + 1].start)))}
+                  y2={r(Math.sin(θ(colors[i + 1].start)))}
+                  strokeWidth={2}
+                  stroke="white"
+                />
+              </>
+            )}
+            <circle
+              cx={r(Math.cos(θ(c.start)))}
+              cy={r(Math.sin(θ(c.start)))}
+              r={circleRadius}
+              stroke="#777"
+              strokeWidth={4}
+            />
+            <circle
+              cx={r(Math.cos(θ(c.start)))}
+              cy={r(Math.sin(θ(c.start)))}
+              r={circleRadius}
+              fill={scheme(c.start)}
+              stroke="white"
+              strokeWidth={2}
+            />
+            <text
+              x={r(Math.cos(θ(c.start)))}
+              y={r(Math.sin(θ(c.start)))}
+              textAnchor="middle"
+              fill="white"
+              stroke="#777"
+              paintOrder="stroke"
+              strokeWidth={2}
+              fontWeight="bold"
+              fontSize={labelFontSize}
+              dy="0.3em"
+            >
+              {i + 1}
+            </text>
+          </g>
+        ))}
+      </g>
+    </svg>
   );
 }

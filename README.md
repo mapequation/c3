@@ -4,6 +4,10 @@ A library to generate distinct categorical colors written in Typescript.
 
 [Documentation](https://mapequation.github.io/c3)
 
+### Install
+
+`npm install @mapequation/c3`
+
 ### Features
 * **Unlimited colors**: Generate as many colors you want
 * **Any color scheme**: We generate color stops on the interval `[0, 1]`. Perfect to use with [d3](https://github.com/d3/d3-scale-chromatic).

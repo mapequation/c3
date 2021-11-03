@@ -75,23 +75,6 @@ export default function Color({ colors, scheme, animate = true }: ColorProps) {
           </g>
         ))}
       </svg>
-
-      <div style={{ marginTop: "2em" }}>
-        {colors.map((color, i) => (
-          <motion.div
-            key={i}
-            style={{
-              display: "inline-block",
-              width: `${(1 / length) * 500}px`,
-              height: "50px",
-              background: scheme(color.start),
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration, delay: i * duration }}
-          />
-        ))}
-      </div>
     </div>
   );
 }
