@@ -29,6 +29,11 @@ jobs:
         with:
           node-version: 16.x
 
+      - name: Install c3
+        run : |
+          npm i
+          npm run build
+
       - name: Install packages
         working-directory: ./src/docs
         run: npm i
