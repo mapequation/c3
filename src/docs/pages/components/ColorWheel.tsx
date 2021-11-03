@@ -30,6 +30,9 @@ export default function ColorWheel({
   const radiusSpacePerCircle = (1 * (midPoint * Math.PI)) / numColorsToFit - 2;
   const circleRadius = Math.min(margin, radiusSpacePerCircle);
   const labelFontSize = Math.min(16, radiusSpacePerCircle);
+  const labelStrokeWidth = radiusSpacePerCircle < 5 ? 0 : 2;
+  const circleWhiteStrokeWidth = radiusSpacePerCircle < 5 ? 1 : 2;
+  const circleGrayStrokeWidth = radiusSpacePerCircle < 5 ? 2 : 4;
 
   const r = d3.scaleLinear().domain([0, 1]).range([0, midPoint]);
 
@@ -90,7 +93,7 @@ export default function ColorWheel({
               cy={r(Math.sin(θ(c.start)))}
               r={circleRadius}
               stroke="#777"
-              strokeWidth={4}
+              strokeWidth={circleGrayStrokeWidth}
             />
             <circle
               cx={r(Math.cos(θ(c.start)))}
@@ -98,7 +101,7 @@ export default function ColorWheel({
               r={circleRadius}
               fill={scheme(c.start)}
               stroke="white"
-              strokeWidth={2}
+              strokeWidth={circleWhiteStrokeWidth}
             />
             <text
               x={r(Math.cos(θ(c.start)))}
@@ -107,7 +110,7 @@ export default function ColorWheel({
               fill="white"
               stroke="#777"
               paintOrder="stroke"
-              strokeWidth={2}
+              strokeWidth={labelStrokeWidth}
               fontWeight="bold"
               fontSize={labelFontSize}
               dy="0.3em"
