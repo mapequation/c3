@@ -57,7 +57,7 @@ export type Interval = {
   end: number;
 };
 
-type Options = {
+export type Options = Partial<Interval> & {
   scheme?: Scheme | SchemeName;
   saturation?: number;
   lightness?: number;
@@ -71,18 +71,22 @@ type Options = {
  * @returns
  */
 export function colors(
-  n: number | number[] = 16,
-  interval: Interval = { start: 0, end: 1 },
+  n: number | number[] | Interval[] = 16,
   {
     scheme = schemes.interpolateRainbow,
     saturation = undefined,
     lightness = undefined,
+    start = 0,
+    end = 1,
   }: Options = {},
 ) {
   const _scheme = typeof scheme === "string" ? getScheme(scheme) : scheme;
 
-  const _stops =
-    typeof n === "number" ? stops(n, interval) : weightedStops(n, interval);
+  const _stops = isIntervalArray(n)
+    ? n
+    : typeof n === "number"
+    ? stops(n, { start, end })
+    : weightedStops(n, { start, end });
 
   const colors = _stops.map(({ start }) => _scheme(start));
 
@@ -190,4 +194,14 @@ function getScheme(scheme: SchemeName): Scheme {
   const schemeName = `interpolate${scheme}`;
   // @ts-ignore
   return schemes[schemeName] as any as Scheme;
+}
+
+function isIntervalArray(n: any): n is Interval[] {
+  return (
+    Array.isArray(n) &&
+    n.length > 0 &&
+    typeof n[0] === "object" &&
+    "start" in n[0] &&
+    "end" in n[0]
+  );
 }

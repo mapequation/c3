@@ -75,7 +75,7 @@ const Home: NextPage = () => {
       const c = d3.hsl(s(color));
       c.s = saturation;
       c.l = lightness;
-      return c?.rgb().toString() ?? "red";
+      return c.toString();
     };
   };
 
