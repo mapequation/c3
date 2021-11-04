@@ -1,6 +1,6 @@
 import Node from "./Node";
 import * as schemes from "d3-scale-chromatic";
-import { hsl } from "d3-color";
+import { hsl, HSLColor } from "d3-color";
 
 // Scheme names from d3-scale-chromatic
 // https://raw.githubusercontent.com/d3/d3-scale-chromatic/main/src/index.js
@@ -61,7 +61,14 @@ export type Options = Partial<Interval> & {
   scheme?: Scheme | SchemeName;
   saturation?: number;
   lightness?: number;
+  offset?: number;
+  reverse?: boolean;
 };
+
+function clampToDecimal(t: number, offset: number = 0) {
+  const _t = t + offset;
+  return _t - Math.floor(_t);
+}
 
 /**
  * Generate categorical colors
@@ -78,6 +85,8 @@ export function colors(
     lightness = undefined,
     start = 0,
     end = 1,
+    offset = 0,
+    reverse = false,
   }: Options = {},
 ) {
   const _scheme = typeof scheme === "string" ? getScheme(scheme) : scheme;
@@ -88,18 +97,21 @@ export function colors(
     ? stops(n, { start, end })
     : weightedStops(n, { start, end });
 
-  const colors = _stops.map(({ start }) => _scheme(start));
+  const colors = _stops.map(({ start }) => {
+    const value = clampToDecimal(start, offset);
+    return _scheme(reverse ? 1 - value : value);
+  });
 
-  if (saturation !== undefined || lightness !== undefined) {
-    colors.forEach((c) => {
-      const _hsl = hsl(c);
-      _hsl.s = saturation ?? 1.0;
-      _hsl.l = lightness ?? 0.5;
-      return _hsl?.rgb().toString() ?? "red";
-    });
+  if (saturation === undefined && lightness === undefined) {
+    return colors;
   }
 
-  return colors;
+  return colors.map((c) => {
+    const _hsl = hsl(c);
+    _hsl.s = saturation ?? 1.0;
+    _hsl.l = lightness ?? 0.5;
+    return _hsl.toString();
+  });
 }
 
 /**
@@ -173,9 +185,8 @@ export function stops(
   for (let i = 0; i < numLoops; ++i) {
     const length = intervals.length;
     for (let j = 0; j < length; ++j) {
-      const [first, second] = intervals[j]!.split();
-      intervals[j] = first;
-      intervals.push(second);
+      const next = intervals[j]!.split();
+      intervals.push(next);
       if (intervals.length === n) {
         return intervals;
       }

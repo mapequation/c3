@@ -1,12 +1,15 @@
 import type { Interval } from "./c3";
 
 export default class Node implements Interval {
-  children: [Node, Node] | null = null;
+  endLevel: number;
 
   constructor(
     public readonly start: number = 0,
-    public readonly end: number = 1,
-  ) {}
+    public end: number = 1,
+    public readonly startLevel: number = 0,
+  ) {
+    this.endLevel = this.startLevel;
+  }
 
   get size() {
     return this.end - this.start;
@@ -17,12 +20,8 @@ export default class Node implements Interval {
   }
 
   split() {
-    if (!this.children) {
-      this.children = [
-        new Node(this.start, this.mid),
-        new Node(this.mid, this.end),
-      ];
-    }
-    return this.children;
+    const child = new Node(this.mid, this.end, ++this.endLevel);
+    this.end = this.mid;
+    return child;
   }
 }
