@@ -28,7 +28,7 @@ import type { IconType } from "react-icons";
 import type { NextPage } from "next";
 import Head from "next/head";
 import * as d3 from "d3";
-import { getStops } from "@mapequation/c3";
+import * as c3 from "@mapequation/c3";
 //import ColorLinear from "./components/ColorLinear";
 import ColorWheel from "./components/ColorWheel";
 import ColorText from "./components/ColorText";
@@ -65,7 +65,7 @@ const Home: NextPage = () => {
   const [schemeName, setSchemeName] =
     useState<keyof typeof d3>("interpolateSinebow");
 
-  const colors = getStops(numColors);
+  const intervals = c3.stops(numColors);
 
   let scheme = d3[schemeName] as typeof d3.interpolateSinebow;
 
@@ -106,20 +106,26 @@ const Home: NextPage = () => {
             </Box>
             <VStack align="flex-start" spacing="-1" fontSize="lg">
               <Heading fontFamily="inherit">
-                Consistent
-                {/* <C3Label text="Consistent" /> */}
+                C
+                <Text as="span" color="gray.400">
+                  onsistent
+                </Text>
               </Heading>
               <Heading fontFamily="inherit">
-                Categorical
-                {/* <C3Label text="Categorical" /> */}
+                C
+                <Text as="span" color="gray.400">
+                  ategorical
+                </Text>
               </Heading>
               <Heading fontFamily="inherit">
-                Colors
-                {/* <C3Label text="Colors" /> */}
+                C
+                <Text as="span" color="gray.400">
+                  olors
+                </Text>
               </Heading>
             </VStack>
           </HStack>
-          <Text my={4} fontSize="3xl" color="gray.600">
+          <Text my={4} fontSize="3xl" color="gray.400">
             Deterministic colors for maps
           </Text>
         </Container>
@@ -141,11 +147,11 @@ const Home: NextPage = () => {
         </Box>
 
         <Box align="center">
-          <ColorWheel colors={colors} scheme={scheme} size={500} />
+          <ColorWheel intervals={intervals} scheme={scheme} size={500} />
         </Box>
 
         <Box align="center" mt="10">
-          <ColorBar colors={colors} scheme={scheme} />
+          <ColorBar intervals={intervals} scheme={scheme} />
         </Box>
 
         <Box mt={10}>
@@ -196,10 +202,10 @@ const Home: NextPage = () => {
           </Flex>
         </Box>
 
-        {/* <ColorLinear colors={colors} scheme={scheme} /> */}
+        {/* <ColorLinear intervals={intervals} scheme={scheme} /> */}
 
         <Box align="center" mt={14}>
-          <ColorText colors={colors} scheme={scheme} />
+          <ColorText intervals={intervals} scheme={scheme} />
         </Box>
 
         <Heading mt={12}>Install</Heading>

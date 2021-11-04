@@ -1,16 +1,16 @@
 import React, { useEffect, useCallback } from "react";
 import { Box, Button } from "@chakra-ui/react";
 import { CopyIcon } from "@chakra-ui/icons";
-import { Node } from "@mapequation/c3";
+import type { Interval } from "@mapequation/c3";
 import * as d3 from "d3";
 import ClipboardJS from "clipboard";
 
 type ColorTextProps = {
-  colors: Node[];
+  intervals: Interval[];
   scheme: (n: number) => string;
 };
 
-export default function ColorText({ colors = [], scheme }: ColorTextProps) {
+export default function ColorText({ intervals = [], scheme }: ColorTextProps) {
   const toHex = useCallback(
     (color: number) => d3.color(scheme(color))?.formatHex(),
     [scheme],
@@ -20,11 +20,13 @@ export default function ColorText({ colors = [], scheme }: ColorTextProps) {
     new ClipboardJS(".copy-button", {
       text() {
         return (
-          "[" + colors.map((c) => '"' + toHex(c.start) + '"').join(", ") + "]"
+          "[" +
+          intervals.map((c) => '"' + toHex(c.start) + '"').join(", ") +
+          "]"
         );
       },
     });
-  }, [colors, toHex]);
+  }, [intervals, toHex]);
 
   return (
     <>
@@ -43,12 +45,12 @@ export default function ColorText({ colors = [], scheme }: ColorTextProps) {
         color="gray.700"
       >
         [
-        {colors.map((c, i) => (
+        {intervals.map((c, i) => (
           <React.Fragment key={i}>
             &quot;
             <span style={{ color: scheme(c.start) }}>{toHex(c.start)}</span>
             &quot;
-            {i + 1 < colors.length && ", "}
+            {i + 1 < intervals.length && ", "}
           </React.Fragment>
         ))}
         ]
@@ -68,7 +70,7 @@ export default function ColorText({ colors = [], scheme }: ColorTextProps) {
 
 ColorText.getInitialProps = function () {
   return {
-    colors: [],
+    intervals: [],
     scheme: () => "red",
   };
 };

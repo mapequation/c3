@@ -1,8 +1,8 @@
 import * as d3 from "d3";
-import { Node } from "@mapequation/c3";
+import { Interval } from "@mapequation/c3";
 
 type ColorProps = {
-  colors: Node[];
+  intervals: Interval[];
   scheme: (n: number) => string;
   animate?: boolean;
   size?: number; // outer diameter
@@ -13,7 +13,7 @@ type ColorProps = {
 const gradientStops = d3.range(100);
 
 export default function ColorWheel({
-  colors,
+  intervals,
   scheme,
   animate = true,
   size = 500,
@@ -26,7 +26,7 @@ export default function ColorWheel({
   const padAngle = 0;
   const width = size;
   const height = size;
-  const numColorsToFit = 2 ** Math.ceil(Math.log2(colors.length));
+  const numColorsToFit = 2 ** Math.ceil(Math.log2(intervals.length));
   const radiusSpacePerCircle = (1 * (midPoint * Math.PI)) / numColorsToFit - 2;
   const circleRadius = Math.min(margin, radiusSpacePerCircle);
   const labelFontSize = Math.min(16, radiusSpacePerCircle);
@@ -66,23 +66,23 @@ export default function ColorWheel({
             fill={scheme(i / gradientStops.length)}
           />
         ))}
-        {colors.map((c, i) => (
+        {intervals.map((c, i) => (
           <g key={i}>
-            {i + 1 < colors.length && (
+            {i + 1 < intervals.length && (
               <>
                 <line
                   x1={r(Math.cos(θ(c.start)))}
                   y1={r(Math.sin(θ(c.start)))}
-                  x2={r(Math.cos(θ(colors[i + 1].start)))}
-                  y2={r(Math.sin(θ(colors[i + 1].start)))}
+                  x2={r(Math.cos(θ(intervals[i + 1].start)))}
+                  y2={r(Math.sin(θ(intervals[i + 1].start)))}
                   strokeWidth={3}
                   stroke="#777"
                 />
                 <line
                   x1={r(Math.cos(θ(c.start)))}
                   y1={r(Math.sin(θ(c.start)))}
-                  x2={r(Math.cos(θ(colors[i + 1].start)))}
-                  y2={r(Math.sin(θ(colors[i + 1].start)))}
+                  x2={r(Math.cos(θ(intervals[i + 1].start)))}
+                  y2={r(Math.sin(θ(intervals[i + 1].start)))}
                   strokeWidth={2}
                   stroke="white"
                 />
@@ -126,7 +126,7 @@ export default function ColorWheel({
 
 ColorWheel.getInitialProps = function () {
   return {
-    colors: [],
+    intervals: [],
     scheme: () => "red",
   };
 };

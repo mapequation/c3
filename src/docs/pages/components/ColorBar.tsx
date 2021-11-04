@@ -1,23 +1,23 @@
 import { motion } from "framer-motion";
-import { Node } from "@mapequation/c3";
+import { Interval } from "@mapequation/c3";
 
 export type ColorProps = {
-  colors: Node[];
+  intervals: Interval[];
   scheme: (n: number) => string;
   animate?: boolean;
 };
 
 export default function ColorBar({
-  colors = [],
+  intervals = [],
   scheme,
   animate = false,
 }: ColorProps) {
-  const duration = (animate ? 3 : 0) / colors.length;
-  const { length } = colors;
+  const duration = (animate ? 3 : 0) / intervals.length;
+  const { length } = intervals;
 
   return (
     <div>
-      {colors.map((color, i) => (
+      {intervals.map((color, i) => (
         <motion.div
           key={i}
           style={{

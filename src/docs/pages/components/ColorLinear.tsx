@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { Node } from "@mapequation/c3";
+import type { Interval } from "@mapequation/c3";
 import { range } from "d3";
 
 export type ColorProps = {
-  colors: Node[];
+  intervals: Interval[];
   scheme: (n: number) => string;
   animate?: boolean;
 };
@@ -11,12 +11,12 @@ export type ColorProps = {
 const gradientStops = range(200);
 
 export default function ColorLinear({
-  colors,
+  intervals,
   scheme,
   animate = true,
 }: ColorProps) {
-  const duration = (animate ? 3 : 0) / colors.length;
-  const { length } = colors;
+  const duration = (animate ? 3 : 0) / intervals.length;
+  const { length } = intervals;
   const radius = 0.5 / length;
 
   return (
@@ -38,20 +38,20 @@ export default function ColorLinear({
           />
         ))}
 
-        {colors.map((color, i) => (
+        {intervals.map((color, i) => (
           <g key={i} strokeWidth={0.1 / length}>
             {i + 1 < length && (
               <motion.line
                 stroke="white"
-                x1={colors[i].start}
+                x1={intervals[i].start}
                 initial={{
-                  x2: colors[i].start,
+                  x2: intervals[i].start,
                   y1: i / length,
                   y2: i / length,
                   opacity: 0,
                 }}
                 animate={{
-                  x2: colors[i + 1].start,
+                  x2: intervals[i + 1].start,
                   opacity: 1,
                   y1: i / length,
                   y2: (i + 1) / length,
@@ -89,4 +89,3 @@ ColorLinear.getInitialProps = function () {
     scheme: () => "red",
   };
 };
-

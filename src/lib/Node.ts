@@ -1,4 +1,6 @@
-export default class Node {
+import type { Interval } from "./c3";
+
+export default class Node implements Interval {
   children: [Node, Node] | null = null;
 
   constructor(
