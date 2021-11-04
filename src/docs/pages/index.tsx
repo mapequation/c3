@@ -16,6 +16,10 @@ import {
   ListIcon,
   Code,
   Flex,
+  Switch,
+  FormControl,
+  FormLabel,
+  Spacer,
 } from "@chakra-ui/react";
 import {
   IoSpeedometer,
@@ -34,6 +38,7 @@ import ColorWheel from "./components/ColorWheel";
 import ColorText from "./components/ColorText";
 import ColorBar from "./components/ColorBar";
 import SliderInput from "./components/SliderInput";
+import ColorLinear from "./components/ColorLinear";
 
 type FeatureListItemProps = {
   label: string;
@@ -58,19 +63,37 @@ const FeatureListItem = ({
   </ListItem>
 );
 
+const methods = {
+  stops: c3.stops,
+  weightedStops: c3.weightedStops,
+} as const;
+
 const Home: NextPage = () => {
   const [numColors, setNumColors] = useState(6);
+  const [method, setMethod] = useState<keyof typeof methods>("stops");
   const [saturation, setSaturation] = useState(0.8);
+  const [offset, setOffset] = useState(0);
   const [lightness, setLightness] = useState(0.6);
+  const [skewness, setSkewness] = useState(0);
+  const [reverse, setReverse] = useState(false);
   const [schemeName, setSchemeName] =
     useState<keyof typeof d3>("interpolateSinebow");
 
-  const intervals = c3.stops(numColors);
+  const weights = d3
+    .range(numColors)
+    .map((_, i) => Math.exp((skewness * 5 * (numColors - i)) / numColors ** 1));
+
+  const intervals =
+    method === "weightedStops"
+      ? c3.weightedStops(weights)
+      : c3.stops(numColors);
 
   let scheme = d3[schemeName] as typeof d3.interpolateSinebow;
 
   const withSaturationLightness = (s: typeof scheme) => {
     return (color: number) => {
+      color = color + offset - Math.floor(color + offset);
+      if (reverse) color = 1 - color;
       if (schemeName === "interpolateGreys") return s(color);
       const c = d3.hsl(s(color));
       c.s = saturation;
@@ -133,16 +156,42 @@ const Home: NextPage = () => {
 
       <Container as="main" my={12}>
         <Box>
+          <HStack>
+            <Select
+              id="colorScale"
+              value={schemeName}
+              onChange={(e) =>
+                setSchemeName(e.target?.value! as keyof typeof d3)
+              }
+            >
+              <option value="interpolateSinebow">Sinebow</option>
+              <option value="interpolateRainbow">Rainbow</option>
+              <option value="interpolateTurbo">Turbo</option>
+              <option value="interpolateViridis">Viridis</option>
+              <option value="interpolateGreys">Greys</option>
+            </Select>
+            <Spacer />
+            <FormControl display="flex" alignItems="center">
+              <FormLabel htmlFor="reverse" mb="0">
+                Reverse
+              </FormLabel>
+              <Switch
+                id="reverse"
+                isChecked={reverse}
+                onChange={() => setReverse(!reverse)}
+              />
+            </FormControl>
+          </HStack>
+
           <Select
-            id="colorScale"
-            value={schemeName}
-            onChange={(e) => setSchemeName(e.target?.value! as keyof typeof d3)}
+            mt={4}
+            value={method}
+            onChange={(e) =>
+              setMethod(e.target?.value! as keyof typeof methods)
+            }
           >
-            <option value="interpolateSinebow">Sinebow</option>
-            <option value="interpolateRainbow">Rainbow</option>
-            <option value="interpolateTurbo">Turbo</option>
-            <option value="interpolateViridis">Viridis</option>
-            <option value="interpolateGreys">Greys</option>
+            <option value="stops">Standard</option>
+            <option value="weightedStops">Leapfrog</option>
           </Select>
         </Box>
 
@@ -151,7 +200,7 @@ const Home: NextPage = () => {
         </Box>
 
         <Box align="center" mt="10">
-          <ColorBar intervals={intervals} scheme={scheme} />
+          <ColorBar intervals={intervals} scheme={scheme} weights={weights} />
         </Box>
 
         <Box mt={10}>
@@ -200,9 +249,51 @@ const Home: NextPage = () => {
             </Slider>
             <Box mx={10}>Lightness</Box>
           </Flex>
+          <Flex mt={4}>
+            <Slider
+              focusThumbOnChange={false}
+              value={skewness}
+              onChange={setSkewness}
+              min={0}
+              max={1}
+              step={0.1}
+            >
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb fontSize="sm" boxSize="32px">
+                {skewness}
+              </SliderThumb>
+            </Slider>
+            <Box mx={10}>Skewness</Box>
+          </Flex>
+          <Flex mt={4}>
+            <Slider
+              focusThumbOnChange={false}
+              value={offset}
+              onChange={setOffset}
+              min={0}
+              max={1}
+              step={0.01}
+            >
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb fontSize="sm" boxSize="32px">
+                {offset}
+              </SliderThumb>
+            </Slider>
+            <Box mx={14}>Offset</Box>
+          </Flex>
         </Box>
 
-        {/* <ColorLinear intervals={intervals} scheme={scheme} /> */}
+        <Box mt={8}>
+          <ColorLinear
+            numColors={intervals.length}
+            scheme={scheme}
+            cantor={method === "stops"}
+          />
+        </Box>
 
         <Box align="center" mt={14}>
           <ColorText intervals={intervals} scheme={scheme} />
