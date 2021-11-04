@@ -34,11 +34,11 @@ import Head from "next/head";
 import * as d3 from "d3";
 import * as c3 from "@mapequation/c3";
 //import ColorLinear from "./components/ColorLinear";
-import ColorWheel from "./components/ColorWheel";
-import ColorText from "./components/ColorText";
-import ColorBar from "./components/ColorBar";
-import SliderInput from "./components/SliderInput";
-import ColorLinear from "./components/ColorLinear";
+import ColorWheel from "../src/components/ColorWheel";
+import ColorText from "../src/components/ColorText";
+import ColorBar from "../src/components/ColorBar";
+import SliderInput from "../src/components/SliderInput";
+import ColorLinear from "../src/components/ColorLinear";
 
 type FeatureListItemProps = {
   label: string;

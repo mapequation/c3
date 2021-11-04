@@ -102,7 +102,7 @@ export default function ColorCantor({
         width={totalWidth}
         height={totalHeight}
       >
-        <g transform={`translate(${margin.left}px,${margin.top}px)`}>
+        <g transform={`translate(${margin.left},${margin.top})`}>
           <LinearGradient
             interval={{ start: 0, end: 1 }}
             x={x}
