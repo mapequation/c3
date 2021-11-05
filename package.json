@@ -1,11 +1,14 @@
 {
   "name": "@mapequation/c3",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Consistent Categorical Colors - Deterministic colors for maps",
   "main": "./lib/index.js",
   "module": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": "./lib/index.js"
   },

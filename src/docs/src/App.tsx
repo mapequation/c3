@@ -283,7 +283,6 @@ export default function App() {
             height={300}
             numColors={intervals.length}
             scheme={scheme}
-            skewness={skewness}
             cantor={method === "stops"}
           />
         </Box>
