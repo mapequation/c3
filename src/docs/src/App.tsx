@@ -247,7 +247,7 @@ export default function App() {
               onChange={setSkewness}
               min={0}
               max={1}
-              step={0.1}
+              step={0.01}
             >
               <SliderTrack>
                 <SliderFilledTrack />
@@ -283,6 +283,7 @@ export default function App() {
             height={300}
             numColors={intervals.length}
             scheme={scheme}
+            skewness={skewness}
             cantor={method === "stops"}
           />
         </Box>

@@ -73,8 +73,7 @@ function clampToDecimal(t: number, offset: number = 0) {
 /**
  * Generate categorical colors
  * @param n Number of colors or an array of weights
- * @param interval Generate color stops in the specified interval, default [0,1]
- * @param options Optional parameter to specify color scheme, saturation and lightness
+ * @param options Optional parameter to specify interval, color scheme etc
  * @returns
  */
 export function colors(
@@ -164,15 +163,17 @@ export function weightedStops(
   return result;
 }
 
+export type StopsOptions = Partial<Interval> & {};
+
 /**
- * Generate n color stops on the interval [0, 1].
+ * Generate n color stops on the specified interval (default [0, 1]).
  * @param n number of color stops
- * @param interval interval to generate
+ * @param options set custom interval and skewness
  * @returns array of color stops
  */
 export function stops(
   n: number | number[] = 10,
-  interval: Interval = { start: 0, end: 1 },
+  { start = 0, end = 1 }: StopsOptions = {},
 ): Interval[] {
   if (typeof n !== "number") {
     n = n.length;
@@ -180,7 +181,7 @@ export function stops(
   if (n === 0) return [];
 
   const numLoops = Math.ceil(Math.log2(n));
-  const intervals = [new Node(interval.start, interval.end)];
+  const intervals = [new Node(start, end)];
 
   for (let i = 0; i < numLoops; ++i) {
     const length = intervals.length;

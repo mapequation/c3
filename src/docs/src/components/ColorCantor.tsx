@@ -102,7 +102,7 @@ export default function ColorCantor({
   return (
     <div>
       <svg
-        viewBox={`0 0 ${width} ${height}`}
+        viewBox={`0 0 ${totalWidth} ${totalHeight}`}
         width={totalWidth}
         height={totalHeight}
       >

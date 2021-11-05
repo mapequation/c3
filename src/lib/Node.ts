@@ -19,9 +19,14 @@ export default class Node implements Interval {
     return this.start + this.size / 2;
   }
 
-  split() {
-    const child = new Node(this.mid, this.end, ++this.endLevel);
-    this.end = this.mid;
+  getSplitPoint(skewness: number = 0) {
+    return this.start + (this.size / 2) * (1 + skewness);
+  }
+
+  split(skewness: number = 0) {
+    const splitPoint = this.getSplitPoint(skewness);
+    const child = new Node(splitPoint, this.end, ++this.endLevel);
+    this.end = splitPoint;
     return child;
   }
 }
