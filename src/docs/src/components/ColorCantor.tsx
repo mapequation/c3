@@ -8,6 +8,7 @@ import { Node, Interval } from "@mapequation/c3";
 type CantorRow = {
   intervals: Interval[];
   level: number;
+  subLevel: number;
   split: number;
 };
 
@@ -54,25 +55,22 @@ export default function ColorCantor({
     margin.right,
     margin.left,
   );
-  const circleRadius = Math.min(minMargin, radiusSpacePerCircle);
   const labelFontSize = Math.min(16, radiusSpacePerCircle);
   const labelStrokeWidth = radiusSpacePerCircle < 5 ? 0 : 2;
   const circleWhiteStrokeWidth = radiusSpacePerCircle < 5 ? 1 : 2;
   const circleGrayStrokeWidth = radiusSpacePerCircle < 5 ? 2 : 4;
 
-  const radius = circleRadius;
-
   const x = d3.scaleLinear().domain([0, 1]).range([0, width]);
 
   const toInterval = ({ start, end }: Node) => ({ start, end } as Interval);
 
-  const numLoops = Math.ceil(Math.log2(numColors));
+  const numLevels = Math.ceil(Math.log2(numColors));
   const intervals = [new Node(0, 1)];
   const cantorSet: CantorRow[] = [
-    { intervals: intervals.map(toInterval), level: 0, split: 0 },
+    { intervals: intervals.map(toInterval), level: 0, split: 0, subLevel: 0 },
   ];
 
-  for (let i = 0; i < numLoops; ++i) {
+  for (let i = 0; i < numLevels; ++i) {
     const length = intervals.length;
     for (let j = 0; j < length; ++j) {
       const parent = intervals[j]!;
@@ -82,6 +80,7 @@ export default function ColorCantor({
       cantorSet.push({
         intervals: intervals.map(toInterval),
         level: i + 1,
+        subLevel: j,
         split,
       });
       if (intervals.length === numColors) {
@@ -90,9 +89,15 @@ export default function ColorCantor({
     }
   }
 
-  const y = d3.scaleLinear().domain([0, numColors]).range([0, height]);
-  const rowHeight = 5;
-  const padX = 5;
+  const padTop = 0;
+  const padBottom = 5;
+  const heightForCantor = height - padTop - padBottom;
+  const heightPerLevel = heightForCantor / (numLevels + 1);
+  const getSubY = ({ level, subLevel }: CantorRow) =>
+    heightPerLevel * (level + subLevel / 2 ** Math.max(0, level - 1));
+  const lineHeight = 4;
+  const padX = Math.min(6, radiusSpacePerCircle);
+  const circleRadius = Math.min(6, radiusSpacePerCircle);
 
   return (
     <div>
@@ -110,41 +115,79 @@ export default function ColorCantor({
             height={height}
             padX={0}
           />
-          {cantorSet.map((cantorRow, i) => (
-            <g key={i}>
-              {cantorRow.intervals.map((interval, j) => (
-                <g key={j}>
-                  <Rect
-                    x={x(interval.start) + padX}
-                    y={y(i)}
-                    width={x(interval.end - interval.start) - 2 * padX}
-                    height={rowHeight}
-                  />
-                  {i < numCirclesToShow && (
-                    <g>
-                      {i > 0 && (
-                        <line
-                          x1={x(cantorSet[i - 1].split)}
-                          x2={x(cantorRow.split)}
-                          y1={y(i - 1) + padX / 2}
-                          y2={y(i) + padX / 2}
+          <g transform={`translate(0,${padTop})`}>
+            {cantorSet.map((cantorRow, i) => (
+              <g key={i}>
+                {cantorRow.intervals.map((interval, j) => (
+                  <g key={j}>
+                    <Rect
+                      x={x(interval.start) + padX}
+                      y={getSubY(cantorRow)}
+                      width={x(interval.end - interval.start) - 2 * padX}
+                      height={lineHeight}
+                    />
+                    {i < numCirclesToShow && (
+                      <g
+                        transform={`translate(${x(cantorRow.split)},${
+                          getSubY(cantorRow) + lineHeight / 2
+                        })`}
+                      >
+                        {i + 1 < numCirclesToShow && (
+                          // <line
+                          //   x1={0}
+                          //   x2={x(cantorSet[i + 1].split) - x(cantorRow.split)}
+                          //   y1={0}
+                          //   y2={getSubY(cantorSet[i + 1]) - getSubY(cantorRow)}
+                          //   stroke="white"
+                          //   strokeWidth={1}
+                          // />
+                          <g>
+                            <path
+                              shapeRendering="geometricPrecision"
+                              d={`M 0 0 Q ${
+                                (x(cantorSet[i + 1].split) -
+                                  x(cantorRow.split)) /
+                                2
+                              } 0 ${
+                                x(cantorSet[i + 1].split) - x(cantorRow.split)
+                              } ${
+                                getSubY(cantorSet[i + 1]) - getSubY(cantorRow)
+                              }`}
+                              fill="none"
+                              stroke="black"
+                              strokeWidth={2}
+                            />
+                            <path
+                              shapeRendering="geometricPrecision"
+                              d={`M 0 0 Q ${
+                                (x(cantorSet[i + 1].split) -
+                                  x(cantorRow.split)) /
+                                2
+                              } 0 ${
+                                x(cantorSet[i + 1].split) - x(cantorRow.split)
+                              } ${
+                                getSubY(cantorSet[i + 1]) - getSubY(cantorRow)
+                              }`}
+                              fill="none"
+                              stroke="white"
+                              strokeWidth={1}
+                            />
+                          </g>
+                        )}
+                        <circle r={circleRadius} fill="black" strokeWidth={2} />
+                        <circle
+                          r={circleRadius - 2}
+                          fill={scheme(cantorRow.split)}
                           stroke="white"
-                          strokeWidth={0.5}
+                          strokeWidth={2}
                         />
-                      )}
-                      <circle
-                        cx={x(cantorRow.split)}
-                        cy={y(i) + padX / 2}
-                        r={padX}
-                        fill={scheme(cantorRow.split)}
-                        stroke="white"
-                      />
-                    </g>
-                  )}
-                </g>
-              ))}
-            </g>
-          ))}
+                      </g>
+                    )}
+                  </g>
+                ))}
+              </g>
+            ))}
+          </g>
         </g>
       </svg>
     </div>

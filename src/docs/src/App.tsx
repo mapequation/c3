@@ -280,6 +280,7 @@ export default function App() {
 
         <Box mt={8}>
           <ColorLinear
+            height={300}
             numColors={intervals.length}
             scheme={scheme}
             cantor={method === "stops"}
