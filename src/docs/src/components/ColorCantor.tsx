@@ -37,7 +37,6 @@ export default function ColorCantor({
   const totalHeight = height;
   width -= margin.left + margin.right;
   height -= margin.top + margin.bottom;
-  console.log(margin, width, height);
 
   let numCirclesToShow = numColors;
   numColors = 16;
