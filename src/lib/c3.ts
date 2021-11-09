@@ -63,6 +63,7 @@ export type Options = Partial<Interval> & {
   lightness?: number;
   offset?: number;
   reverse?: boolean;
+  strength?: number;
 };
 
 function clampToDecimal(t: number, offset: number = 0) {
@@ -86,15 +87,12 @@ export function colors(
     end = 1,
     offset = 0,
     reverse = false,
+    strength,
   }: Options = {},
 ) {
   const _scheme = typeof scheme === "string" ? getScheme(scheme) : scheme;
 
-  const _stops = isIntervalArray(n)
-    ? n
-    : typeof n === "number"
-    ? stops(n, { start, end })
-    : weightedStops(n, { start, end });
+  const _stops = isIntervalArray(n) ? n : stops(n, { start, end, strength });
 
   const colors = _stops.map(({ start }) => {
     const value = clampToDecimal(start, offset);
@@ -113,88 +111,54 @@ export function colors(
   });
 }
 
-/**
- * Generate weighted intervals on the interval [0, 1]
- * @param weights array of weights
- * @param interval interval to generate
- * @returns array of intervals
- */
-export function weightedStops(
-  weights: number[] | number,
-  interval: Interval = { start: 0, end: 1 },
-): Interval[] {
-  if (typeof weights === "number") {
-    if (weights === 0) return [];
-    weights = new Array(weights).fill(1 / weights);
-  }
-
-  if (weights.length === 0) {
-    return [];
-  }
-
-  const total = weights.reduce((a, b) => a + b, 0);
-  if (Math.abs(total - 1) > 1e-6) {
-    weights = weights.map((w) => w / total);
-  }
-
-  let { start, end } = interval;
-  const delta = end - start;
-
-  const intervals = weights.map((weight) => {
-    const step = weight * delta;
-    const interval: Interval = { start, end: start + step };
-    start += step;
-    return interval;
-  });
-
-  const result: Interval[] = [];
-
-  for (let i = 0; i < weights.length; i += 2) {
-    result.push(intervals[i]);
-    if (i > 0) {
-      result.push(intervals[i - 1]);
-    }
-    if (i + 2 == weights.length) {
-      result.push(intervals[i + 1]);
-      break;
-    }
-  }
-
-  return result;
-}
-
-export type StopsOptions = Partial<Interval> & {};
+export type StopsOptions = Partial<Interval> & {
+  strength?: number;
+};
 
 /**
  * Generate n color stops on the specified interval (default [0, 1]).
- * @param n number of color stops
- * @param options set custom interval and skewness
+ * If weights are provided, the strength parameter is default 1.
+ * If not, strength is default 0, but uses exponential weights if increased.
+ * This keeps the consistency of earlier colors when increasing the numbers.
+ *
+ * @param n number of color stops or an array of weights
+ * @param options set custom interval and weight strength
  * @returns array of color stops
  */
 export function stops(
   n: number | number[] = 10,
-  { start = 0, end = 1 }: StopsOptions = {},
+  { start = 0, end = 1, strength }: StopsOptions = {},
 ): Interval[] {
-  if (typeof n !== "number") {
-    n = n.length;
+  const isWeighted = typeof n !== "number";
+  const weights: number[] = isWeighted ? n : getDefaultWeights(n);
+  if (strength === undefined) {
+    strength = isWeighted ? 1 : 0;
   }
-  if (n === 0) return [];
+  const numColors = weights.length;
+  if (numColors === 0) return [];
 
-  const numLoops = Math.ceil(Math.log2(n));
-  const intervals = [new Node(start, end)];
+  const numLoops = Math.ceil(Math.log2(numColors));
+  const intervals = [new Node(start, end, weights[0], weights[0])];
 
+  let currentNodeIndex = 0;
   for (let i = 0; i < numLoops; ++i) {
     const length = intervals.length;
     for (let j = 0; j < length; ++j) {
-      const next = intervals[j]!.split();
+      const next = intervals[j]!.split(weights[++currentNodeIndex], strength);
       intervals.push(next);
-      if (intervals.length === n) {
+      if (intervals.length === numColors) {
         return intervals;
       }
     }
   }
 
   return intervals;
+}
+
+export function getDefaultWeights(n: number, skewness: number = 1) {
+  return Array.from({ length: n }, (_, i) =>
+    Math.exp(skewness * 0.25 * (n - i)),
+  );
 }
 
 /**

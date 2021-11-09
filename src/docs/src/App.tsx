@@ -11,6 +11,8 @@ import {
   Text,
   HStack,
   VStack,
+  Stack,
+  Link,
   List,
   ListItem,
   ListIcon,
@@ -35,7 +37,7 @@ import ColorWheel from "components/ColorWheel";
 import ColorText from "components/ColorText";
 import ColorBar from "components/ColorBar";
 import SliderInput from "components/SliderInput";
-import ColorLinear from "components/ColorLinear";
+import ColorCantor from "components/ColorCantor";
 
 type FeatureListItemProps = {
   label: string;
@@ -60,30 +62,20 @@ const FeatureListItem = ({
   </ListItem>
 );
 
-const methods = {
-  stops: c3.stops,
-  weightedStops: c3.weightedStops,
-} as const;
-
 export default function App() {
   const [numColors, setNumColors] = useState(6);
-  const [method, setMethod] = useState<keyof typeof methods>("stops");
   const [saturation, setSaturation] = useState(0.8);
   const [offset, setOffset] = useState(0);
   const [lightness, setLightness] = useState(0.6);
   const [skewness, setSkewness] = useState(0);
+  const [strength, setStrength] = useState(1);
   const [reverse, setReverse] = useState(false);
   const [schemeName, setSchemeName] =
     useState<keyof typeof d3>("interpolateSinebow");
 
-  const weights = d3
-    .range(numColors)
-    .map((_, i) => Math.exp((skewness * 5 * (numColors - i)) / numColors ** 1));
+  const weights = c3.getDefaultWeights(numColors, skewness);
 
-  const intervals =
-    method === "weightedStops"
-      ? c3.weightedStops(weights)
-      : c3.stops(numColors);
+  const intervals = c3.stops(weights, { strength });
 
   let scheme = d3[schemeName] as typeof d3.interpolateSinebow;
 
@@ -139,14 +131,42 @@ export default function App() {
               </Heading>
             </VStack>
           </HStack>
-          <Text my={4} fontSize="3xl" color="gray.400">
+          <Text mt={4} fontSize="3xl" color="gray.400">
             Deterministic colors for maps
+          </Text>
+          <Text mt={1} fontSize="3xl" color="gray.400">
+            Inspired by the{" "}
+            <Link href="https://en.wikipedia.org/wiki/Cantor_set" isExternal>
+              Cantor set
+            </Link>{" "}
+            fractal
           </Text>
         </Container>
       </Container>
 
       <Container as="main" my={12}>
-        <Box>
+        <Stack
+          align="center"
+          justify="center"
+          direction={["column", "row"]}
+          spacing="24px"
+          mt={4}
+        >
+          <ColorWheel intervals={intervals} scheme={scheme} size={300} />
+          <ColorCantor
+            height={300}
+            width={300}
+            weights={weights}
+            strength={strength}
+            scheme={scheme}
+          />
+        </Stack>
+
+        <Box align="center" mt="10">
+          <ColorBar intervals={intervals} scheme={scheme} />
+        </Box>
+
+        <Box mt={10}>
           <HStack>
             <Select
               id="colorScale"
@@ -173,28 +193,6 @@ export default function App() {
               />
             </FormControl>
           </HStack>
-
-          <Select
-            mt={4}
-            value={method}
-            onChange={(e) =>
-              setMethod(e.target?.value! as keyof typeof methods)
-            }
-          >
-            <option value="stops">Standard</option>
-            <option value="weightedStops">Leapfrog</option>
-          </Select>
-        </Box>
-
-        <Box align="center">
-          <ColorWheel intervals={intervals} scheme={scheme} size={500} />
-        </Box>
-
-        <Box align="center" mt="10">
-          <ColorBar intervals={intervals} scheme={scheme} weights={weights} />
-        </Box>
-
-        <Box mt={10}>
           <SliderInput
             min={2}
             max={128}
@@ -258,6 +256,24 @@ export default function App() {
             </Slider>
             <Box mx={10}>Skewness</Box>
           </Flex>
+          <Flex mt={4} display="none">
+            <Slider
+              focusThumbOnChange={false}
+              value={strength}
+              onChange={setStrength}
+              min={0}
+              max={1}
+              step={0.01}
+            >
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb fontSize="sm" boxSize="32px">
+                {strength}
+              </SliderThumb>
+            </Slider>
+            <Box mx={10}>Weight strength</Box>
+          </Flex>
           <Flex mt={4}>
             <Slider
               focusThumbOnChange={false}
@@ -276,15 +292,6 @@ export default function App() {
             </Slider>
             <Box mx={14}>Offset</Box>
           </Flex>
-        </Box>
-
-        <Box mt={8}>
-          <ColorLinear
-            height={300}
-            numColors={intervals.length}
-            scheme={scheme}
-            cantor={method === "stops"}
-          />
         </Box>
 
         <Box align="center" mt={14}>

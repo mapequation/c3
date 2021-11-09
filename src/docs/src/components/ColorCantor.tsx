@@ -1,9 +1,18 @@
 import { motion } from "framer-motion";
 import LinearGradient from "./LinearGradient";
 import * as d3 from "d3";
-import type { ColorProps } from "./ColorLinear";
-import { getMargin } from "../utils/renderUtils";
 import { Node, Interval } from "@mapequation/c3";
+import { getMargin } from "../utils/renderUtils";
+import type { Margin } from "../utils/renderUtils";
+
+export type ColorProps = {
+  weights: number[];
+  scheme: (n: number) => string;
+  strength: number;
+  width?: number;
+  height?: number;
+  margin?: Margin;
+};
 
 type CantorRow = {
   intervals: Interval[];
@@ -26,9 +35,9 @@ function Rect({ x, y, width, height, fill = "black" }: RectProps) {
 }
 
 export default function ColorCantor({
-  numColors,
+  weights,
   scheme,
-  animate = false,
+  strength = 1,
   width = 500,
   height = 500,
   margin = undefined,
@@ -39,9 +48,20 @@ export default function ColorCantor({
   width -= margin.left + margin.right;
   height -= margin.top + margin.bottom;
 
-  let numCirclesToShow = numColors;
-  numColors = 16;
-  numCirclesToShow = Math.min(numColors, numCirclesToShow);
+  if (weights.length === 0) {
+    return null;
+  }
+
+  const maxNumColors = 16;
+  const w = weights.length < maxNumColors ? Array.from(weights) : weights;
+  if (maxNumColors > weights.length) {
+    const lastWeight = weights[weights.length - 1];
+    for (let i = weights.length; i < maxNumColors; ++i) {
+      w.push(lastWeight);
+    }
+  }
+  const numColors = maxNumColors;
+  const numCirclesToShow = Math.min(weights.length, numColors);
   const numColorsToFit = 2 ** Math.ceil(Math.log2(numColors));
   const widthPerCircle = width / numColorsToFit - 2;
   const heightPerCircle = height / numColorsToFit - 2;
@@ -49,39 +69,29 @@ export default function ColorCantor({
     widthPerCircle / 2,
     heightPerCircle / 2,
   );
-  const minMargin = Math.min(
-    margin.top,
-    margin.bottom,
-    margin.right,
-    margin.left,
-  );
-  const labelFontSize = Math.min(16, radiusSpacePerCircle);
-  const labelStrokeWidth = radiusSpacePerCircle < 5 ? 0 : 2;
-  const circleWhiteStrokeWidth = radiusSpacePerCircle < 5 ? 1 : 2;
-  const circleGrayStrokeWidth = radiusSpacePerCircle < 5 ? 2 : 4;
 
   const x = d3.scaleLinear().domain([0, 1]).range([0, width]);
 
   const toInterval = ({ start, end }: Node) => ({ start, end } as Interval);
 
   const numLevels = Math.ceil(Math.log2(numColors));
-  const intervals = [new Node(0, 1)];
+  const intervals = [new Node(0, 1, w[0], w[0])];
   const cantorSet: CantorRow[] = [
     { intervals: intervals.map(toInterval), level: 0, split: 0, subLevel: 0 },
   ];
 
+  let currentNodeIndex = 0;
   for (let i = 0; i < numLevels; ++i) {
     const length = intervals.length;
     for (let j = 0; j < length; ++j) {
       const parent = intervals[j]!;
-      const split = parent.mid;
-      const child = parent.split();
+      const child = parent.split(w[++currentNodeIndex], strength);
       intervals.push(child);
       cantorSet.push({
         intervals: intervals.map(toInterval),
         level: i + 1,
         subLevel: j,
-        split,
+        split: parent.end,
       });
       if (intervals.length === numColors) {
         break;
@@ -96,7 +106,7 @@ export default function ColorCantor({
   const getSubY = ({ level, subLevel }: CantorRow) =>
     heightPerLevel * (level + subLevel / 2 ** Math.max(0, level - 1));
   const lineHeight = 4;
-  const padX = Math.min(6, radiusSpacePerCircle);
+  const padX = Math.min(4, radiusSpacePerCircle);
   const circleRadius = Math.min(6, radiusSpacePerCircle);
 
   return (

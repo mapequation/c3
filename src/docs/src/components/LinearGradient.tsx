@@ -63,8 +63,8 @@ export default function LinearGradient({
   const x0 = x(interval.start);
   const x1 = x(interval.end);
   const dx = x1 - x0;
-  const numRectsPerPixel = 0.3;
-  const numRects = Math.ceil(numRectsPerPixel * dx);
+  const numPixelsPerRect = 1;
+  const numRects = Math.ceil(dx / numPixelsPerRect);
   const rects = range(numRects).map((i) => {
     const t = interval.start + (i / numRects) * dt;
     return {
@@ -91,7 +91,6 @@ export default function LinearGradient({
             width={rect.width}
             height={height}
             fill={scheme(rect.t)}
-            stroke={scheme(rect.t)}
           />
         ))}
       </g>
