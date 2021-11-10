@@ -1,4 +1,4 @@
-import { range, scaleLinear } from "d3";
+import { range, scaleLinear, interpolateRgb } from "d3";
 import type { Interval } from "@mapequation/c3";
 
 export type GradientProps = {
@@ -8,6 +8,7 @@ export type GradientProps = {
   y: number;
   height: number;
   padX?: number;
+  smooth?: boolean;
 };
 
 let elementCounter = 0;
@@ -24,7 +25,7 @@ export function LinearSVGGradient({
   const x0 = x(interval.start) + padX;
   const x1 = x(interval.end) - padX;
   const width = x1 - x0;
-  const numStops = Math.ceil(width / 50) + 1;
+  const numStops = 20;
   const gradientId = `gradient${elementCounter++}`;
   return x0 >= x1 ? null : (
     <g>
@@ -57,21 +58,30 @@ export default function LinearGradient({
   y,
   height,
   padX = 0,
+  smooth = true,
 }: GradientProps) {
   padX ??= 0;
-  const dt = interval.end - interval.start;
+  const tDiff = interval.end - interval.start;
   const x0 = x(interval.start);
   const x1 = x(interval.end);
   const dx = x1 - x0;
   const numPixelsPerRect = 1;
   const numRects = Math.ceil(dx / numPixelsPerRect);
+  const dt = tDiff / numRects;
   const rects = range(numRects).map((i) => {
-    const t = interval.start + (i / numRects) * dt;
+    const t = interval.start + i * dt;
+    const smoothStep = Math.min(i, numRects - i, 3);
     return {
       i,
       t,
       x: x(t),
-      width: x(dt / numRects),
+      width: x(dt),
+      color: smooth
+        ? interpolateRgb(
+            scheme(Math.max(0, t - smoothStep * dt)),
+            scheme(Math.min(1, t + smoothStep * dt)),
+          )(0.5)
+        : scheme(t),
     };
   });
   const clipId = `${elementCounter++}`;
@@ -90,7 +100,7 @@ export default function LinearGradient({
             y={y}
             width={rect.width}
             height={height}
-            fill={scheme(rect.t)}
+            fill={rect.color}
           />
         ))}
       </g>
