@@ -61,9 +61,13 @@ export type Options = Partial<Interval> & {
   scheme?: Scheme | SchemeName;
   saturation?: number;
   lightness?: number;
+  saturationEnd?: number;
+  lightnessEnd?: number;
   offset?: number;
   reverse?: boolean;
   strength?: number;
+  midpoint?: number;
+  steepness?: number;
 };
 
 function clampToDecimal(t: number, offset: number = 0) {
@@ -83,11 +87,15 @@ export function colors(
     scheme = schemes.interpolateRainbow,
     saturation = undefined,
     lightness = undefined,
+    saturationEnd = undefined,
+    lightnessEnd = undefined,
     start = 0,
     end = 1,
     offset = 0,
     reverse = false,
     strength,
+    midpoint = 4,
+    steepness = 1,
   }: Options = {},
 ) {
   const _scheme = typeof scheme === "string" ? getScheme(scheme) : scheme;
@@ -103,10 +111,23 @@ export function colors(
     return colors;
   }
 
-  return colors.map((c) => {
+  return colors.map((c, i) => {
+    const node = _stops[i] as Node;
     const _hsl = hsl(c);
-    _hsl.s = saturation ?? 1.0;
-    _hsl.l = lightness ?? 0.5;
+    _hsl.s = getSigmoidInterpolatedValue(
+      saturation ?? 0.8,
+      saturationEnd ?? saturation ?? 1.0,
+      node,
+      midpoint,
+      steepness,
+    );
+    _hsl.l = getSigmoidInterpolatedValue(
+      lightness ?? 0.6,
+      lightnessEnd ?? lightness ?? 0.4,
+      node,
+      midpoint,
+      steepness,
+    );
     return _hsl.toString();
   });
 }
@@ -145,6 +166,7 @@ export function stops(
     const length = intervals.length;
     for (let j = 0; j < length; ++j) {
       const next = intervals[j]!.split(weights[++currentNodeIndex], strength);
+      next.subLevel = j;
       intervals.push(next);
       if (intervals.length === numColors) {
         return intervals;
@@ -180,4 +202,33 @@ function isIntervalArray(n: any): n is Interval[] {
     "start" in n[0] &&
     "end" in n[0]
   );
+}
+
+export function convexCombination(a: number, b: number, t: number) {
+  return (1 - t) * a + t * b;
+}
+
+export function sigmoid(
+  x: number,
+  midpoint: number = 4,
+  steepness: number = 1,
+) {
+  return 1 / (1 + Math.exp(-steepness * (x - midpoint)));
+}
+
+export function cantorDepth(node: { startLevel: number; subLevel: number }) {
+  return (
+    node.startLevel + node.subLevel / 2 ** Math.max(0, node.startLevel - 1)
+  );
+}
+
+export function getSigmoidInterpolatedValue(
+  a: number,
+  b: number,
+  node: { startLevel: number; subLevel: number },
+  midpoint: number = 4,
+  steepness: number = 1,
+) {
+  const t = sigmoid(cantorDepth(node), midpoint, steepness);
+  return convexCombination(a, b, t);
 }

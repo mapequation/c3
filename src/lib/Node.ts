@@ -2,6 +2,7 @@ import type { Interval } from "./c3";
 
 export default class Node implements Interval {
   endLevel: number;
+  subLevel: number;
 
   constructor(
     public start: number = 0,
@@ -11,6 +12,7 @@ export default class Node implements Interval {
     public readonly startLevel: number = 0,
   ) {
     this.endLevel = this.startLevel;
+    this.subLevel = 0;
   }
 
   get size() {
