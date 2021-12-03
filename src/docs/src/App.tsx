@@ -38,6 +38,7 @@ import ColorText from "components/ColorText";
 import ColorBar from "components/ColorBar";
 import SliderInput from "components/SliderInput";
 import ColorCantor from "components/ColorCantor";
+import type { SchemeName } from "@mapequation/c3";
 
 type FeatureListItemProps = {
   label: string;
@@ -62,36 +63,78 @@ const FeatureListItem = ({
   </ListItem>
 );
 
+export function modifyScheme(
+  scheme: typeof d3.interpolateSinebow,
+  {
+    saturation,
+    lightness,
+    offset,
+    reverse,
+  }: {
+    saturation?: number;
+    lightness?: number;
+    offset?: number;
+    reverse?: boolean;
+  } = {},
+) {
+  return (t: number) => {
+    offset ??= 0;
+    t = t + offset - Math.floor(t + offset);
+    if (reverse) t = 1 - t;
+    const c = d3.hsl(scheme(t));
+    if (saturation) {
+      c.s = saturation;
+    }
+    if (lightness) {
+      c.l = lightness;
+    }
+    return c.toString();
+  };
+}
+
 export default function App() {
   const [numColors, setNumColors] = useState(6);
-  const [saturation, setSaturation] = useState(0.8);
-  const [offset, setOffset] = useState(0);
+  const [saturation, setSaturation] = useState(0.7);
+  const [saturationEnd, setSaturationEnd] = useState(0.5);
   const [lightness, setLightness] = useState(0.6);
+  const [lightnessEnd, setLightnessEnd] = useState(0.4);
+  const [midpoint, setMidpoint] = useState(4);
+  const [steepness, setSteepness] = useState(1);
   const [skewness, setSkewness] = useState(0);
   const [strength, setStrength] = useState(1);
+  const [offset, setOffset] = useState(0);
   const [reverse, setReverse] = useState(false);
   const [schemeName, setSchemeName] =
     useState<keyof typeof d3>("interpolateSinebow");
 
+  const isGreyScale = schemeName === "interpolateGreys";
+
+  const _saturation = isGreyScale ? undefined : saturation;
+  const _lightness = isGreyScale ? undefined : lightness;
+  const _saturationEnd = isGreyScale ? undefined : saturationEnd;
+  const _lightnessEnd = isGreyScale ? undefined : lightnessEnd;
+
   const weights = c3.getDefaultWeights(numColors, skewness);
 
   const intervals = c3.stops(weights, { strength });
+  const colors = c3.colors(intervals, {
+    scheme: schemeName.slice("interpolate".length) as SchemeName,
+    saturation: _saturation,
+    lightness: _lightness,
+    saturationEnd: _saturationEnd,
+    lightnessEnd: _lightnessEnd,
+    midpoint,
+    steepness,
+  });
 
   let scheme = d3[schemeName] as typeof d3.interpolateSinebow;
 
-  const withSaturationLightness = (s: typeof scheme) => {
-    return (color: number) => {
-      color = color + offset - Math.floor(color + offset);
-      if (reverse) color = 1 - color;
-      if (schemeName === "interpolateGreys") return s(color);
-      const c = d3.hsl(s(color));
-      c.s = saturation;
-      c.l = lightness;
-      return c.toString();
-    };
-  };
-
-  scheme = withSaturationLightness(scheme);
+  scheme = modifyScheme(scheme, {
+    saturation: _saturation,
+    lightness: _lightness,
+    offset,
+    reverse,
+  });
 
   return (
     <div>
@@ -159,11 +202,18 @@ export default function App() {
             weights={weights}
             strength={strength}
             scheme={scheme}
+            saturation={saturation}
+            lightness={lightness}
+            saturationEnd={saturationEnd}
+            lightnessEnd={lightnessEnd}
+            midpoint={midpoint}
+            steepness={steepness}
+            skipModifyScheme={isGreyScale}
           />
         </Stack>
 
         <Box align="center" mt="10">
-          <ColorBar intervals={intervals} scheme={scheme} />
+          <ColorBar colors={colors} />
         </Box>
 
         <Box mt={10}>
@@ -207,8 +257,7 @@ export default function App() {
               onChange={setSaturation}
               min={0}
               max={1}
-              step={0.1}
-              disabled={schemeName === "interpolateGreys"}
+              step={0.01}
             >
               <SliderTrack>
                 <SliderFilledTrack />
@@ -222,12 +271,29 @@ export default function App() {
           <Flex mt={4}>
             <Slider
               focusThumbOnChange={false}
+              value={saturationEnd}
+              onChange={setSaturationEnd}
+              min={0}
+              max={1}
+              step={0.01}
+            >
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb fontSize="sm" boxSize="32px">
+                {saturationEnd}
+              </SliderThumb>
+            </Slider>
+            <Box mx={10}>Saturation end</Box>
+          </Flex>
+          <Flex mt={4}>
+            <Slider
+              focusThumbOnChange={false}
               value={lightness}
               onChange={setLightness}
               min={0}
               max={1}
-              step={0.1}
-              disabled={schemeName === "interpolateGreys"}
+              step={0.01}
             >
               <SliderTrack>
                 <SliderFilledTrack />
@@ -237,6 +303,60 @@ export default function App() {
               </SliderThumb>
             </Slider>
             <Box mx={10}>Lightness</Box>
+          </Flex>
+          <Flex mt={4}>
+            <Slider
+              focusThumbOnChange={false}
+              value={lightnessEnd}
+              onChange={setLightnessEnd}
+              min={0}
+              max={1}
+              step={0.01}
+            >
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb fontSize="sm" boxSize="32px">
+                {lightnessEnd}
+              </SliderThumb>
+            </Slider>
+            <Box mx={10}>Lightness end</Box>
+          </Flex>
+          <Flex mt={4}>
+            <Slider
+              focusThumbOnChange={false}
+              value={midpoint}
+              onChange={setMidpoint}
+              min={0}
+              max={8}
+              step={0.1}
+            >
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb fontSize="sm" boxSize="32px">
+                {midpoint}
+              </SliderThumb>
+            </Slider>
+            <Box mx={10}>Midpoint</Box>
+          </Flex>
+          <Flex mt={4}>
+            <Slider
+              focusThumbOnChange={false}
+              value={steepness}
+              onChange={setSteepness}
+              min={0}
+              max={5}
+              step={0.1}
+            >
+              <SliderTrack>
+                <SliderFilledTrack />
+              </SliderTrack>
+              <SliderThumb fontSize="sm" boxSize="32px">
+                {steepness}
+              </SliderThumb>
+            </Slider>
+            <Box mx={10}>Steepness</Box>
           </Flex>
           <Flex mt={4}>
             <Slider

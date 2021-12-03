@@ -3,8 +3,7 @@ import { Interval } from "@mapequation/c3";
 import { sum } from "d3";
 
 export type ColorProps = {
-  intervals: Interval[];
-  scheme: (n: number) => string;
+  colors: string[];
   weights?: number[];
   animate?: boolean;
   width?: number;
@@ -12,27 +11,26 @@ export type ColorProps = {
 };
 
 export default function ColorBar({
-  intervals = [],
-  scheme,
+  colors,
   weights = undefined,
   width = 400,
   height = 50,
 }: ColorProps) {
-  const { length } = intervals;
+  const { length } = colors;
   const totalWeight = sum(weights ?? [1]);
   const weight = (i: number) =>
     weights ? weights[i] / totalWeight : 1 / length;
 
   return (
     <div>
-      {intervals.map(({ start }, i) => (
+      {colors.map((color, i) => (
         <div
           key={i}
           style={{
             display: "inline-block",
             width: `${weight(i) * width}px`,
             height: `${height}px`,
-            background: scheme(start),
+            background: color,
             boxSizing: "border-box",
             borderTop: "1px solid #999",
             borderBottom: "1px solid #999",

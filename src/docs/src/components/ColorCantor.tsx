@@ -1,9 +1,9 @@
-import { motion } from "framer-motion";
-import LinearGradient from "./LinearGradient";
 import * as d3 from "d3";
-import { Node, Interval } from "@mapequation/c3";
+import { Node, Interval, getSigmoidInterpolatedValue } from "@mapequation/c3";
+import LinearGradient from "./LinearGradient";
 import { getMargin } from "../utils/renderUtils";
 import type { Margin } from "../utils/renderUtils";
+import { modifyScheme } from "../App";
 
 export type ColorProps = {
   weights: number[];
@@ -12,11 +12,18 @@ export type ColorProps = {
   width?: number;
   height?: number;
   margin?: Margin;
+  saturation: number;
+  lightness: number;
+  saturationEnd: number;
+  lightnessEnd: number;
+  midpoint?: number;
+  steepness?: number;
+  skipModifyScheme?: boolean;
 };
 
 type CantorRow = {
   intervals: Interval[];
-  level: number;
+  startLevel: number;
   subLevel: number;
   split: number;
 };
@@ -41,6 +48,13 @@ export default function ColorCantor({
   width = 500,
   height = 500,
   margin = undefined,
+  saturation = 0.8,
+  lightness = 0.6,
+  saturationEnd = 0.4,
+  lightnessEnd = 0.5,
+  midpoint = 4,
+  steepness = 1,
+  skipModifyScheme = false,
 }: ColorProps) {
   margin = getMargin(margin, { top: 10, bottom: 10, left: 10, right: 10 });
   const totalWidth = width;
@@ -77,7 +91,12 @@ export default function ColorCantor({
   const numLevels = Math.ceil(Math.log2(numColors));
   const intervals = [new Node(0, 1, w[0], w[0])];
   const cantorSet: CantorRow[] = [
-    { intervals: intervals.map(toInterval), level: 0, split: 0, subLevel: 0 },
+    {
+      intervals: intervals.map(toInterval),
+      startLevel: 0,
+      split: 0,
+      subLevel: 0,
+    },
   ];
 
   let currentNodeIndex = 0;
@@ -86,10 +105,11 @@ export default function ColorCantor({
     for (let j = 0; j < length; ++j) {
       const parent = intervals[j]!;
       const child = parent.split(w[++currentNodeIndex], strength);
+      child.subLevel = j;
       intervals.push(child);
       cantorSet.push({
         intervals: intervals.map(toInterval),
-        level: i + 1,
+        startLevel: i + 1,
         subLevel: j,
         split: parent.end,
       });
@@ -103,11 +123,12 @@ export default function ColorCantor({
   const padBottom = 5;
   const heightForCantor = height - padTop - padBottom;
   const heightPerLevel = heightForCantor / (numLevels + 1);
-  const getSubY = ({ level, subLevel }: CantorRow) =>
-    heightPerLevel * (level + subLevel / 2 ** Math.max(0, level - 1));
+  const getSubY = ({ startLevel, subLevel }: CantorRow) =>
+    heightPerLevel * (startLevel + subLevel / 2 ** Math.max(0, startLevel - 1));
   const lineHeight = 4;
   const padX = Math.min(4, radiusSpacePerCircle);
   const circleRadius = Math.min(6, radiusSpacePerCircle);
+  const individualGradients = true;
 
   return (
     <div>
@@ -117,14 +138,47 @@ export default function ColorCantor({
         height={totalHeight}
       >
         <g transform={`translate(${margin.left},${margin.top})`}>
-          <LinearGradient
-            interval={{ start: 0, end: 1 }}
-            x={x}
-            scheme={scheme}
-            y={0}
-            height={height}
-            padX={0}
-          />
+          {individualGradients ? (
+            d3.range(numLevels + 1).map((i) => (
+              <LinearGradient
+                key={i}
+                interval={{ start: 0, end: 1 }}
+                x={x}
+                y={i * heightPerLevel}
+                height={heightPerLevel}
+                padX={0}
+                scheme={
+                  skipModifyScheme
+                    ? scheme
+                    : modifyScheme(scheme, {
+                        saturation: getSigmoidInterpolatedValue(
+                          saturation,
+                          saturationEnd,
+                          { startLevel: i, subLevel: 0 },
+                          midpoint,
+                          steepness,
+                        ),
+                        lightness: getSigmoidInterpolatedValue(
+                          lightness,
+                          lightnessEnd,
+                          { startLevel: i, subLevel: 0 },
+                          midpoint,
+                          steepness,
+                        ),
+                      })
+                }
+              />
+            ))
+          ) : (
+            <LinearGradient
+              interval={{ start: 0, end: 1 }}
+              x={x}
+              y={0}
+              height={height}
+              padX={0}
+              scheme={scheme}
+            />
+          )}
           <g transform={`translate(0,${padTop})`}>
             {cantorSet.map((cantorRow, i) => (
               <g key={i}>
