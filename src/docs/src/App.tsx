@@ -415,7 +415,7 @@ export default function App() {
         </Box>
 
         <Box align="center" mt={14}>
-          <ColorText intervals={intervals} scheme={scheme} />
+          <ColorText colors={colors} />
         </Box>
 
         <Heading mt={12}>Install</Heading>

@@ -6,27 +6,22 @@ import * as d3 from "d3";
 import ClipboardJS from "clipboard";
 
 type ColorTextProps = {
-  intervals: Interval[];
-  scheme: (n: number) => string;
+  colors: string[];
 };
 
-export default function ColorText({ intervals = [], scheme }: ColorTextProps) {
+export default function ColorText({ colors = [] }: ColorTextProps) {
   const toHex = useCallback(
-    (color: number) => d3.color(scheme(color))?.formatHex(),
-    [scheme],
+    (color: string) => d3.color(color)?.formatHex(),
+    [],
   );
 
   useEffect(() => {
     new ClipboardJS(".copy-button", {
       text() {
-        return (
-          "[" +
-          intervals.map((c) => '"' + toHex(c.start) + '"').join(", ") +
-          "]"
-        );
+        return `[${colors.map((c) => `"${toHex(c)}"`).join(", ")}]`;
       },
     });
-  }, [intervals, toHex]);
+  }, [colors, toHex]);
 
   return (
     <>
@@ -45,12 +40,12 @@ export default function ColorText({ intervals = [], scheme }: ColorTextProps) {
         color="gray.700"
       >
         [
-        {intervals.map((c, i) => (
+        {colors.map((color, i) => (
           <React.Fragment key={i}>
             &quot;
-            <span style={{ color: scheme(c.start) }}>{toHex(c.start)}</span>
+            <span style={{ color }}>{toHex(color)}</span>
             &quot;
-            {i + 1 < intervals.length && ", "}
+            {i + 1 < colors.length && ", "}
           </React.Fragment>
         ))}
         ]
@@ -70,7 +65,6 @@ export default function ColorText({ intervals = [], scheme }: ColorTextProps) {
 
 ColorText.getInitialProps = function () {
   return {
-    intervals: [],
-    scheme: () => "red",
+    colors: [],
   };
 };
