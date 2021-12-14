@@ -93,12 +93,12 @@ export function modifyScheme(
 }
 
 export default function App() {
-  const [numColors, setNumColors] = useState(6);
-  const [saturation, setSaturation] = useState(0.7);
-  const [saturationEnd, setSaturationEnd] = useState(0.5);
-  const [lightness, setLightness] = useState(0.6);
-  const [lightnessEnd, setLightnessEnd] = useState(0.4);
-  const [midpoint, setMidpoint] = useState(4);
+  const [numColors, setNumColors] = useState(8);
+  const [saturation, setSaturation] = useState(0.55);
+  const [saturationEnd, setSaturationEnd] = useState(0.8);
+  const [lightness, setLightness] = useState(0.5);
+  const [lightnessEnd, setLightnessEnd] = useState(0.9);
+  const [midpoint, setMidpoint] = useState(4.5);
   const [steepness, setSteepness] = useState(1);
   const [skewness, setSkewness] = useState(0);
   const [strength, setStrength] = useState(1);
@@ -125,6 +125,10 @@ export default function App() {
     lightnessEnd: _lightnessEnd,
     midpoint,
     steepness,
+    skewness,
+    strength,
+    offset,
+    reverse,
   });
 
   let scheme = d3[schemeName] as typeof d3.interpolateSinebow;

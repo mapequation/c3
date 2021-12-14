@@ -1,7 +1,6 @@
 import React, { useEffect, useCallback } from "react";
 import { Box, Button } from "@chakra-ui/react";
 import { CopyIcon } from "@chakra-ui/icons";
-import type { Interval } from "@mapequation/c3";
 import * as d3 from "d3";
 import ClipboardJS from "clipboard";
 

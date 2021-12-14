@@ -63,11 +63,12 @@ export type Options = Partial<Interval> & {
   lightness?: number;
   saturationEnd?: number;
   lightnessEnd?: number;
+  midpoint?: number;
+  steepness?: number;
   offset?: number;
   reverse?: boolean;
   strength?: number;
-  midpoint?: number;
-  steepness?: number;
+  skewness?: number;
 };
 
 function clampToDecimal(t: number, offset: number = 0) {
@@ -89,18 +90,21 @@ export function colors(
     lightness = undefined,
     saturationEnd = undefined,
     lightnessEnd = undefined,
-    start = 0,
-    end = 1,
-    offset = 0,
-    reverse = false,
-    strength,
     midpoint = 4,
     steepness = 1,
+    offset = 0,
+    reverse = false,
+    start = 0,
+    end = 1,
+    skewness = 0,
+    strength,
   }: Options = {},
 ) {
   const _scheme = typeof scheme === "string" ? getScheme(scheme) : scheme;
 
-  const _stops = isIntervalArray(n) ? n : stops(n, { start, end, strength });
+  const _stops = isIntervalArray(n)
+    ? n
+    : stops(n, { start, end, strength, skewness });
 
   const colors = _stops.map(({ start }) => {
     const value = clampToDecimal(start, offset);
@@ -134,6 +138,7 @@ export function colors(
 
 export type StopsOptions = Partial<Interval> & {
   strength?: number;
+  skewness?: number;
 };
 
 /**
@@ -148,10 +153,10 @@ export type StopsOptions = Partial<Interval> & {
  */
 export function stops(
   n: number | number[] = 10,
-  { start = 0, end = 1, strength }: StopsOptions = {},
+  { start = 0, end = 1, strength, skewness }: StopsOptions = {},
 ): Interval[] {
   const isWeighted = typeof n !== "number";
-  const weights: number[] = isWeighted ? n : getDefaultWeights(n);
+  const weights: number[] = isWeighted ? n : getDefaultWeights(n, skewness);
   if (strength === undefined) {
     strength = isWeighted ? 1 : 0;
   }
