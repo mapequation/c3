@@ -1,6 +1,6 @@
-import Node from "./Node";
+import Node from "./Node.js";
 import * as schemes from "d3-scale-chromatic";
-import { hsl, HSLColor } from "d3-color";
+import { hsl } from "d3-color";
 
 // Scheme names from d3-scale-chromatic
 // https://raw.githubusercontent.com/d3/d3-scale-chromatic/main/src/index.js

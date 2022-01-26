@@ -1,2 +1,2 @@
-export * from "./c3";
-export { default as Node } from "./Node";
+export * from "./c3.js";
+export { default as Node } from "./Node.js";

@@ -1,4 +1,4 @@
-import type { Interval } from "./c3";
+import type { Interval } from "./c3.js";
 
 export default class Node implements Interval {
   endLevel: number;
