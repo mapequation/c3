@@ -249,7 +249,7 @@ export default function App() {
           </HStack>
           <SliderInput
             min={2}
-            max={128}
+            max={256}
             value={numColors}
             onChange={setNumColors}
             suffix="colors"
