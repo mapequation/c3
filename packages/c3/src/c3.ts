@@ -1,6 +1,8 @@
 import Node from "./Node.js";
 import * as schemes from "d3-scale-chromatic";
 import { hsl } from "d3-color";
+import { centeredVanDerCorput } from "./halton.js";
+import { gamutMap, labToRgbString, lchToLab, parseOklch } from "./oklab.js";
 
 // Scheme names from d3-scale-chromatic
 // https://raw.githubusercontent.com/d3/d3-scale-chromatic/main/src/index.js
@@ -69,6 +71,8 @@ export type Options = Partial<Interval> & {
   reverse?: boolean;
   strength?: number;
   skewness?: number;
+  /** Vary lightness and chroma in OKLCH to make colors more distinct */
+  vary?: boolean | number | Variation;
 };
 
 function clampToDecimal(t: number, offset: number = 0) {
@@ -98,6 +102,7 @@ export function colors(
     end = 1,
     skewness = 0,
     strength,
+    vary,
   }: Options = {},
 ) {
   const _scheme = typeof scheme === "string" ? getScheme(scheme) : scheme;
@@ -112,10 +117,10 @@ export function colors(
   });
 
   if (saturation === undefined && lightness === undefined) {
-    return colors;
+    return vary ? varyColors(colors, vary) : colors;
   }
 
-  return colors.map((c, i) => {
+  const modified = colors.map((c, i) => {
     const node = _stops[i] as Node;
     const _hsl = hsl(c);
     _hsl.s = getSigmoidInterpolatedValue(
@@ -133,6 +138,40 @@ export function colors(
       steepness,
     );
     return _hsl.toString();
+  });
+
+  return vary ? varyColors(modified, vary) : modified;
+}
+
+export type Variation = {
+  /** Lightness shift, OKLCH units (default 0.1) */
+  lightness?: number;
+  /** Relative chroma change (default 0.4, i.e. ±40%) */
+  chroma?: number;
+};
+
+// Start indices in the variation sequences, chosen to maximize the
+// smallest distance between colors for hue-cycling schemes.
+const LIGHTNESS_INDEX_OFFSET = 2;
+const CHROMA_INDEX_OFFSET = 3;
+
+/**
+ * Vary lightness and chroma of each color with base-3 and base-5
+ * van der Corput sequences.
+ * true uses the defaults, a number scales them.
+ */
+function varyColors(colors: string[], vary: boolean | number | Variation) {
+  const scale = typeof vary === "number" ? vary : 1;
+  const { lightness = 0.1 * scale, chroma = 0.4 * scale } =
+    typeof vary === "object" ? vary : {};
+
+  return colors.map((c, i) => {
+    const [L, C, H] = parseOklch(c);
+    const dL = lightness * centeredVanDerCorput(i + LIGHTNESS_INDEX_OFFSET, 3);
+    const dC = chroma * centeredVanDerCorput(i + CHROMA_INDEX_OFFSET, 5);
+    const L2 = Math.min(1, Math.max(0, L + dL));
+    const C2 = Math.max(0, C * (1 + dC));
+    return labToRgbString(lchToLab(gamutMap([L2, C2, H])));
   });
 }
 
