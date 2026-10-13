@@ -4,8 +4,11 @@ import { Check, Group, ModeLayout, RegionControls, Slider } from "../components/
 import { PolarPlot } from "../components/PolarPlot";
 import { Swatches } from "../components/Swatches";
 import { CodeSnippet } from "../components/CodeSnippet";
+import { Quality } from "../components/Quality";
+import { useZones } from "../components/Zones";
+import { firstDifference } from "../quality";
 import { callCode } from "../code";
-import { isMural, regionDiff, unlessDefault } from "../util";
+import { isMural, regionDiff, timed, unlessDefault } from "../util";
 
 const MURAL = presets.mural.join("\n");
 
@@ -37,20 +40,34 @@ export function ExtendMode({ n, setN }: { n: number; setN: (n: number) => void }
   const { valid: seeds, invalid } = useMemo(() => parseSeeds(text), [text]);
   const inferred = useMemo(() => inferRegion(seeds), [seeds]);
   const shownRegion = override && region ? region : inferred;
+  const zones = useZones(shownRegion);
 
   const options = useMemo<ExtendOptions>(
     () => ({
       method: unlessDefault(method, defaultExtendOptions.method),
       hue: unlessDefault(hue, defaultExtendOptions.hue),
       ...regionDiff(shownRegion, inferred),
+      ...(zones.on ? zones.options : { end: false }),
     }),
-    [method, hue, shownRegion, inferred],
+    [method, hue, shownRegion, inferred, zones.on, zones.options],
   );
 
   const deferred = useDeferredValue(useMemo(() => ({ n, seeds, options }), [n, seeds, options]));
   const result = useMemo(() => {
     const { n, seeds, options } = deferred;
-    return { hex: extend(seeds, n, options), code: callCode("extend", seeds, n, options), seeds: seeds.length };
+    const [hex, ms] = timed(() => extend(seeds, n, options));
+    const method = options.method ?? defaultExtendOptions.method;
+    // Where the end zone starts: the first color that differs without zones
+    const endZone = options.end === false ? -1 : firstDifference(hex, extend(seeds, n, { ...options, end: false }));
+    return { hex, ms, method, endZone, code: callCode("extend", seeds, n, options), seeds: seeds.length };
+  }, [deferred]);
+
+  // The same seeds and options with the other method
+  const comparison = useMemo(() => {
+    const { n, seeds, options } = deferred;
+    const method = (options.method ?? defaultExtendOptions.method) === "greedy" ? "halton" : "greedy";
+    const [colors, ms] = timed(() => extend(seeds, n, { ...options, method }));
+    return { label: method, colors, ms };
   }, [deferred]);
 
   const controls = (
@@ -111,6 +128,8 @@ export function ExtendMode({ n, setN }: { n: number; setN: (n: number) => void }
           </button>
         )}
       </Group>
+
+      {zones.controls}
     </>
   );
 
@@ -126,6 +145,7 @@ export function ExtendMode({ n, setN }: { n: number; setN: (n: number) => void }
         </figure>
       </div>
       <Swatches colors={result.hex} seeds={result.seeds} />
+      <Quality colors={result.hex} ms={result.ms} label={result.method} comparison={comparison} seeds={result.seeds} endZone={result.endZone} />
       <CodeSnippet code={result.code} colors={result.hex} />
     </ModeLayout>
   );

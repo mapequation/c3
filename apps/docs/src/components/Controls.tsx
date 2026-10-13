@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from "react";
 import type { Range, Region } from "@mapequation/c3";
+import { SCHEMES } from "../util";
 
 type SliderProps = {
   label: string;
@@ -96,6 +97,17 @@ export function RegionControls({
       <Slider label="Tilt" value={region.tilt} onChange={set("tilt")} min={0} max={1} step={0.01} disabled={disabled} />
     </>
   );
+}
+
+/** The d3 schemes as select options, grouped by kind */
+export function SchemeOptions() {
+  return Object.entries(SCHEMES).map(([group, names]) => (
+    <optgroup key={group} label={group}>
+      {names.map((name) => (
+        <option key={name}>{name}</option>
+      ))}
+    </optgroup>
+  ));
 }
 
 export function ModeLayout({

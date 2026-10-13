@@ -5,6 +5,8 @@ export type Row = [name: string, type: string, def: string, description: string]
 
 export type ApiEntry = {
   name: string;
+  /** What to use instead, for deprecated functions */
+  deprecated?: string;
   signature: string;
   description: string[];
   params?: Row[];
@@ -27,52 +29,38 @@ const regionRows: Row[] = [
   ],
 ];
 
+const zoneRows: Row[] = [
+  ["end", "Region | false", "lighter", "Region for colors after the top zone. Left-out fields come from the default: lighter than the top region, or darker or greyer if it is already light. `false` turns zones off."],
+  ["midpoint", 'number | "auto"', fmt(defaultPaletteOptions.midpoint), "Number of colors in the top zone, or as many as fit `minGap` apart."],
+  ["minGap", "number", fmt(defaultPaletteOptions.minGap), "Smallest OKLab distance between top zone colors for `\"auto\"`."],
+];
+
 export const API: ApiEntry[] = [
-  {
-    name: "colors",
-    signature: "colors(n?, options?): string[]",
-    description: [
-      "Picks colors from a d3 color scheme at the Cantor stops. Set `saturation` or `lightness` to override them in HSL, interpolated along a sigmoid of the Cantor depth from the start to the end value.",
-      "Set `vary` to also vary lightness and chroma in OKLCH with base-3 and base-5 van der Corput sequences. This makes hue-cycling schemes like Sinebow, Rainbow and Turbo noticeably more distinct.",
-      "O(n log n) for n colors.",
-    ],
-    params: [["n", "number | number[] | Interval[]", "16", "Number of colors, an array of weights, or intervals from `stops()`."]],
-    options: [
-      ["scheme", "SchemeName | (t) => string", '"Rainbow"', "A d3-scale-chromatic scheme name or any interpolator on [0, 1]."],
-      ["offset", "number", "0", "Shift all stops along the scheme, wrapping around at 1."],
-      ["reverse", "boolean", "false", "Read the scheme from 1 to 0."],
-      ["start, end", "number", "0, 1", "Interval of the scheme to use."],
-      ["saturation", "number", "", "HSL saturation of the first colors. Defaults to 0.8 when only `lightness` is set."],
-      ["saturationEnd", "number", "saturation", "HSL saturation that deeper colors approach. 1 when `saturation` is unset."],
-      ["lightness", "number", "", "HSL lightness of the first colors. Defaults to 0.6 when only `saturation` is set."],
-      ["lightnessEnd", "number", "lightness", "HSL lightness that deeper colors approach. 0.4 when `lightness` is unset."],
-      ["midpoint", "number", "4", "Cantor depth where the sigmoid is halfway between start and end."],
-      ["steepness", "number", "1", "Steepness of the sigmoid."],
-      ["strength", "number", "0 or 1", "How much weights skew the stops: 0 for a count, 1 for weights."],
-      ["skewness", "number", "0", "Exponential weights for a count, used when `strength` > 0."],
-      [
-        "vary",
-        "boolean | number | { lightness, chroma }",
-        "",
-        "`true` varies lightness by ±0.1 and chroma by ±40%, a number scales that, an object sets them directly.",
-      ],
-    ],
-    returns: "CSS `rgb()` color strings.",
-    example: `colors(20, { scheme: "Sinebow" });\ncolors(20, { scheme: "Sinebow", vary: true });\ncolors([5, 1, 3, 2], { scheme: "Spectral" });`,
-  },
   {
     name: "palette",
     signature: "palette(n?, options?): string[]",
     description: [
       "Spreads colors over a region of OKLCH color space. Hue comes from the Cantor stops, lightness from a base-3 and chroma from a base-5 van der Corput sequence. Together they form a Halton sequence, which fills the region evenly and never moves earlier colors when extended.",
+      "Zones keep the first colors distinct however many you ask for. The top zone holds the first colors, by default as many as fit `minGap` apart. Later colors come from the `end` region, by default lighter than the top region (darker or greyer if it is already light), so they never look like the first ones. The boundary depends only on the region, not on n.",
       "O(n log n) for n colors.",
     ],
     params: [["n", "number | number[]", "16", "Number of colors or an array of weights."]],
     options: [
-      ["hue", "number", fmt(defaultPaletteOptions.hue), "Hue of the first color in degrees."],
-      ["reverse", "boolean", fmt(defaultPaletteOptions.reverse), "Go around the hue circle the other way."],
+      [
+        "hue",
+        "number | SchemeName | (t) => string",
+        fmt(defaultPaletteOptions.hue),
+        "Hue of the first color in degrees, going toward lower hues. Or a d3 scheme name or interpolator to take the hue at each stop from.",
+      ],
+      ["offset", "number", fmt(defaultPaletteOptions.offset), "Shift the stops along the hue circle or scheme, from 0 to 1."],
+      ["reverse", "boolean", fmt(defaultPaletteOptions.reverse), "Go toward higher hues, or read the scheme from 1 to 0."],
       ...regionRows,
-      ["like", "string[]", "", "Infer `lightness`, `chroma`, `warmHue` and `tilt` from these colors. Explicit options win."],
+      [
+        "like",
+        "string[]",
+        "",
+        "Infer `lightness`, `chroma`, `warmHue` and `tilt` from these colors. For a scheme, `chroma`, `warmHue` and `tilt` come from the center 90% of the scheme's own colors and `lightness` keeps its default, so the first colors have similar lightness. Explicit options win.",
+      ],
       [
         "lightnessOffset",
         "number",
@@ -80,16 +68,18 @@ export const API: ApiEntry[] = [
         "Start index in the lightness sequence. Changes the colors, not their spacing.",
       ],
       ["chromaOffset", "number", fmt(defaultPaletteOptions.chromaOffset), "Start index in the chroma sequence."],
+      ...zoneRows,
+      ["steepness", "number", fmt(defaultPaletteOptions.steepness), "How quickly colors after the midpoint move to the end region: 80% of the way at 1.5 times the midpoint and 94% at twice it. `Infinity` switches at once, which keeps them furthest from the top zone."],
       ["strength, skewness", "number", "", "Passed to `stops()` for the hues."],
     ],
     returns: "Hex color strings.",
-    example: `palette(20);\npalette(20, { hue: 40, lightness: [0.6, 0.8], chroma: [0.05, 0.15] });\npalette(20, { like: presets.mural });`,
+    example: `palette(20);\npalette(20, { hue: "Sinebow" });\npalette(20, { hue: 40, lightness: [0.6, 0.8], chroma: [0.05, 0.15] });\npalette(100, { end: { lightness: [0.4, 0.6] }, midpoint: 30 });`,
   },
   {
     name: "extend",
     signature: "extend(seeds, n, options?): string[]",
     description: [
-      "Returns the seed colors followed by new colors, `n` in total. Each new color is as far as possible from all colors before it, measured in OKLab. The region to pick from is inferred from the seeds with `inferRegion()` unless you pass region options.",
+      "Returns the seed colors followed by new colors, `n` in total. Each new color is as far as possible from all colors before it, measured in OKLab. The region to pick from is inferred from the seeds with `inferRegion()` unless you pass region options. It takes the same zone options as `palette()`, except `steepness`.",
       'With n new colors, `method: "greedy"` takes O(n · candidates): each color scans a fixed set of candidates. It gives the most distinct colors, which tend toward the edges of the region, and n should stay well below the number of candidates.',
       '`method: "halton"` takes O(n · window + n²): each color is the farthest of the next `window` points along a Halton sequence, and each point is compared once with the colors before it. The n² term has a small constant, so it is several times faster than greedy for a few hundred colors, and colors spread more evenly inside the region.',
     ],
@@ -103,6 +93,7 @@ export const API: ApiEntry[] = [
       ["window", "number", fmt(defaultExtendOptions.window), "Halton points considered per color for the halton method."],
       ["hue", "number", fmt(defaultExtendOptions.hue), "Hue offset in degrees for the candidate sequence."],
       ...regionRows.map(([name, type, , description]): Row => [name, type, "inferred", description]),
+      ...zoneRows,
     ],
     returns: "Hex color strings, starting with the seeds.",
     example: `extend(presets.mural, 50);\nextend(["#e78c6e", "#838eab"], 20, { method: "halton" });\nextend(presets.mural, 30, { tilt: 0 });`,
@@ -133,6 +124,16 @@ export const API: ApiEntry[] = [
     example: `inferRegion(presets.mural);\n// { lightness: [0.648, 0.818], chroma: [0.029, 0.119], warmHue: 40.3, tilt: 0.5 }`,
   },
   {
+    name: "distance",
+    signature: "distance(a, b): number",
+    description: [
+      "Euclidean distance between two colors in OKLab, from 0 for equal colors to about 1 between black and white. About 0.02 is just noticeable; for categories that should be easy to tell apart, aim for 0.04 or more.",
+    ],
+    params: [["a, b", "string", "", "Any CSS colors."]],
+    returns: "The distance. Throws on invalid colors.",
+    example: `distance("#afb581", "#efab6a"); // 0.095`,
+  },
+  {
     name: "oklch",
     signature: "oklch(color): [L, C, H]",
     description: ["Converts any CSS color to OKLCH lightness, chroma and hue in degrees."],
@@ -141,10 +142,44 @@ export const API: ApiEntry[] = [
     example: `oklch("#afb581"); // [0.755, 0.071, 113.5]`,
   },
   {
+    name: "oklab",
+    signature: "oklab(color): [L, a, b]",
+    description: ["Converts any CSS color to OKLab, the perceptual color space that `extend()` measures distances in."],
+    params: [["color", "string", "", "A CSS color, such as a hex, rgb() or named color."]],
+    returns: "`[lightness, a, b]`. Throws on invalid colors.",
+    example: `oklab("#afb581"); // [0.755, -0.028, 0.065]`,
+  },
+  {
     name: "presets",
     signature: "presets.mural: string[]",
     description: ["Seed colors for `extend()` and `palette({ like })`. `mural` holds five colors from the Englewood mural."],
     returns: "Read-only arrays of hex colors.",
     example: `extend(presets.mural, 20);`,
+  },
+  {
+    name: "colors",
+    signature: "colors(n?, options?): string[]",
+    deprecated: "Use `palette({ hue: scheme })`, which gives more distinct colors for every scheme.",
+    description: [
+      "Picks colors from a d3 color scheme at the Cantor stops. Set `saturation` or `lightness` to override them in HSL, interpolated along a sigmoid of the Cantor depth from the start to the end value.",
+      "O(n log n) for n colors.",
+    ],
+    params: [["n", "number | number[] | Interval[]", "16", "Number of colors, an array of weights, or intervals from `stops()`."]],
+    options: [
+      ["scheme", "SchemeName | (t) => string", '"Rainbow"', "A d3-scale-chromatic scheme name or any interpolator on [0, 1]."],
+      ["offset", "number", "0", "Shift all stops along the scheme, wrapping around at 1."],
+      ["reverse", "boolean", "false", "Read the scheme from 1 to 0."],
+      ["start, end", "number", "0, 1", "Interval of the scheme to use."],
+      ["saturation", "number", "", "HSL saturation of the first colors. Defaults to 0.8 when only `lightness` is set."],
+      ["saturationEnd", "number", "saturation", "HSL saturation that deeper colors approach. 1 when `saturation` is unset."],
+      ["lightness", "number", "", "HSL lightness of the first colors. Defaults to 0.6 when only `saturation` is set."],
+      ["lightnessEnd", "number", "lightness", "HSL lightness that deeper colors approach. 0.4 when `lightness` is unset."],
+      ["midpoint", "number", "4", "Cantor depth where the sigmoid is halfway between start and end."],
+      ["steepness", "number", "1", "Steepness of the sigmoid."],
+      ["strength", "number", "0 or 1", "How much weights skew the stops: 0 for a count, 1 for weights."],
+      ["skewness", "number", "0", "Exponential weights for a count, used when `strength` > 0."],
+    ],
+    returns: "CSS `rgb()` color strings.",
+    example: `colors(20, { scheme: "Sinebow" });\ncolors([5, 1, 3, 2], { scheme: "Spectral" });`,
   },
 ];

@@ -1,31 +1,23 @@
 import { useDeferredValue, useMemo, useState } from "react";
-import { colors, getDefaultWeights, Node, stops, type Options, type SchemeName } from "@mapequation/c3";
-import { Check, Group, ModeLayout, Slider } from "../components/Controls";
+import { colors, Node, palette, stops, type Options, type SchemeName } from "@mapequation/c3";
+import { Check, Group, ModeLayout, SchemeOptions, Slider } from "../components/Controls";
 import { ColorWheel } from "../components/ColorWheel";
-import { ColorCantor } from "../components/ColorCantor";
 import { ColorBar } from "../components/ColorBar";
 import { Swatches } from "../components/Swatches";
 import { CodeSnippet } from "../components/CodeSnippet";
+import { Quality } from "../components/Quality";
 import { callCode } from "../code";
-import { toHex, unlessDefault } from "../util";
-
-const SCHEMES: Record<string, SchemeName[]> = {
-  Cyclical: ["Sinebow", "Rainbow"],
-  Sequential: ["Turbo", "Viridis", "Cividis", "CubehelixDefault", "YlGnBu", "YlOrRd", "Blues", "Greys"],
-  Diverging: ["Spectral", "RdYlBu", "RdYlGn", "BrBG", "PiYG", "PuOr"],
-};
+import { timed, toHex, unlessDefault } from "../util";
 
 const RING_SAMPLES = 120;
-const LEVEL_SAMPLES = 48;
-const CANTOR_LEVELS = 5;
 
-/** The scheme as colors() sees it at a Cantor depth, sampled evenly over [0, 1] */
-function sampleScheme(count: number, level: number, options: Options) {
+/** The scheme as colors() sees it at the top of the Cantor set, sampled evenly over [0, 1] */
+function sampleScheme(count: number, options: Options) {
   const nodes = Array.from({ length: count }, (_, k) => {
     const t = (k + 0.5) / count;
-    return new Node(t, t, 1, 1, level);
+    return new Node(t, t);
   });
-  return colors(nodes, { ...options, vary: undefined }).map(toHex);
+  return colors(nodes, options).map(toHex);
 }
 
 export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void }) {
@@ -41,8 +33,6 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
   const [steepness, setSteepness] = useState(1);
   const [skewness, setSkewness] = useState(0);
   const [strength, setStrength] = useState(1);
-  const [vary, setVary] = useState(false);
-  const [variation, setVariation] = useState(1);
 
   const options = useMemo<Options>(
     () => ({
@@ -60,9 +50,8 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
       // Without skewness the weights are equal and strength has no effect
       skewness: skewness || undefined,
       strength: skewness ? strength : undefined,
-      vary: vary ? (variation === 1 ? true : variation) : undefined,
     }),
-    [scheme, adjust, saturation, saturationEnd, lightness, lightnessEnd, midpoint, steepness, offset, reverse, skewness, strength, vary, variation],
+    [scheme, adjust, saturation, saturationEnd, lightness, lightnessEnd, midpoint, steepness, offset, reverse, skewness, strength],
   );
 
   const deferred = useDeferredValue(useMemo(() => ({ n, options }), [n, options]));
@@ -70,15 +59,22 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
   const result = useMemo(() => {
     const { n, options } = deferred;
     const { skewness = 0, strength = 0 } = options;
+    const [picked, ms] = timed(() => colors(n, options));
     return {
-      hex: colors(n, options).map(toHex),
+      hex: picked.map(toHex),
+      ms,
       stops: stops(n, { skewness, strength }),
-      weights: getDefaultWeights(n, skewness),
-      strength,
-      ring: sampleScheme(RING_SAMPLES, 0, options),
-      levels: Array.from({ length: CANTOR_LEVELS }, (_, level) => sampleScheme(LEVEL_SAMPLES, level, options)),
+      ring: sampleScheme(RING_SAMPLES, options),
       code: callCode("colors", n, options),
     };
+  }, [deferred]);
+
+  // Why colors() is deprecated: palette() with the same scheme and stops
+  const comparison = useMemo(() => {
+    const { n, options } = deferred;
+    const { scheme, offset, reverse, skewness, strength } = options;
+    const [picked, ms] = timed(() => palette(n, { hue: scheme, offset, reverse, skewness, strength }));
+    return { label: "palette()", colors: picked, ms };
   }, [deferred]);
 
   const controls = (
@@ -95,13 +91,7 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
               if (name === "Greys") setAdjust(false);
             }}
           >
-            {Object.entries(SCHEMES).map(([group, names]) => (
-              <optgroup key={group} label={group}>
-                {names.map((name) => (
-                  <option key={name}>{name}</option>
-                ))}
-              </optgroup>
-            ))}
+            <SchemeOptions />
           </select>
         </label>
         <Check label="Reverse" checked={reverse} onChange={setReverse} />
@@ -122,11 +112,6 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
         <Slider label="Skewness" value={skewness} onChange={setSkewness} min={0} max={1} step={0.01} />
         <Slider label="Strength" value={strength} onChange={setStrength} min={0} max={1} step={0.01} disabled={!skewness} />
       </Group>
-
-      <Group legend="Variation">
-        <Check label="Vary lightness and chroma" checked={vary} onChange={setVary} />
-        <Slider label="Amount" value={variation} onChange={setVariation} min={0} max={3} step={0.1} disabled={!vary} />
-      </Group>
     </>
   );
 
@@ -137,13 +122,10 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
           <ColorWheel stops={result.stops} colors={result.hex} ring={result.ring} />
           <figcaption>Color stops around the scheme, in order.</figcaption>
         </figure>
-        <figure>
-          <ColorCantor weights={result.weights} strength={result.strength} colors={result.hex} levels={result.levels} />
-          <figcaption>How the first 16 stops split the interval. Each band shows the scheme at that depth.</figcaption>
-        </figure>
       </div>
       <ColorBar colors={result.hex} />
       <Swatches colors={result.hex} />
+      <Quality colors={result.hex} ms={result.ms} label="colors()" comparison={comparison} />
       <CodeSnippet code={result.code} colors={result.hex} />
     </ModeLayout>
   );

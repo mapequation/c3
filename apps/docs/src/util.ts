@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { oklch, presets, type Region } from "@mapequation/c3";
+import { oklch, presets, type Region, type SchemeName } from "@mapequation/c3";
+
+/** The d3 schemes the explorer offers, by kind */
+export const SCHEMES: Record<string, SchemeName[]> = {
+  Cyclical: ["Sinebow", "Rainbow"],
+  Sequential: ["Turbo", "Viridis", "Cividis", "CubehelixDefault", "YlGnBu", "YlOrRd", "Blues", "Greys"],
+  Diverging: ["Spectral", "RdYlBu", "RdYlGn", "BrBG", "PiYG", "PuOr"],
+};
+
+/** The region palette({ hue: scheme }) uses */
+export { schemeRegion } from "@mapequation/c3";
 
 /** colors() returns rgb() or hex strings, depending on the scheme */
 export function toHex(color: string) {
@@ -16,6 +26,13 @@ export function toHex(color: string) {
 export const inkOn = (color: string) => (oklch(color)[0] > 0.66 ? "#14181b" : "#ffffff");
 
 export const round = (x: number, digits = 3) => +x.toFixed(digits);
+
+/** Run fn and measure how long it took, in milliseconds */
+export function timed<T>(fn: () => T): [result: T, ms: number] {
+  const start = performance.now();
+  const result = fn();
+  return [result, performance.now() - start];
+}
 
 /** Leave out options that equal their default, so the code snippet stays short */
 export const unlessDefault = <T,>(value: T, fallback: T) => (value === fallback ? undefined : value);

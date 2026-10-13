@@ -7,7 +7,7 @@ import { ApiReference } from "./components/ApiReference";
 
 const FEATURES = [
   ["Unlimited colors", "Generate as many colors as you want."],
-  ["Any color scheme", "Color stops on the interval [0, 1] work with any d3 scheme, or use the OKLCH palette."],
+  ["Any color scheme", "palette() takes hues from any d3 color scheme or from the OKLCH hue circle."],
   ["Deterministic", "You always get the same colors for the same number of colors."],
   ["Consistent", "Asking for more colors never changes the colors you already have."],
   ["Fast", "O(n log n) for n colors. Extending a palette is O(n · m) with m candidates, or O(n · w + n²) with the Halton method."],
@@ -15,17 +15,11 @@ const FEATURES = [
 
 const MODES = [
   {
-    id: "schemes",
-    label: "Schemes",
-    fn: "colors()",
-    about: "Pick colors from a d3 color scheme at the Cantor stops, optionally varying lightness and chroma in OKLCH.",
-    Mode: SchemesMode,
-  },
-  {
     id: "palette",
     label: "Palette",
     fn: "palette()",
-    about: "Spread colors over a region of OKLCH space: hue from the Cantor stops, lightness and chroma from a Halton sequence.",
+    about:
+      "Spread colors over a region of OKLCH space: hue from the Cantor stops along the hue circle or a d3 scheme, lightness and chroma from a Halton sequence. Later colors move to a lighter end zone.",
     Mode: PaletteMode,
   },
   {
@@ -34,6 +28,20 @@ const MODES = [
     fn: "extend()",
     about: "Start from your own colors and add new ones, each as far as possible from all colors before it.",
     Mode: ExtendMode,
+  },
+  {
+    // Keeps its old id, so links to #schemes still work
+    id: "schemes",
+    label: "Classic",
+    fn: "colors()",
+    about: (
+      <>
+        Pick colors from a d3 color scheme at the Cantor stops, with saturation and lightness set by depth.{" "}
+        <strong>Deprecated:</strong> use <code>{"palette({ hue: scheme })"}</code>, which is more distinct for every
+        scheme.
+      </>
+    ),
+    Mode: SchemesMode,
   },
 ] as const;
 
@@ -44,7 +52,7 @@ const markers = palette(FEATURES.length);
 
 function initialMode(): ModeId {
   const hash = window.location.hash.slice(1);
-  return MODES.find((m) => m.id === hash)?.id ?? "schemes";
+  return MODES.find((m) => m.id === hash)?.id ?? "palette";
 }
 
 function Explorer() {

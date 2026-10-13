@@ -46,20 +46,26 @@ export function ApiReference() {
       <h2 id="api">API</h2>
       <nav aria-label="API functions">
         <ul className="api-index">
-          {API.map(({ name }) => (
+          {API.map(({ name, deprecated }) => (
             <li key={name}>
               <a href={`#api-${name}`}>
                 <code>{name}</code>
               </a>
+              {deprecated && " (deprecated)"}
             </li>
           ))}
         </ul>
       </nav>
-      {API.map(({ name, signature, description, params, options, returns, example }) => (
+      {API.map(({ name, deprecated, signature, description, params, options, returns, example }) => (
         <article key={name} id={`api-${name}`} className="api-entry">
           <h3>
             <code>{signature}</code>
           </h3>
+          {deprecated && (
+            <p>
+              <strong>Deprecated.</strong> <Text>{deprecated}</Text>
+            </p>
+          )}
           {description.map((p) => (
             <p key={p}>
               <Text>{p}</Text>
