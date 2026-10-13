@@ -127,3 +127,59 @@ function determinant(m: number[][]) {
     a[2] * (b[0] * c[1] - b[1] * c[0])
   );
 }
+
+const mix = (a: number, b: number, t: number) => a + (b - a) * t;
+
+function mixAngle(a: number, b: number, t: number) {
+  const d = ((((b - a) % 360) + 540) % 360) - 180; // shortest way around
+  return (a + d * t + 360) % 360;
+}
+
+/**
+ * Interpolate between two regions, t = 0 gives a and t = 1 gives b.
+ */
+export function mixRegion(a: Region, b: Region, t: number): Region {
+  if (t <= 0) return a;
+  if (t >= 1) return b;
+  return {
+    lightness: [mix(a.lightness[0], b.lightness[0], t), mix(a.lightness[1], b.lightness[1], t)],
+    chroma: [mix(a.chroma[0], b.chroma[0], t), mix(a.chroma[1], b.chroma[1], t)],
+    warmHue: mixAngle(a.warmHue, b.warmHue, t),
+    tilt: mix(a.tilt, b.tilt, t),
+  };
+}
+
+/**
+ * How far color i (0-based) has moved from the top region to the end region.
+ * The first `midpoint` colors stay in the top region. Later colors move
+ * 1 - (m / k)^steepness of the way, where k is the color number and m the
+ * midpoint, so an infinite steepness switches at once.
+ */
+export function zoneWeight(i: number, midpoint: number, steepness: number) {
+  const k = i + 1;
+  const m = midpoint + 0.5;
+  if (k < m) return 0;
+  if (!Number.isFinite(steepness)) return 1;
+  return 1 - (m / k) ** steepness;
+}
+
+const END_SPAN = 0.08; // smallest lightness span for the end region
+const END_GAP = 0.03; // lightness between the top and end regions
+const LIGHTEST = 0.97;
+const DARKEST = 0.3;
+
+/**
+ * Region for later colors, apart from the top region: lighter if there is room,
+ * otherwise darker, otherwise greyer.
+ */
+export function defaultEnd(top: Region): Region {
+  const [L0, L1] = top.lightness;
+  if (L1 + END_GAP + END_SPAN <= LIGHTEST) {
+    return { ...top, lightness: [L1 + END_GAP, Math.max(L1 + END_GAP + END_SPAN, 0.95)] };
+  }
+  const below = L0 - END_GAP;
+  if (below - DARKEST >= END_SPAN) {
+    return { ...top, lightness: [Math.max(DARKEST, below - 0.25), below] };
+  }
+  return { ...top, chroma: [0, Math.max(0.03, top.chroma[0] - END_GAP)], tilt: 0 };
+}

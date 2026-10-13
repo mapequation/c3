@@ -17,11 +17,3 @@ export function vanDerCorput(i: number, base: number) {
   return result;
 }
 
-/**
- * Van der Corput value shifted to [-1, 1) so that index 0 maps to 0.
- * Used to vary a color around its original value.
- */
-export function centeredVanDerCorput(i: number, base: number) {
-  const shifted = vanDerCorput(i, base) + 0.5;
-  return 2 * (shifted - Math.floor(shifted)) - 1;
-}

@@ -96,13 +96,16 @@ export function labToHex(lab: Lab) {
   );
 }
 
-export function labToRgbString(lab: Lab) {
-  const [r, g, b] = oklabToLinearSrgb(lab).map(toByte);
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
 export const lchToHex = (lch: Lch) => labToHex(lchToLab(gamutMap(lch)));
 
-export function distance(a: Lab, b: Lab) {
+export function labDistance(a: Lab, b: Lab) {
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
+/**
+ * Euclidean distance in OKLab between two CSS colors.
+ * About 0.02 is just noticeable.
+ */
+export function distance(a: string, b: string) {
+  return labDistance(parseOklab(a), parseOklab(b));
 }
