@@ -544,25 +544,36 @@ figcaption {
 .swatch-panel {
   display: grid;
   gap: 6px;
+  container-type: inline-size;
 }
 
+/* Twice the columns per tier with the same gap, so each swatch spans exactly two below it */
 .swatches {
+  --lg: 8;
+  --md: 16;
+  --sm: 32;
   display: grid;
   gap: 4px;
-  grid-template-columns: repeat(auto-fill, minmax(var(--size), 1fr));
 }
 
 .swatches.lg {
-  --size: 88px;
+  grid-template-columns: repeat(var(--lg), minmax(0, 1fr));
 }
 
 .swatches.md {
-  --size: 44px;
+  grid-template-columns: repeat(var(--md), minmax(0, 1fr));
 }
 
 .swatches.sm {
-  --size: 24px;
-  gap: 3px;
+  grid-template-columns: repeat(var(--sm), minmax(0, 1fr));
+}
+
+@container (max-width: 480px) {
+  .swatches {
+    --lg: 4;
+    --md: 8;
+    --sm: 16;
+  }
 }
 
 .swatch {

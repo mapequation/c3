@@ -2,11 +2,13 @@ import { useMemo, useState, type SyntheticEvent } from "react";
 import { oklch } from "@mapequation/c3";
 import { inkOn, round, useCopy } from "../util";
 
-// The first colors are the ones most people use, so show them larger
+// The first colors are the ones most people use, so show them larger.
+// Each tier has twice the columns of the one above, so the grids line up,
+// and holds whole rows: one large, two medium.
 const TIERS = [
   { size: "lg", from: 0, to: 8 },
-  { size: "md", from: 8, to: 32 },
-  { size: "sm", from: 32, to: Infinity },
+  { size: "md", from: 8, to: 40 },
+  { size: "sm", from: 40, to: Infinity },
 ];
 
 const indexOf = (e: SyntheticEvent) => {
