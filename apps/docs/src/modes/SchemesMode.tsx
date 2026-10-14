@@ -69,11 +69,11 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
     };
   }, [deferred]);
 
-  // Why colors() is deprecated: palette() with the same scheme and stops
+  // Why colors() is deprecated: palette() with the same scheme
   const comparison = useMemo(() => {
     const { n, options } = deferred;
-    const { scheme, offset, reverse, skewness, strength } = options;
-    const [picked, ms] = timed(() => palette(n, { hue: scheme, offset, reverse, skewness, strength }));
+    const { scheme, offset, reverse } = options;
+    const [picked, ms] = timed(() => palette(n, { hue: scheme, offset, reverse }));
     return { label: "palette()", colors: picked, ms };
   }, [deferred]);
 

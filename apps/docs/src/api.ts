@@ -1,4 +1,4 @@
-import { defaultExtendOptions, defaultPaletteOptions, defaultRegion } from "@mapequation/c3";
+import { defaultExtendOptions, defaultHierarchyOptions, defaultPaletteOptions, defaultRegion } from "@mapequation/c3";
 
 /** Option or parameter: name, type, default, description. Text may use `code`. */
 export type Row = [name: string, type: string, def: string, description: string];
@@ -44,7 +44,7 @@ export const API: ApiEntry[] = [
       "Zones keep the first colors distinct however many you ask for. The top zone holds the first colors, by default as many as fit `minGap` apart. Later colors come from the `end` region, by default lighter than the top region (darker or greyer if it is already light), so they never look like the first ones. The boundary depends only on the region, not on n.",
       "O(n log n) for n colors.",
     ],
-    params: [["n", "number | number[]", "16", "Number of colors or an array of weights."]],
+    params: [["n", "number | number[]", "16", "Number of colors, or weights such as module flows in descending order. Each new stop splits the hue between its two neighbors in proportion to their weights, so heavy colors keep more free hue on both sides."]],
     options: [
       [
         "hue",
@@ -70,7 +70,6 @@ export const API: ApiEntry[] = [
       ["chromaOffset", "number", fmt(defaultPaletteOptions.chromaOffset), "Start index in the chroma sequence."],
       ...zoneRows,
       ["steepness", "number", fmt(defaultPaletteOptions.steepness), "How quickly colors after the midpoint move to the end region: 80% of the way at 1.5 times the midpoint and 94% at twice it. `Infinity` switches at once, which keeps them furthest from the top zone."],
-      ["strength, skewness", "number", "", "Passed to `stops()` for the hues."],
     ],
     returns: "Hex color strings.",
     example: `palette(20);\npalette(20, { hue: "Sinebow" });\npalette(20, { hue: 40, lightness: [0.6, 0.8], chroma: [0.05, 0.15] });\npalette(100, { end: { lightness: [0.4, 0.6] }, midpoint: 30 });`,
@@ -99,16 +98,38 @@ export const API: ApiEntry[] = [
     example: `extend(presets.mural, 50);\nextend(["#e78c6e", "#838eab"], 20, { method: "halton" });\nextend(presets.mural, 30, { tilt: 0 });`,
   },
   {
+    name: "hierarchy",
+    signature: "hierarchy(modules, options?): (path) => string",
+    description: [
+      "Colors for nested modules, such as an Infomap hierarchy. Top modules get `palette()` colors weighted by flow. Each module then gets a ball in OKLab around its color: its radius splits the distance to every other module on the same level by the square root of their flows, minus `padding`. Children get colors as far apart as possible inside their parent's ball, in path order.",
+      "So large modules have room for distinct submodules, and children stay closer to their parent than to their cousins. Adding a module never changes its earlier siblings or the modules above its level.",
+    ],
+    params: [
+      [
+        "modules",
+        "{ path: number[]; flow?: number }[]",
+        "",
+        "Modules by path, like `[1, 4, 3]` for the third submodule of the fourth submodule of module 1. Missing parents are added with the sum of their children's flow; without flow, all modules count equally.",
+      ],
+    ],
+    options: [
+      ["padding", "number", fmt(defaultHierarchyOptions.padding), "Fraction of the space between two modules left empty, between cousins."],
+      ["…", "PaletteOptions", "", "`palette()` options for the top modules, such as `hue` and zones. Children stay within the palette's lightness and chroma."],
+    ],
+    returns: "A function from path to hex color. A longer path, such as a node path, gives the color of its deepest module; an unknown path gives `undefined`. Its `modules` property lists every module depth first with `path`, `flow`, `color` and the `radius` of its ball.",
+    example: `const color = hierarchy([\n  { path: [1, 1], flow: 0.3 },\n  { path: [1, 2], flow: 0.2 },\n  { path: [2, 1], flow: 0.1 },\n]);\ncolor([1, 2]); // a color near module 1's\ncolor([1, 2, 7]); // node 7 in module 1:2, the same color`,
+  },
+  {
     name: "stops",
     signature: "stops(n?, options?): Interval[]",
     description: [
       "Subdivides an interval recursively like the Cantor set. Each stop's `start` is a position on the interval: 0, 1/2, 1/4, 3/4, 1/8, and so on for equal weights. Use them with any color scale, or pass them to `colors()`.",
     ],
-    params: [["n", "number | number[]", "10", "Number of stops or an array of weights."]],
+    params: [["n", "number | number[]", "10", "Number of stops, or weights: each new stop splits an interval in proportion to the weights of its two ends."]],
     options: [
       ["start, end", "number", "0, 1", "Interval to subdivide."],
       ["strength", "number", "0 or 1", "How much weights skew the split points: 0 for a count, 1 for weights."],
-      ["skewness", "number", "1", "Exponential weights for a count, used when `strength` > 0."],
+      ["skewness", "number", "1", "Deprecated. Exponential weights for a count, used when `strength` > 0. Only helps when colors differ in hue alone."],
     ],
     returns: "`Node` objects with `start`, `end` and their depth in the subdivision.",
     example: `stops(4).map((s) => s.start); // [0, 0.5, 0.25, 0.75]`,
@@ -177,7 +198,7 @@ export const API: ApiEntry[] = [
       ["midpoint", "number", "4", "Cantor depth where the sigmoid is halfway between start and end."],
       ["steepness", "number", "1", "Steepness of the sigmoid."],
       ["strength", "number", "0 or 1", "How much weights skew the stops: 0 for a count, 1 for weights."],
-      ["skewness", "number", "0", "Exponential weights for a count, used when `strength` > 0."],
+      ["skewness", "number", "0", "Deprecated. Exponential weights for a count, used when `strength` > 0."],
     ],
     returns: "CSS `rgb()` color strings.",
     example: `colors(20, { scheme: "Sinebow" });\ncolors([5, 1, 3, 2], { scheme: "Spectral" });`,
