@@ -18,12 +18,15 @@ import { Swatches } from "../components/Swatches";
 import { CodeSnippet } from "../components/CodeSnippet";
 import { Quality } from "../components/Quality";
 import { useZones } from "../components/Zones";
+import { useMethod } from "../components/Method";
+import { useHover } from "../components/Hover";
 import { firstDifference } from "../quality";
 import { callCode } from "../code";
 import { regionDiff, schemeRegion, timed, unlessDefault } from "../util";
 
 const muralRegion = inferRegion(presets.mural);
 const STRIP_SAMPLES = 64;
+const METHODS = ["sequence", "farthest", "lookahead"] as const;
 
 /** The hue palette() takes at each point of [0, 1], shown at a fixed lightness and chroma */
 function hueStrip({ hue = defaultPaletteOptions.hue, offset = 0, reverse = false }: PaletteOptions) {
@@ -45,16 +48,21 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
   const [like, setLike] = useState(false);
   const [override, setOverride] = useState(false);
   const [region, setRegion] = useState<Region | null>(null);
+  // Highlighted colors by index, linked across the views; apart from the memoized palettes
+  const [hovered, onHover] = useHover();
+  const hover = { hovered, onHover };
 
   const scheme = source === "circle" ? undefined : source;
   // The region palette() uses unless told otherwise
   const inferred = useMemo(() => (like ? muralRegion : scheme ? schemeRegion(scheme) : defaultRegion), [like, scheme]);
   const top = override && region ? region : inferred;
-  const zones = useZones(top, true);
+  const method = useMethod(METHODS);
+  const zones = useZones(top, method.method === "sequence");
 
-  // The options, and the same call with zones toggled to compare against
+  // The options, and the same call with the end zone toggled to compare against
   const [options, toggled] = useMemo<PaletteOptions[]>(() => {
     const base: PaletteOptions = {
+      ...method.options,
       hue: scheme ?? unlessDefault(hue, defaultPaletteOptions.hue),
       offset: unlessDefault(offset, defaultPaletteOptions.offset),
       reverse: unlessDefault(reverse, defaultPaletteOptions.reverse),
@@ -64,24 +72,26 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       chromaOffset: unlessDefault(chromaOffset, defaultPaletteOptions.chromaOffset),
     };
     const on = { ...base, ...zones.options };
-    const off = { ...base, end: false as const };
+    const off = { ...base, end: undefined };
     return zones.on ? [on, off] : [off, on];
-  }, [scheme, hue, offset, reverse, like, top, inferred, lightnessOffset, chromaOffset, zones.on, zones.options]);
+  }, [scheme, hue, offset, reverse, like, top, inferred, lightnessOffset, chromaOffset, method.options, zones.on, zones.options]);
 
   const deferred = useDeferredValue(useMemo(() => ({ n, options, toggled }), [n, options, toggled]));
   const result = useMemo(() => {
     const { n, options, toggled } = deferred;
     const [hex, ms] = timed(() => palette(n, options));
     const [other, otherMs] = timed(() => palette(n, toggled));
-    const on = options.end !== false;
+    const on = Boolean(options.end);
     return {
       hex,
       ms,
-      label: on ? "zones" : "no zones",
-      comparison: { label: on ? "no zones" : "zones", colors: other, ms: otherMs },
-      // With a fade, mark where it starts: where the same call with a hard switch differs
-      endZone: on ? firstDifference(palette(n, { ...options, steepness: Infinity }), other) : -1,
+      label: on ? "end zone" : "no end zone",
+      comparison: { label: on ? "no end zone" : "end zone", colors: other, ms: otherMs },
+      // Mark where the end zone starts: where the same call with a hard switch differs.
+      // Only the sequence method fades; the others switch at once.
+      endZone: on ? firstDifference(options.method ? hex : palette(n, { ...options, steepness: Infinity }), other) : -1,
       strip: hueStrip(options),
+      inOrder: !options.method,
       code: callCode("palette", n, options),
     };
   }, [deferred]);
@@ -99,12 +109,15 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
         <Slider label="First hue" value={hue} onChange={setHue} min={0} max={360} disabled={!!scheme} />
         <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={1} step={0.01} />
         <Check label="Reverse direction" checked={reverse} onChange={setReverse} />
+        <p className="hint">Offset shifts the Cantor stops along the hue circle or scheme.</p>
       </Group>
 
-      <Group legend="Region">
+      <Group legend="Method">{method.controls}</Group>
+
+      <Group legend="Lightness and chroma">
         <Check label="Infer from the mural preset" checked={like} onChange={setLike} />
         <Check
-          label={like || scheme ? `Override the region inferred from ${like ? "the mural" : scheme}` : "Override the default region"}
+          label={like || scheme ? `Change the values inferred from ${like ? "the mural" : scheme}` : "Change the defaults"}
           checked={override}
           onChange={(checked) => {
             setOverride(checked);
@@ -114,7 +127,7 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
         <RegionControls region={top} onChange={setRegion} disabled={!override} />
         {override && (
           <button type="button" className="btn" onClick={() => setRegion(inferred)}>
-            Reset region
+            Reset
           </button>
         )}
       </Group>
@@ -124,6 +137,7 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       <Group legend="Sequence start">
         <Slider label="Lightness offset" value={lightnessOffset} onChange={setLightnessOffset} min={0} max={40} />
         <Slider label="Chroma offset" value={chromaOffset} onChange={setChromaOffset} min={0} max={40} />
+        <p className="hint">Where lightness and chroma start in their sequences. Changes the colors, not how evenly they spread.</p>
       </Group>
     </>
   );
@@ -132,23 +146,25 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
     <ModeLayout n={n} setN={setN} controls={controls}>
       <div className="figures">
         <figure>
-          <ColorCantor colors={result.hex} strip={result.strip} />
+          <ColorCantor colors={result.hex} strip={result.strip} {...hover} />
           <figcaption>
-            How the first 16 stops split the interval. Each stop takes the hue behind it, from the{" "}
-            {scheme ? "scheme" : "hue circle"} shifted by the offset; lightness and chroma come from the region.
+            The first 16 Cantor stops, one row each. Each color takes the hue behind its stop, from the{" "}
+            {scheme ? "scheme" : "hue circle"} shifted by Offset. Lightness and chroma come from their own sequences, within
+            the ranges.
+            {!result.inOrder && " With this method, colors are taken out of order, so a dot can differ from the hue behind it."}
           </figcaption>
         </figure>
         <figure>
-          <PolarPlot colors={result.hex} region={top} />
+          <PolarPlot colors={result.hex} region={top} {...hover} />
           <figcaption>
-            Hue as angle, chroma as distance from the center (OKLCH). The shaded band is the chroma the top region allows
-            at each hue; it narrows away from the warm hue by the tilt.
+            Colors by hue (angle) and chroma (distance from the center). The shaded band is the chroma each hue can get. It
+            is narrower for hues far from the warm hue; Tilt sets how much.
           </figcaption>
         </figure>
       </div>
-      <Swatches colors={result.hex} />
-      <Quality colors={result.hex} ms={result.ms} label={result.label} comparison={result.comparison} endZone={result.endZone} />
-      <CodeSnippet code={result.code} colors={result.hex} />
+      <Swatches colors={result.hex} {...hover} />
+      <Quality colors={result.hex} ms={result.ms} label={result.label} comparison={result.comparison} endZone={result.endZone} {...hover} />
+      <CodeSnippet code={result.code} colors={result.hex} {...hover} />
     </ModeLayout>
   );
 }

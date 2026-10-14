@@ -2,13 +2,12 @@ import { useEffect, useId, useMemo, useRef, type KeyboardEvent, type MouseEvent 
 import { useWidth } from "./Quality";
 import { inkOn } from "../util";
 import type { Tree } from "../tree";
+import { NONE, type Hover } from "./Hover";
 
-type Props = {
+type Props = Hover & {
   tree: Tree;
   selected: number | null;
-  hovered: number | null;
   onSelect: (i: number | null) => void;
-  onHover: (i: number | null) => void;
 };
 
 export const formatFlow = (flow: number) => String(+flow.toPrecision(3));
@@ -97,6 +96,7 @@ export function Icicle({ tree, selected, hovered, onSelect, onHover }: Props) {
   const mark = (i: number | null, kind: string) =>
     i !== null && (
       <span
+        key={`${kind}${i}`}
         className={`icicle-mark ${kind}`}
         style={{
           left: `${x0[i] * 100}%`,
@@ -107,7 +107,7 @@ export function Icicle({ tree, selected, hovered, onSelect, onHover }: Props) {
       />
     );
 
-  const shown = hovered ?? selected;
+  const shown = hovered[0] ?? selected;
   const m = shown !== null ? modules[shown] : null;
 
   return (
@@ -119,8 +119,11 @@ export function Icicle({ tree, selected, hovered, onSelect, onHover }: Props) {
         role="img"
         aria-label={`Icicle chart of ${modules.length} modules on ${levels.length} levels. Arrow keys move the selection.`}
         aria-describedby={readoutId}
-        onPointerMove={(e) => onHover(at(e))}
-        onPointerLeave={() => onHover(null)}
+        onPointerMove={(e) => {
+          const i = at(e);
+          onHover(i === null ? NONE : [i]);
+        }}
+        onPointerLeave={() => onHover(NONE)}
         onClick={(e) => {
           const i = at(e);
           if (i !== null) onSelect(i);
@@ -129,7 +132,7 @@ export function Icicle({ tree, selected, hovered, onSelect, onHover }: Props) {
       >
         <canvas ref={canvas} style={{ height }} aria-hidden="true" />
         {mark(selected, "selected")}
-        {hovered !== selected && mark(hovered, "hover")}
+        {hovered.map((i) => i !== selected && mark(i, "hover"))}
       </div>
       <p className="readout" id={readoutId} aria-live="polite">
         {m && shown !== null ? (

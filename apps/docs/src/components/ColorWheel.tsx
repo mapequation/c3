@@ -31,7 +31,7 @@ export function ColorWheel({ stops, colors, ring }: { stops: Interval[]; colors:
       className="wheel"
       viewBox={`${-SIZE / 2} ${-SIZE / 2} ${SIZE} ${SIZE}`}
       role="img"
-      aria-label={`Color wheel with ${stops.length} color stops`}
+      aria-label={`Color wheel with ${stops.length} Cantor stops`}
     >
       {ring.map((c, k) => (
         // Overlap the segments a little to hide anti-aliasing seams

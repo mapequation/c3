@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import { oklch, type Region } from "@mapequation/c3";
+import { delegatedHover, NONE, type Hover } from "./Hover";
 
 const SIZE = 320;
 const R = SIZE / 2 - 16;
@@ -30,16 +32,66 @@ function regionPath({ chroma: [lo, hi], warmHue, tilt }: Region, scale: (c: numb
 
 /**
  * Colors placed by OKLCH hue (angle) and chroma (distance from the center).
+ * Hovering a dot highlights its color in the other views; hovered colors get a ring.
  * @param seeds number of leading colors to mark as seeds
  */
-export function PolarPlot({ colors, region, seeds = 0 }: { colors: string[]; region: Region; seeds?: number }) {
-  const lch = colors.map(oklch);
-  const top = Math.max(0.1, region.chroma[1], ...lch.map(([, C]) => C));
-  const max = Math.ceil(top / 0.05) * 0.05;
-  const scale = (c: number) => (c / max) * R;
-  const rings = Array.from({ length: Math.round(max / 0.05) }, (_, i) => (i + 1) * 0.05);
-  const dot = Math.max(3.5, Math.min(8, 32 / Math.sqrt(colors.length)));
-  const order = colors.map((_, i) => i).reverse(); // draw the first colors on top
+export function PolarPlot({
+  colors,
+  region,
+  seeds = 0,
+  hovered = NONE,
+  onHover,
+}: { colors: string[]; region: Region; seeds?: number } & Partial<Hover>) {
+  // Everything but the highlight, so hovering does not redraw the plot
+  const plot = useMemo(() => {
+    const lch = colors.map(oklch);
+    const top = Math.max(0.1, region.chroma[1], ...lch.map(([, C]) => C));
+    const max = Math.ceil(top / 0.05) * 0.05;
+    const scale = (c: number) => (c / max) * R;
+    const rings = Array.from({ length: Math.round(max / 0.05) }, (_, i) => (i + 1) * 0.05);
+    const dot = Math.max(3.5, Math.min(8, 32 / Math.sqrt(colors.length)));
+    const xy = lch.map(([, C, H]) => point(H, scale(C)));
+    const radius = (i: number) => (i < seeds ? dot + 1.5 : dot);
+    const dotClass = (i: number) => (i < seeds ? "polar-dot seed" : "polar-dot");
+    const order = colors.map((_, i) => i).reverse(); // draw the first colors on top
+
+    const content = (
+      <>
+        {Array.from({ length: HUE_STEPS }, (_, i) => {
+          const h0 = (360 * i) / HUE_STEPS;
+          const h1 = h0 + 360 / HUE_STEPS + 0.5;
+          const [a, b, c, d] = [point(h0, R + 4), point(h1, R + 4), point(h1, R + 12), point(h0, R + 12)];
+          return <path key={i} d={`M${a}L${b}L${c}L${d}Z`} style={{ fill: `oklch(0.75 0.12 ${h0 + 180 / HUE_STEPS})` }} />;
+        })}
+        {rings.map((c) => (
+          <circle key={c} className="polar-grid" r={scale(c)} />
+        ))}
+        {HUE_LABELS.map(({ h, x, y, anchor }) => {
+          const [x2, y2] = point(h, R);
+          return (
+            <g key={h}>
+              <line className="polar-grid" x1={0} y1={0} x2={x2} y2={y2} />
+              <text className="polar-label" x={x} y={y} textAnchor={anchor}>
+                {h}°
+              </text>
+            </g>
+          );
+        })}
+        {rings.map((c) => (
+          <text key={c} className="polar-label small" x={scale(c) - 3} y={11} textAnchor="end">
+            {+c.toFixed(2)}
+          </text>
+        ))}
+        <path className="polar-region" d={regionPath(region, scale)} fillRule="evenodd" />
+        {order.map((i) => (
+          <circle key={i} data-i={i} cx={xy[i][0]} cy={xy[i][1]} r={radius(i)} fill={colors[i]} className={dotClass(i)}>
+            <title>{`${i + 1}${i < seeds ? " (seed)" : ""} ${colors[i]}`}</title>
+          </circle>
+        ))}
+      </>
+    );
+    return { content, xy, radius, dotClass };
+  }, [colors, region, seeds]);
 
   return (
     <svg
@@ -47,43 +99,21 @@ export function PolarPlot({ colors, region, seeds = 0 }: { colors: string[]; reg
       viewBox={`${-SIZE / 2} ${-SIZE / 2} ${SIZE} ${SIZE}`}
       role="img"
       aria-label={`${colors.length} colors by OKLCH hue and chroma`}
+      {...(onHover && delegatedHover(onHover))}
     >
-      {Array.from({ length: HUE_STEPS }, (_, i) => {
-        const h0 = (360 * i) / HUE_STEPS;
-        const h1 = h0 + 360 / HUE_STEPS + 0.5;
-        const [a, b, c, d] = [point(h0, R + 4), point(h1, R + 4), point(h1, R + 12), point(h0, R + 12)];
-        return <path key={i} d={`M${a}L${b}L${c}L${d}Z`} style={{ fill: `oklch(0.75 0.12 ${h0 + 180 / HUE_STEPS})` }} />;
-      })}
-      {rings.map((c) => (
-        <circle key={c} className="polar-grid" r={scale(c)} />
-      ))}
-      {HUE_LABELS.map(({ h, x, y, anchor }) => {
-        const [x2, y2] = point(h, R);
-        return (
-          <g key={h}>
-            <line className="polar-grid" x1={0} y1={0} x2={x2} y2={y2} />
-            <text className="polar-label" x={x} y={y} textAnchor={anchor}>
-              {h}°
-            </text>
-          </g>
-        );
-      })}
-      {rings.map((c) => (
-        <text key={c} className="polar-label small" x={scale(c) - 3} y={11} textAnchor="end">
-          {+c.toFixed(2)}
-        </text>
-      ))}
-      <path className="polar-region" d={regionPath(region, scale)} fillRule="evenodd" />
-      {order.map((i) => {
-        const [, C, H] = lch[i];
-        const [x, y] = point(H, scale(C));
-        const seed = i < seeds;
-        return (
-          <circle key={i} cx={x} cy={y} r={seed ? dot + 1.5 : dot} fill={colors[i]} className={seed ? "polar-dot seed" : "polar-dot"}>
-            <title>{`${i + 1}${seed ? " (seed)" : ""} ${colors[i]}`}</title>
-          </circle>
-        );
-      })}
+      {plot.content}
+      {/* Hovered dots again on top, so they show even under other dots */}
+      {hovered
+        .filter((i) => i < colors.length)
+        .map((i) => {
+          const [cx, cy] = plot.xy[i];
+          return (
+            <g key={i} pointerEvents="none">
+              <circle cx={cx} cy={cy} r={plot.radius(i)} fill={colors[i]} className={plot.dotClass(i)} />
+              <circle className="ring hover" cx={cx} cy={cy} r={plot.radius(i) + 3} />
+            </g>
+          );
+        })}
     </svg>
   );
 }

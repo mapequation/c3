@@ -95,6 +95,10 @@ export function RegionControls({
       <RangeSliders label="Chroma" value={region.chroma} onChange={set("chroma")} min={0} max={0.37} step={0.005} disabled={disabled} />
       <Slider label="Warm hue" value={region.warmHue} onChange={set("warmHue")} min={0} max={360} disabled={disabled} />
       <Slider label="Tilt" value={region.tilt} onChange={set("tilt")} min={0} max={1} step={0.01} disabled={disabled} />
+      <p className="hint">
+        The warm hue can get the most chroma. Tilt is how much less chroma hues far from it get: 0 for none, 1 for grey at
+        the opposite hue.
+      </p>
     </>
   );
 }

@@ -94,23 +94,29 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
             <SchemeOptions />
           </select>
         </label>
-        <Check label="Reverse" checked={reverse} onChange={setReverse} />
+        <Check label="Reverse direction" checked={reverse} onChange={setReverse} />
         <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={1} step={0.01} />
+        <p className="hint">Offset shifts the Cantor stops along the scheme.</p>
       </Group>
 
       <Group legend="Saturation and lightness">
-        <Check label="Set by depth in the Cantor set" checked={adjust} onChange={setAdjust} />
+        <Check label="Change with each round of Cantor stops" checked={adjust} onChange={setAdjust} />
         <Slider label="Saturation" value={saturation} onChange={setSaturation} min={0} max={1} step={0.01} disabled={!adjust} />
         <Slider label="Saturation end" value={saturationEnd} onChange={setSaturationEnd} min={0} max={1} step={0.01} disabled={!adjust} />
         <Slider label="Lightness" value={lightness} onChange={setLightness} min={0} max={1} step={0.01} disabled={!adjust} />
         <Slider label="Lightness end" value={lightnessEnd} onChange={setLightnessEnd} min={0} max={1} step={0.01} disabled={!adjust} />
         <Slider label="Midpoint" value={midpoint} onChange={setMidpoint} min={0} max={8} step={0.1} disabled={!adjust} />
         <Slider label="Steepness" value={steepness} onChange={setSteepness} min={0} max={5} step={0.1} disabled={!adjust} />
+        <p className="hint">
+          HSL saturation and lightness go from their first to their end value as the rounds go on. Midpoint is the round
+          halfway between; Steepness sets how sudden the change is.
+        </p>
       </Group>
 
       <Group legend="Weights">
         <Slider label="Skewness" value={skewness} onChange={setSkewness} min={0} max={1} step={0.01} />
         <Slider label="Strength" value={strength} onChange={setStrength} min={0} max={1} step={0.01} disabled={!skewness} />
+        <p className="hint">Skewness, also deprecated, gives the first colors more hue space; Strength sets how much.</p>
       </Group>
     </>
   );
@@ -120,7 +126,7 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
       <div className="figures">
         <figure>
           <ColorWheel stops={result.stops} colors={result.hex} ring={result.ring} />
-          <figcaption>Color stops around the scheme, in order.</figcaption>
+          <figcaption>The Cantor stops around the scheme, in order.</figcaption>
         </figure>
       </div>
       <ColorBar colors={result.hex} />

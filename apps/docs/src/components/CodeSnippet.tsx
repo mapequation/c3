@@ -1,8 +1,18 @@
 import { Fragment } from "react";
 import { useCopy } from "../util";
+import { delegatedHover, NONE, type Hover } from "./Hover";
 
-/** The library call for the current settings and its output, both copyable */
-export function CodeSnippet({ code, colors, title = "Hex values" }: { code: string; colors: string[]; title?: string }) {
+/**
+ * The library call for the current settings and its output, both copyable.
+ * With onHover, hovering a color in the output highlights it in the other views.
+ */
+export function CodeSnippet({
+  code,
+  colors,
+  title = "Hex values",
+  hovered = NONE,
+  onHover,
+}: { code: string; colors: string[]; title?: string } & Partial<Hover>) {
   const { copy, label } = useCopy();
   const array = `[${colors.map((c) => JSON.stringify(c)).join(", ")}]`;
 
@@ -23,13 +33,16 @@ export function CodeSnippet({ code, colors, title = "Hex values" }: { code: stri
           {label("array", "Copy array")}
         </button>
       </div>
-      <pre className="output">
+      <pre className="output" {...(onHover && delegatedHover(onHover))}>
         <code>
           [
           {colors.map((c, i) => (
             <Fragment key={i}>
-              <span className="chip" style={{ background: c }} />
-              &quot;{c}&quot;{i + 1 < colors.length && ", "}
+              <span data-i={i}>
+                <span className="chip" style={{ background: c }} data-hover={hovered.includes(i) || undefined} />
+                &quot;{c}&quot;
+              </span>
+              {i + 1 < colors.length && ", "}
             </Fragment>
           ))}
           ]

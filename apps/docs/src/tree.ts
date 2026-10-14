@@ -15,7 +15,7 @@ const COUNTS = [14, 9, 6, 5, 4, 3, 2, 2, 1, 1];
 
 /**
  * An Infomap-like tree with Zipf flows on every level, module 1 three levels deep.
- * With 10 top modules and skew 1.3 it is the tree in the library tests; other
+ * With 10 top modules and skew 1 it is the tree in the library tests; other
  * numbers of top modules stretch or squeeze the child counts over them.
  */
 export function sampleTree(top: number, skew: number): Module[] {

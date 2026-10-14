@@ -1,4 +1,4 @@
-import { defaultExtendOptions, defaultHierarchyOptions, defaultPaletteOptions, defaultRegion } from "@mapequation/c3";
+import { defaultHierarchyOptions, defaultPaletteOptions, defaultRegion } from "@mapequation/c3";
 
 /** Option or parameter: name, type, default, description. Text may use `code`. */
 export type Row = [name: string, type: string, def: string, description: string];
@@ -15,24 +15,41 @@ export type ApiEntry = {
   example: string;
 };
 
-const fmt = (value: unknown): string => (Array.isArray(value) ? `[${value.join(", ")}]` : JSON.stringify(value));
+const fmt = (value: unknown): string =>
+  Array.isArray(value) ? `[${value.join(", ")}]` : value === Infinity ? "Infinity" : JSON.stringify(value);
 
-const regionRows: Row[] = [
-  ["lightness", "[min, max]", fmt(defaultRegion.lightness), "OKLCH lightness range, 0 is black and 1 is white."],
-  ["chroma", "[min, max]", fmt(defaultRegion.chroma), "OKLCH chroma range, 0 is grey."],
-  ["warmHue", "number", fmt(defaultRegion.warmHue), "Hue in degrees where chroma can reach the top of its range."],
+const rangeRows: Row[] = [
+  ["lightness", "[min, max]", fmt(defaultRegion.lightness), "OKLCH lightness range, where 0 is black and 1 is white."],
+  ["chroma", "[min, max]", fmt(defaultRegion.chroma), "OKLCH chroma range, where 0 is grey. Chroma is how colorful a color is."],
+  ["warmHue", "number", fmt(defaultRegion.warmHue), "The hue in degrees that can get the most chroma."],
   [
     "tilt",
     "number",
     fmt(defaultRegion.tilt),
-    "From 0 to 1: how much the chroma range shrinks for hues away from `warmHue`. At 1, the opposite hue is grey.",
+    "How much less chroma hues far from `warmHue` get: 0 for none, 1 for grey at the opposite hue.",
   ],
 ];
 
 const zoneRows: Row[] = [
-  ["end", "Region | false", "lighter", "Region for colors after the top zone. Left-out fields come from the default: lighter than the top region, or darker or greyer if it is already light. `false` turns zones off."],
-  ["midpoint", 'number | "auto"', fmt(defaultPaletteOptions.midpoint), "Number of colors in the top zone, or as many as fit `minGap` apart."],
-  ["minGap", "number", fmt(defaultPaletteOptions.minGap), "Smallest OKLab distance between top zone colors for `\"auto\"`."],
+  [
+    "end",
+    '"darker" | "lighter" | [min, max] | false',
+    fmt(defaultPaletteOptions.end),
+    'Lightness for later colors, so they never look like the first ones. `"darker"`: 0.03 below the lightness range and 0.22 wide, but not below 0.3. `"lighter"`: the same above, but not above 0.95. `[min, max]`: your own lightness range. `false`: none.',
+  ],
+  [
+    "midpoint",
+    'number | "auto"',
+    fmt(defaultPaletteOptions.midpoint),
+    'How many colors keep the lightness range before `end` takes over, or `"auto"` for as many as fit `minGap` apart.',
+  ],
+  ["minGap", "number", fmt(defaultPaletteOptions.minGap), 'Smallest OKLab distance between those first colors with `"auto"`.'],
+  [
+    "steepness",
+    "number",
+    fmt(defaultPaletteOptions.steepness),
+    'Switch to `end` at once, or, with the `"sequence"` method, fade into it: the color at k times the midpoint moves 1 - 1/k^steepness of the way, so for 4, 80% at 1.5 times and 94% at twice the midpoint.',
+  ],
 ];
 
 export const API: ApiEntry[] = [
@@ -40,68 +57,64 @@ export const API: ApiEntry[] = [
     name: "palette",
     signature: "palette(n?, options?): string[]",
     description: [
-      "Spreads colors over a region of OKLCH color space. Hue comes from the Cantor stops, lightness from a base-3 and chroma from a base-5 van der Corput sequence. Together they form a Halton sequence, which fills the region evenly and never moves earlier colors when extended.",
-      "Zones keep the first colors distinct however many you ask for. The top zone holds the first colors, by default as many as fit `minGap` apart. Later colors come from the `end` region, by default lighter than the top region (darker or greyer if it is already light), so they never look like the first ones. The boundary depends only on the region, not on n.",
-      "O(n log n) for n colors.",
+      "Returns n hex colors from the Halton sequence described in How it works: hue from the Cantor stops, lightness and chroma from base-3 and base-5 van der Corput sequences, within the lightness and chroma ranges.",
+      '`method` sets how the next color is chosen. `"sequence"` takes the colors in order: the fastest, with an even spread, but two colors can land close by chance. `"farthest"` takes, among the first `candidates` colors of the sequence, the one farthest from its nearest color so far: the most distinct, about twice the smallest distance, but colors drift to the edges of the ranges. `"lookahead"` does the same among only the next `lookahead` unused colors, which mostly follows the sequence and lands in between.',
+      'With `seeds`, the palette starts with your colors and picks new ones as far from them as possible. With `end`, later colors get their own lightness so they never look like the first ones.',
     ],
-    params: [["n", "number | number[]", "16", "Number of colors, or weights such as module flows in descending order. Each new stop splits the hue between its two neighbors in proportion to their weights, so heavy colors keep more free hue on both sides."]],
+    params: [
+      [
+        "n",
+        "number | number[]",
+        "16",
+        'Number of colors, including seeds. Or, for the `"sequence"` method, weights such as module flows in descending order: each new Cantor stop splits the gap between its two neighbors in proportion to their weights, so heavy colors keep more free hue on both sides.',
+      ],
+    ],
     options: [
       [
         "hue",
         "number | SchemeName | (t) => string",
         fmt(defaultPaletteOptions.hue),
-        "Hue of the first color in degrees, going toward lower hues. Or a d3 scheme name or interpolator to take the hue at each stop from.",
+        "Hue of the first color in degrees, going toward lower hues. Or a d3 scheme name or interpolator to take the hue at each Cantor stop from.",
       ],
-      ["offset", "number", fmt(defaultPaletteOptions.offset), "Shift the stops along the hue circle or scheme, from 0 to 1."],
+      ["offset", "number", fmt(defaultPaletteOptions.offset), "Shift the Cantor stops along the hue circle or scheme, from 0 to 1."],
       ["reverse", "boolean", fmt(defaultPaletteOptions.reverse), "Go toward higher hues, or read the scheme from 1 to 0."],
-      ...regionRows,
+      ...rangeRows,
       [
         "like",
         "string[]",
         "",
-        "Infer `lightness`, `chroma`, `warmHue` and `tilt` from these colors. For a scheme, `chroma`, `warmHue` and `tilt` come from the center 90% of the scheme's own colors and `lightness` keeps its default, so the first colors have similar lightness. Explicit options win.",
+        "Colors to infer `lightness`, `chroma`, `warmHue` and `tilt` from. With `hue` set to a scheme, `chroma`, `warmHue` and `tilt` come from the middle 90% of the scheme's colors unless given, and `lightness` keeps its default so the first colors have similar lightness.",
       ],
       [
-        "lightnessOffset",
-        "number",
-        fmt(defaultPaletteOptions.lightnessOffset),
-        "Start index in the lightness sequence. Changes the colors, not their spacing.",
+        "seeds",
+        "string[]",
+        "",
+        "Colors to start with, any CSS colors. They count toward n, and `lightness`, `chroma`, `warmHue` and `tilt` are inferred from them unless `like` or those options are given.",
       ],
-      ["chromaOffset", "number", fmt(defaultPaletteOptions.chromaOffset), "Start index in the chroma sequence."],
+      [
+        "method",
+        '"sequence" | "farthest" | "lookahead"',
+        '"sequence"',
+        'How the next color is chosen. `"farthest"` by default with seeds, which need `"farthest"` or `"lookahead"`.',
+      ],
+      ["candidates", "number", fmt(defaultPaletteOptions.candidates), 'How many colors of the sequence `"farthest"` chooses from. Keep n well below it.'],
+      ["lookahead", "number", fmt(defaultPaletteOptions.lookahead), 'How many upcoming colors of the sequence `"lookahead"` chooses from.'],
       ...zoneRows,
-      ["steepness", "number", fmt(defaultPaletteOptions.steepness), "How quickly colors after the midpoint move to the end region: 80% of the way at 1.5 times the midpoint and 94% at twice it. `Infinity` switches at once, which keeps them furthest from the top zone."],
+      [
+        "lightnessOffset, chromaOffset",
+        "number",
+        `${fmt(defaultPaletteOptions.lightnessOffset)}, ${fmt(defaultPaletteOptions.chromaOffset)}`,
+        "Where in the base-3 and base-5 sequences to start. Changes the colors, not how evenly they spread.",
+      ],
     ],
     returns: "Hex color strings.",
-    example: `palette(20);\npalette(20, { hue: "Sinebow" });\npalette(20, { hue: 40, lightness: [0.6, 0.8], chroma: [0.05, 0.15] });\npalette(100, { end: { lightness: [0.4, 0.6] }, midpoint: 30 });`,
-  },
-  {
-    name: "extend",
-    signature: "extend(seeds, n, options?): string[]",
-    description: [
-      "Returns the seed colors followed by new colors, `n` in total. Each new color is as far as possible from all colors before it, measured in OKLab. The region to pick from is inferred from the seeds with `inferRegion()` unless you pass region options. It takes the same zone options as `palette()`, except `steepness`.",
-      'With n new colors, `method: "greedy"` takes O(n · candidates): each color scans a fixed set of candidates. It gives the most distinct colors, which tend toward the edges of the region, and n should stay well below the number of candidates.',
-      '`method: "halton"` takes O(n · window + n²): each color is the farthest of the next `window` points along a Halton sequence, and each point is compared once with the colors before it. The n² term has a small constant, so it is several times faster than greedy for a few hundred colors, and colors spread more evenly inside the region.',
-    ],
-    params: [
-      ["seeds", "string[]", "", "Colors to keep first, any CSS color."],
-      ["n", "number", "", "Total number of colors, including the seeds."],
-    ],
-    options: [
-      ["method", '"greedy" | "halton"', fmt(defaultExtendOptions.method), "How new colors are picked."],
-      ["candidates", "number", fmt(defaultExtendOptions.candidates), "Number of candidate colors for the greedy method."],
-      ["window", "number", fmt(defaultExtendOptions.window), "Halton points considered per color for the halton method."],
-      ["hue", "number", fmt(defaultExtendOptions.hue), "Hue offset in degrees for the candidate sequence."],
-      ...regionRows.map(([name, type, , description]): Row => [name, type, "inferred", description]),
-      ...zoneRows,
-    ],
-    returns: "Hex color strings, starting with the seeds.",
-    example: `extend(presets.mural, 50);\nextend(["#e78c6e", "#838eab"], 20, { method: "halton" });\nextend(presets.mural, 30, { tilt: 0 });`,
+    example: `palette(20);\npalette(20, { hue: "Sinebow" });\npalette(20, { hue: 40, lightness: [0.6, 0.8], chroma: [0.05, 0.15] });\npalette(50, { seeds: presets.mural });\npalette(100, { end: "darker" });`,
   },
   {
     name: "hierarchy",
     signature: "hierarchy(modules, options?): (path) => string",
     description: [
-      "Colors for nested modules, such as an Infomap hierarchy. Top modules get `palette()` colors weighted by flow. Each module then gets a ball in OKLab around its color: its radius splits the distance to every other module on the same level by the square root of their flows, minus `padding`. Children get colors as far apart as possible inside their parent's ball, in path order.",
+      "Colors for nested modules, such as an Infomap hierarchy. Top modules get `palette()` colors weighted by flow. Each module then gets a ball in OKLab around its color, all colors within a radius of it. The radius splits the distance to every other module on the same level by the square root of their flows, minus `padding`. Children get colors as far apart as possible inside their parent's ball, in path order.",
       "So large modules have room for distinct submodules, and children stay closer to their parent than to their cousins. Adding a module never changes its earlier siblings or the modules above its level.",
     ],
     params: [
@@ -114,7 +127,7 @@ export const API: ApiEntry[] = [
     ],
     options: [
       ["padding", "number", fmt(defaultHierarchyOptions.padding), "Fraction of the space between two modules left empty, between cousins."],
-      ["…", "PaletteOptions", "", "`palette()` options for the top modules, such as `hue` and zones. Children stay within the palette's lightness and chroma."],
+      ["…", "PaletteOptions", "", "`palette()` options for the top modules, such as `hue`, `seeds`, `method` and zones. Children stay within the palette's lightness and chroma."],
     ],
     returns: "A function from path to hex color. A longer path, such as a node path, gives the color of its deepest module; an unknown path gives `undefined`. Its `modules` property lists every module depth first with `path`, `flow`, `color` and the `radius` of its ball.",
     example: `const color = hierarchy([\n  { path: [1, 1], flow: 0.3 },\n  { path: [1, 2], flow: 0.2 },\n  { path: [2, 1], flow: 0.1 },\n]);\ncolor([1, 2]); // a color near module 1's\ncolor([1, 2, 7]); // node 7 in module 1:2, the same color`,
@@ -136,12 +149,12 @@ export const API: ApiEntry[] = [
   },
   {
     name: "inferRegion",
-    signature: "inferRegion(colors): Region",
+    signature: "inferRegion(colors): { lightness, chroma, warmHue, tilt }",
     description: [
-      "The lightness and chroma ranges that the colors span, widened to at least 0.1 and 0.04, and the hue where chroma is highest. `tilt` is half of what a least-squares fit of chroma against hue gives, because a few colors overstate it.",
+      "The `palette()` options that describe a set of colors: the lightness and chroma ranges they span, widened to at least 0.1 and 0.04, the hue with the most chroma as `warmHue`, and how much less chroma the other hues have as `tilt`. `palette()` uses it for `like` and `seeds`.",
     ],
     params: [["colors", "string[]", "", "Any CSS colors."]],
-    returns: "`{ lightness, chroma, warmHue, tilt }`, the region options of `palette()` and `extend()`.",
+    returns: "`{ lightness, chroma, warmHue, tilt }`, ready to pass to `palette()`.",
     example: `inferRegion(presets.mural);\n// { lightness: [0.648, 0.818], chroma: [0.029, 0.119], warmHue: 40.3, tilt: 0.5 }`,
   },
   {
@@ -165,7 +178,7 @@ export const API: ApiEntry[] = [
   {
     name: "oklab",
     signature: "oklab(color): [L, a, b]",
-    description: ["Converts any CSS color to OKLab, the perceptual color space that `extend()` measures distances in."],
+    description: ["Converts any CSS color to OKLab, the perceptual color space that `distance()` and the `\"farthest\"` method measure distances in."],
     params: [["color", "string", "", "A CSS color, such as a hex, rgb() or named color."]],
     returns: "`[lightness, a, b]`. Throws on invalid colors.",
     example: `oklab("#afb581"); // [0.755, -0.028, 0.065]`,
@@ -173,14 +186,14 @@ export const API: ApiEntry[] = [
   {
     name: "presets",
     signature: "presets.mural: string[]",
-    description: ["Seed colors for `extend()` and `palette({ like })`. `mural` holds five colors from the Englewood mural."],
+    description: ["Colors for `palette({ seeds })` or `palette({ like })`. `mural` holds five colors from the Englewood mural."],
     returns: "Read-only arrays of hex colors.",
-    example: `extend(presets.mural, 20);`,
+    example: `palette(20, { seeds: presets.mural });`,
   },
   {
     name: "colors",
     signature: "colors(n?, options?): string[]",
-    deprecated: "Use `palette({ hue: scheme })`, which gives more distinct colors for every scheme.",
+    deprecated: "Use `palette({ hue: scheme })`, which keeps colors farther apart for every scheme: in our tests, the smallest distance between colors was 1.1 to 7 times larger.",
     description: [
       "Picks colors from a d3 color scheme at the Cantor stops. Set `saturation` or `lightness` to override them in HSL, interpolated along a sigmoid of the Cantor depth from the start to the end value.",
       "O(n log n) for n colors.",

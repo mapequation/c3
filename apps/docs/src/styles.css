@@ -590,12 +590,16 @@ figcaption {
   aspect-ratio: 4 / 3;
 }
 
-.swatch:hover {
+/* Hovered here or in another view of the tab */
+.swatch:hover,
+.swatch[data-hover] {
   outline: 2px solid var(--ink);
   outline-offset: 1px;
 }
 
+/* After the highlight, so focus keeps its own color */
 .swatch:focus-visible {
+  outline-color: var(--focus);
   outline-offset: 1px;
 }
 
@@ -609,6 +613,7 @@ figcaption {
 }
 
 .swatch:hover span,
+.swatch[data-hover] span,
 .swatch:focus-visible span {
   opacity: 1;
 }
@@ -685,6 +690,18 @@ figcaption {
   font-size: 12px;
   font-weight: 400;
   color: var(--ink-3);
+}
+
+/* Names colors that hovering it highlights */
+.stats .hover-label {
+  cursor: default;
+  text-decoration: underline dotted var(--line-2);
+  text-underline-offset: 3px;
+}
+
+.stats .hover-label[data-hover] {
+  color: var(--ink);
+  text-decoration-color: currentColor;
 }
 
 .legend {
@@ -852,6 +869,111 @@ pre.output {
   vertical-align: -0.05em;
   border-radius: 2px;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+/* Hovered here or in another view of the tab, like a swatch */
+.chip[data-hover] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.chip:focus-visible {
+  outline-color: var(--focus);
+}
+
+/* How it works */
+
+.how {
+  margin-top: 72px;
+  scroll-margin-top: 16px;
+}
+
+.how-body {
+  display: grid;
+  gap: 8px 48px;
+}
+
+@media (min-width: 880px) {
+  .how-body {
+    grid-template-columns: minmax(0, 68ch) auto;
+    align-items: start;
+  }
+}
+
+.how-text p,
+.how-text ul {
+  margin: 0 0 12px;
+  color: var(--ink-2);
+}
+
+.how-text ul {
+  padding-left: 20px;
+}
+
+.how-text li + li {
+  margin-top: 6px;
+}
+
+.how-text strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.halton {
+  flex: none;
+  width: min-content;
+  max-width: none;
+}
+
+.halton table {
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.halton th,
+.halton td {
+  padding: 5px 16px 5px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.halton thead th {
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: bottom;
+  color: var(--ink-3);
+  border-bottom-color: var(--line-2);
+}
+
+.halton thead th span {
+  display: block;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.halton tbody th {
+  font-weight: 400;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.halton td {
+  font-family: var(--font-mono);
+}
+
+.halton-swatch {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+  width: 28px;
+  height: 16px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.halton figcaption code {
+  font-size: 0.95em;
 }
 
 /* API reference */
@@ -1073,15 +1195,21 @@ figure.wide {
   opacity: 0.5;
 }
 
-.ball-view .ball-ring {
+/* Marks a dot: selected, or hovered here or in another view of the tab */
+.ring {
   fill: none;
   stroke: var(--ink);
   stroke-width: 2;
   pointer-events: none;
 }
 
-.ball-ring.hover {
+.ring.hover {
   stroke-width: 1;
+}
+
+/* The Cantor diagram sits on light hues in both themes, like its dots */
+.cantor .ring {
+  stroke: #111;
 }
 
 .ball-limit {

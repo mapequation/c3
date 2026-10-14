@@ -1,5 +1,6 @@
-import { useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { DISTINCT, JUST_NOTICEABLE, quality } from "../quality";
+import { Chip, HoverLabel, type Hover } from "./Hover";
 
 /** A palette to compare against, from the same call with one setting changed */
 export type Comparison = { label: string; colors: string[]; ms: number };
@@ -94,8 +95,8 @@ function layout(lines: Line[], width: number) {
   return { n, kMax, x, y, x0, x1, y0, y1, yTicks, xTicks, paths, refLabel, digits: yStep < 0.01 ? 3 : 2 };
 }
 
-/** Smallest gap among the first k colors, for every k */
-function GapChart({ lines, seeds, endZone }: { lines: Line[]; seeds: number; endZone: number }) {
+/** Smallest gap among the first k colors, for every k; memoized, so highlighting colors does not redraw it */
+const GapChart = memo(function GapChart({ lines, seeds, endZone }: { lines: Line[]; seeds: number; endZone: number }) {
   const [ref, width] = useWidth<HTMLDivElement>(560);
   const [hover, setHover] = useState<number | null>(null);
   const g = useMemo(() => layout(lines, width), [lines, width]);
@@ -113,7 +114,7 @@ function GapChart({ lines, seeds, endZone }: { lines: Line[]; seeds: number; end
   const readout =
     lines.length > 1
       ? `${k} colors: ${lines.map((l, i) => `${values[i]} ${l.label}`).join(", ")}`
-      : `${k} colors: smallest gap ${values[0]}`;
+      : `${k} colors: smallest distance ${values[0]}`;
   const showSeeds = seeds >= 2 && seeds <= n;
   const seedsLeft = x(seeds) - x0 >= 40;
   // The end zone starts with color endZone + 1, so mark where k reaches it
@@ -131,14 +132,14 @@ function GapChart({ lines, seeds, endZone }: { lines: Line[]; seeds: number; end
         height={HEIGHT}
         viewBox={`0 0 ${width} ${HEIGHT}`}
         role="img"
-        aria-label={`Smallest gap among the first k colors, for k from 2 to ${n}. ${lines
+        aria-label={`Smallest distance between colors as colors are added, from 2 to ${n} colors. ${lines
           .map((l) => `${l.label || "This palette"} ends at ${formatGap(l.values[n])}`)
           .join(". ")}.`}
         onPointerMove={onPointerMove}
         onPointerLeave={() => setHover(null)}
       >
         <text className="chart-title" x={0} y={11}>
-          Smallest gap among the first k colors
+          Smallest distance as colors are added
         </text>
         {g.yTicks.map((v) => (
           <g key={v}>
@@ -157,7 +158,7 @@ function GapChart({ lines, seeds, endZone }: { lines: Line[]; seeds: number; end
           </g>
         ))}
         <text className="chart-title" x={x1} y={HEIGHT - 4} textAnchor="end">
-          Number of colors, k
+          Number of colors
         </text>
 
         {showSeeds && <line className="chart-seeds" x1={x(seeds)} x2={x(seeds)} y1={y1} y2={y0} />}
@@ -208,7 +209,7 @@ function GapChart({ lines, seeds, endZone }: { lines: Line[]; seeds: number; end
       <p className="readout">{readout}</p>
     </div>
   );
-}
+});
 
 function LegendLine({ compare }: { compare?: boolean }) {
   return (
@@ -224,6 +225,7 @@ function LegendLine({ compare }: { compare?: boolean }) {
  * @param label name of the main palette in the legend, when there is a comparison
  * @param seeds number of leading colors that were given, marked on the chart
  * @param endZone index of the first color from the end zone, marked on the chart; -1 for none
+ * @param onHover with it, hovering or focusing the closest pair highlights it in the other views
  */
 export function Quality({
   colors,
@@ -232,6 +234,7 @@ export function Quality({
   comparison,
   seeds = 0,
   endZone = -1,
+  ...hover
 }: {
   colors: string[];
   ms: number;
@@ -239,7 +242,7 @@ export function Quality({
   comparison?: Comparison;
   seeds?: number;
   endZone?: number;
-}) {
+} & Partial<Hover>) {
   const q = useMemo(() => quality(colors), [colors]);
   const otherColors = comparison?.colors;
   const other = useMemo(() => otherColors && quality(otherColors), [otherColors]);
@@ -256,23 +259,22 @@ export function Quality({
     <section className="quality" aria-label="Quality">
       <h3>Quality</h3>
       <dl className="stats">
-        <div title="Distance between the two most similar colors">
-          <dt>Smallest gap</dt>
+        <div title="Distance between the two closest colors">
+          <dt>Smallest distance</dt>
           <dd>
             {formatGap(q.minGap)}
-            {q.closest &&
-              q.closest.map((i) => (
-                <span key={i} className="chip" style={{ background: colors[i] }} title={`Color ${i + 1}, ${colors[i]}`} />
-              ))}
+            {q.closest?.map((i) => (
+              <Chip key={i} index={i} color={colors[i]} label={`Color ${i + 1}, ${colors[i]}`} {...hover} />
+            ))}
             {q.closest && (
-              <small>
+              <HoverLabel indices={q.closest} {...hover}>
                 {q.closest[0] + 1} and {q.closest[1] + 1}
-              </small>
+              </HoverLabel>
             )}
           </dd>
         </div>
-        <div title="Median distance from each color to its most similar color">
-          <dt>Typical gap</dt>
+        <div title="Median distance from each color to its closest color">
+          <dt>Typical distance</dt>
           <dd>{formatGap(q.medianNN)}</dd>
         </div>
         <div title={`Colors closer than ${JUST_NOTICEABLE} to another color`}>
@@ -301,12 +303,12 @@ export function Quality({
       {colors.length >= 2 ? (
         <GapChart lines={lines} seeds={seeds} endZone={endZone} />
       ) : (
-        <p className="readout">Pick at least two colors to measure the gaps between them.</p>
+        <p className="readout">Pick at least two colors to measure distances.</p>
       )}
 
       <p className="quality-note">
-        Gaps are distances in OKLab. About {JUST_NOTICEABLE} is just noticeable; categories are easiest to tell apart
-        at {DISTINCT} or more.
+        Distances are measured in OKLab: about {JUST_NOTICEABLE} is just noticeable, and categories are easiest to tell
+        apart at {DISTINCT} or more.
       </p>
     </section>
   );

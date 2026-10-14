@@ -3,14 +3,13 @@ import type { Tree } from "../tree";
 import { formatGap } from "./Quality";
 import { formatFlow } from "./Icicle";
 import { JUST_NOTICEABLE } from "../quality";
+import { NONE, type Hover } from "./Hover";
 
-type Props = {
+type Props = Hover & {
   tree: Tree;
   selected: number | null;
-  hovered: number | null;
   padding: number;
   onSelect: (i: number | null) => void;
-  onHover: (i: number | null) => void;
 };
 
 /** The part of the a–b plane in view: its center and half its width */
@@ -93,7 +92,10 @@ export function BallView({ tree, selected, hovered, padding, onSelect, onHover }
         cy={y(i)}
         r={modules[i].radius * k}
         style={{ fill: modules[i].color, stroke: modules[i].color }}
-        onClick={() => onSelect(i)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(i);
+        }}
       />
     );
   const point = (i: number, r: number, className: string) => (
@@ -104,15 +106,19 @@ export function BallView({ tree, selected, hovered, padding, onSelect, onHover }
       cy={y(i)}
       r={r}
       fill={modules[i].color}
-      onClick={() => onSelect(i)}
-      onPointerEnter={() => onHover(i)}
-      onPointerLeave={() => onHover(null)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(i);
+      }}
+      onPointerEnter={() => onHover([i])}
+      onPointerLeave={() => onHover(NONE)}
     >
       <title>{`${keys[i]} ${modules[i].color}, flow ${formatFlow(modules[i].flow)}`}</title>
     </circle>
   );
   const ring = (i: number | null, r: number, className: string) =>
-    i !== null && (inside.includes(i) || around.includes(i)) && <circle className={className} cx={x(i)} cy={y(i)} r={r} />;
+    i !== null &&
+    (inside.includes(i) || around.includes(i)) && <circle key={`${className}${i}`} className={className} cx={x(i)} cy={y(i)} r={r} />;
 
   const crumbs: number[] = [];
   for (let i = selected ?? -1; i >= 0; i = parent[i]) crumbs.unshift(i);
@@ -132,11 +138,13 @@ export function BallView({ tree, selected, hovered, padding, onSelect, onHover }
             </span>
           ))}
         </nav>
+        {/* Clicking outside the modules deselects, like "Top modules" */}
         <svg
+          onClick={() => selected !== null && onSelect(null)}
           className="ball-view"
           viewBox={`${-SIZE / 2} ${-SIZE / 2} ${SIZE} ${SIZE}`}
           role="img"
-          aria-label={focus === null ? "Top modules and their balls in the OKLab a–b plane" : `The ball of module ${keys[focus]} and its children`}
+          aria-label={focus === null ? "Top modules and their balls in OKLab, seen from above" : `The ball of module ${keys[focus]} and its children`}
         >
           <g className="polar-grid">
             {AXES.map((h) => (
@@ -163,9 +171,9 @@ export function BallView({ tree, selected, hovered, padding, onSelect, onHover }
           {inside.map((i) => ball(i, "ball"))}
           {inside.map((i) => point(i, dot, "ball-dot"))}
           {focus !== null && point(focus, dot + 2, "ball-dot")}
-          {ring(focus, dot + 4.5, "ball-ring")}
-          {selected !== focus && ring(selected, dot + 3, "ball-ring")}
-          {ring(hovered, dot + 3, "ball-ring hover")}
+          {ring(focus, dot + 4.5, "ring")}
+          {selected !== focus && ring(selected, dot + 3, "ring")}
+          {hovered.map((i) => ring(i, dot + 3, "ring hover"))}
           <g className="ball-scale" transform={`translate(${-SIZE / 2 + 12} ${SIZE / 2 - 12})`}>
             <line x1={0} x2={scale} />
             <text x={scale + 5} y={3.5}>
@@ -174,10 +182,10 @@ export function BallView({ tree, selected, hovered, padding, onSelect, onHover }
           </g>
         </svg>
         <figcaption>
-          OKLab from above: hue as angle, chroma as distance from the center. Lightness, the third dimension, is not shown, so
-          colors can look closer here than they are. Each module gets a ball whose radius splits the distance to its
-          neighbors on the same level by the square root of their flows, minus the padding. Children are placed as far
-          apart as possible inside their parent's ball, so they look related to their parent and distinct from each other.
+          OKLab from above: hue as angle, chroma as distance from the center. Lightness is not shown, so colors can look
+          closer here than they are. Each circle is a module's ball. Its radius splits the distance to every other module on
+          the same level by the square root of their flows, minus Padding. Children get colors as far apart as possible
+          inside their parent's ball.
         </figcaption>
       </figure>
 
@@ -193,16 +201,16 @@ export function BallView({ tree, selected, hovered, padding, onSelect, onHover }
               <dd>{formatFlow(m.flow)}</dd>
               {limit ? (
                 <>
-                  <dt>Nearest share</dt>
+                  <dt>Share</dt>
                   <dd>
                     <span className="chip" style={{ background: modules[limit.j].color }} />
-                    {keys[limit.j]} is {formatGap(limit.dist)} away. By √flow, {keys[focus]} gets{" "}
+                    {keys[limit.j]} is {formatGap(limit.dist)} away. Split by √flow, {keys[focus]} gets{" "}
                     {Math.round(100 * limit.part)}% of that: {formatGap(limit.share)}.
                   </dd>
                 </>
               ) : (
                 <>
-                  <dt>Nearest share</dt>
+                  <dt>Share</dt>
                   <dd>No other module on this level, so the share is 0.05.</dd>
                 </>
               )}

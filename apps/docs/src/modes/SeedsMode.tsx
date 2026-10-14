@@ -1,16 +1,19 @@
 import { Fragment, useDeferredValue, useId, useMemo, useState } from "react";
-import { defaultExtendOptions, extend, inferRegion, oklch, presets, type ExtendOptions, type Region } from "@mapequation/c3";
+import { defaultPaletteOptions, inferRegion, oklch, palette, presets, type PaletteOptions, type Region } from "@mapequation/c3";
 import { Check, Group, ModeLayout, RegionControls, Slider } from "../components/Controls";
 import { PolarPlot } from "../components/PolarPlot";
 import { Swatches } from "../components/Swatches";
 import { CodeSnippet } from "../components/CodeSnippet";
 import { Quality } from "../components/Quality";
 import { useZones } from "../components/Zones";
+import { useMethod } from "../components/Method";
+import { useHover } from "../components/Hover";
 import { firstDifference } from "../quality";
 import { callCode } from "../code";
 import { isMural, regionDiff, timed, unlessDefault } from "../util";
 
 const MURAL = presets.mural.join("\n");
+const METHODS = ["farthest", "lookahead"] as const;
 
 /** Split on new lines and on commas outside parentheses, so rgb(1, 2, 3) stays whole */
 function parseSeeds(text: string) {
@@ -29,44 +32,50 @@ function parseSeeds(text: string) {
   return { valid: isMural(valid) ? presets.mural : valid, invalid };
 }
 
-export function ExtendMode({ n, setN }: { n: number; setN: (n: number) => void }) {
+export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void }) {
   const [text, setText] = useState(MURAL);
-  const [method, setMethod] = useState<"greedy" | "halton">(defaultExtendOptions.method);
-  const [hue, setHue] = useState(defaultExtendOptions.hue);
+  const method = useMethod(METHODS);
+  const [hue, setHue] = useState(defaultPaletteOptions.hue);
   const [override, setOverride] = useState(false);
   const [region, setRegion] = useState<Region | null>(null);
   const errorId = useId();
+  // Highlighted colors by index, linked across the views; apart from the memoized palettes
+  const [hovered, onHover] = useHover();
+  const hover = { hovered, onHover };
 
   const { valid: seeds, invalid } = useMemo(() => parseSeeds(text), [text]);
   const inferred = useMemo(() => inferRegion(seeds), [seeds]);
   const shownRegion = override && region ? region : inferred;
   const zones = useZones(shownRegion);
 
-  const options = useMemo<ExtendOptions>(
+  const options = useMemo<PaletteOptions>(
     () => ({
-      method: unlessDefault(method, defaultExtendOptions.method),
-      hue: unlessDefault(hue, defaultExtendOptions.hue),
+      seeds: seeds.length > 0 ? seeds : undefined,
+      ...method.options,
+      // Without seeds the default method is "sequence"
+      method: seeds.length > 0 ? method.options.method : method.method,
+      hue: unlessDefault(hue, defaultPaletteOptions.hue),
       ...regionDiff(shownRegion, inferred),
-      ...(zones.on ? zones.options : { end: false }),
+      ...(zones.on && zones.options),
     }),
-    [method, hue, shownRegion, inferred, zones.on, zones.options],
+    [seeds, method.options, method.method, hue, shownRegion, inferred, zones.on, zones.options],
   );
 
-  const deferred = useDeferredValue(useMemo(() => ({ n, seeds, options }), [n, seeds, options]));
+  const deferred = useDeferredValue(useMemo(() => ({ n, options }), [n, options]));
   const result = useMemo(() => {
-    const { n, seeds, options } = deferred;
-    const [hex, ms] = timed(() => extend(seeds, n, options));
-    const method = options.method ?? defaultExtendOptions.method;
-    // Where the end zone starts: the first color that differs without zones
-    const endZone = options.end === false ? -1 : firstDifference(hex, extend(seeds, n, { ...options, end: false }));
-    return { hex, ms, method, endZone, code: callCode("extend", seeds, n, options), seeds: seeds.length };
+    const { n, options } = deferred;
+    const [hex, ms] = timed(() => palette(n, options));
+    const method = options.method ?? METHODS[0];
+    // Where the end zone starts: the first color that differs without it
+    const endZone = options.end ? firstDifference(hex, palette(n, { ...options, end: false })) : -1;
+    return { hex, ms, method, endZone, code: callCode("palette", n, options), seeds: options.seeds?.length ?? 0 };
   }, [deferred]);
 
   // The same seeds and options with the other method
   const comparison = useMemo(() => {
-    const { n, seeds, options } = deferred;
-    const method = (options.method ?? defaultExtendOptions.method) === "greedy" ? "halton" : "greedy";
-    const [colors, ms] = timed(() => extend(seeds, n, { ...options, method }));
+    const { n, options } = deferred;
+    const method = (options.method ?? METHODS[0]) === "farthest" ? "lookahead" : "farthest";
+    const [colors, ms] = timed(() => palette(n, { ...options, method }));
     return { label: method, colors, ms };
   }, [deferred]);
 
@@ -102,19 +111,13 @@ export function ExtendMode({ n, setN }: { n: number; setN: (n: number) => void }
       </Group>
 
       <Group legend="Method">
-        <label className="field">
-          <span>How new colors are picked</span>
-          <select value={method} onChange={(e) => setMethod(e.target.value as typeof method)}>
-            <option value="greedy">greedy: farthest of 4096 candidates</option>
-            <option value="halton">halton: best of the next Halton points</option>
-          </select>
-        </label>
-        <Slider label="Hue offset" value={hue} onChange={setHue} min={0} max={360} />
+        {method.controls}
+        <Slider label="First hue" value={hue} onChange={setHue} min={0} max={360} />
       </Group>
 
-      <Group legend="Region">
+      <Group legend="Lightness and chroma">
         <Check
-          label="Override the inferred region"
+          label="Change the values inferred from the seeds"
           checked={override}
           onChange={(on) => {
             setOverride(on);
@@ -124,7 +127,7 @@ export function ExtendMode({ n, setN }: { n: number; setN: (n: number) => void }
         <RegionControls region={shownRegion} onChange={setRegion} disabled={!override} />
         {override && (
           <button type="button" className="btn" onClick={() => setRegion(inferred)}>
-            Reset to inferred
+            Reset
           </button>
         )}
       </Group>
@@ -137,16 +140,16 @@ export function ExtendMode({ n, setN }: { n: number; setN: (n: number) => void }
     <ModeLayout n={n} setN={setN} controls={controls}>
       <div className="figures">
         <figure>
-          <PolarPlot colors={result.hex} region={shownRegion} seeds={result.seeds} />
+          <PolarPlot colors={result.hex} region={shownRegion} seeds={result.seeds} {...hover} />
           <figcaption>
-            Hue as angle, chroma as distance from the center (OKLCH). Seeds have a heavier outline. The shaded band is the
-            region new colors are picked from, inferred from the seeds unless you override it.
+            Colors by hue (angle) and chroma (distance from the center); seeds have a heavier outline. The shaded band is the
+            chroma each hue can get, inferred from the seeds unless you change it.
           </figcaption>
         </figure>
       </div>
-      <Swatches colors={result.hex} seeds={result.seeds} />
-      <Quality colors={result.hex} ms={result.ms} label={result.method} comparison={comparison} seeds={result.seeds} endZone={result.endZone} />
-      <CodeSnippet code={result.code} colors={result.hex} />
+      <Swatches colors={result.hex} seeds={result.seeds} {...hover} />
+      <Quality colors={result.hex} ms={result.ms} label={result.method} comparison={comparison} seeds={result.seeds} endZone={result.endZone} {...hover} />
+      <CodeSnippet code={result.code} colors={result.hex} {...hover} />
     </ModeLayout>
   );
 }

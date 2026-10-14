@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { Node, type Interval } from "@mapequation/c3";
+import { delegatedHover, NONE, type Hover } from "./Hover";
 
 const SIZE = 300;
 const MARGIN = 10;
@@ -35,19 +36,27 @@ const y = ({ level, sub }: Row) => LEVEL_HEIGHT * (level + sub / 2 ** Math.max(0
 
 /**
  * How the first 16 color stops split the interval, over the hue each point of the interval gives.
+ * Hovering a dot highlights its color in the other views; hovered colors get a ring.
  * @param colors the colors picked at the stops, in order
  * @param strip colors sampled evenly along [0, 1], showing what each stop position maps to
  */
-export function ColorCantor({ colors, strip }: { colors: string[]; strip: string[] }) {
+export function ColorCantor({
+  colors,
+  strip,
+  hovered = NONE,
+  onHover,
+}: { colors: string[]; strip: string[] } & Partial<Hover>) {
   const id = useId().replace(/[^\w-]/g, "");
   const shown = Math.min(colors.length, rows.length);
+  const at = (i: number) => [x(rows[i].split), y(rows[i]) + BAR / 2] as const;
 
   return (
     <svg
       className="cantor"
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       role="img"
-      aria-label="Cantor diagram of how the first 16 color stops split the interval"
+      aria-label="The first 16 Cantor stops over the hues they take"
+      {...(onHover && delegatedHover(onHover))}
     >
       <defs>
         <linearGradient id={id}>
@@ -70,18 +79,26 @@ export function ColorCantor({ colors, strip }: { colors: string[]; strip: string
           const dy = next ? y(next) - y(row) : 0;
           const curve = `M0 0Q${dx / 2} 0 ${dx} ${dy}`;
           return (
-            <g key={i} transform={`translate(${x(row.split)},${y(row) + BAR / 2})`}>
+            <g key={i} transform={`translate(${at(i)})`}>
               {next && (
                 <>
                   <path className="cantor-link" d={curve} strokeWidth={2} />
                   <path className="cantor-link inner" d={curve} strokeWidth={1} />
                 </>
               )}
-              <circle r={6} className="cantor-dot" />
-              <circle r={4} fill={colors[i]} className="cantor-fill" />
+              <g data-i={i}>
+                <circle r={6} className="cantor-dot" />
+                <circle r={4} fill={colors[i]} className="cantor-fill" />
+              </g>
             </g>
           );
         })}
+        {hovered
+          .filter((i) => i < shown)
+          .map((i) => {
+            const [cx, cy] = at(i);
+            return <circle key={i} className="ring hover" cx={cx} cy={cy} r={9} />;
+          })}
       </g>
     </svg>
   );

@@ -1,64 +1,99 @@
 import { useMemo, useState } from "react";
-import { defaultEnd, defaultPaletteOptions, type Region, type Zones } from "@mapequation/c3";
-import { Check, Group, RegionControls, Slider } from "./Controls";
-import { regionDiff, unlessDefault } from "../util";
+import { defaultPaletteOptions, endLightness, type Range, type Region, type Zones } from "@mapequation/c3";
+import { Check, Group, RangeSliders, Slider } from "./Controls";
+import { unlessDefault } from "../util";
 
 export type ZoneOptions = Zones & { steepness?: number };
 
+/** Steepness the slider starts at when fading in, the README's example */
+const FADE_STEEPNESS = 4;
+
 /**
- * State and controls for the zone options of palette() and extend().
- * @param top region of the first colors, which the default end region is made from
- * @param fade offer a gradual switch with a steepness, as palette() does
- * @returns whether zones are on, and the options that differ from the defaults when they are
+ * State and controls for the end zone options of palette().
+ * @param top ranges of the first colors, which the end zone's default lightness comes from
+ * @param fade whether palette() can fade into the end zone, as only the "sequence" method can;
+ *   leave out to hide the fade controls
+ * @returns whether an end zone is chosen, and the options that differ from the defaults with it
  */
-export function useZones(top: Region, fade = false) {
-  const [on, setOn] = useState(true);
+export function useZones(top: Region, fade?: boolean) {
+  const [direction, setDirection] = useState<"none" | "darker" | "lighter">("none");
+  const on = direction !== "none";
   const [auto, setAuto] = useState(true);
   const [midpoint, setMidpoint] = useState(8);
   const [minGap, setMinGap] = useState(defaultPaletteOptions.minGap);
-  const [hard, setHard] = useState(!Number.isFinite(defaultPaletteOptions.steepness));
-  const [steepness, setSteepness] = useState(Number.isFinite(defaultPaletteOptions.steepness) ? defaultPaletteOptions.steepness : 4);
-  const [override, setOverride] = useState(false);
-  const [end, setEnd] = useState<Region | null>(null);
+  const [fadeIn, setFadeIn] = useState(false);
+  const [steepness, setSteepness] = useState(FADE_STEEPNESS);
+  const [custom, setCustom] = useState(false);
+  // A custom lightness range, null until a slider moves
+  const [range, setRange] = useState<Range | null>(null);
 
-  const base = useMemo(() => defaultEnd(top), [top]);
-  const shownEnd = override && end ? end : base;
+  // With no end zone chosen, the options are those of a darker one, to compare against
+  const named = direction === "lighter" ? "lighter" : "darker";
+  const base = useMemo(() => endLightness(top.lightness, named), [top, named]);
+  const shown = custom && range ? range : base;
 
-  const options = useMemo<ZoneOptions>(() => {
-    const diff = regionDiff(shownEnd, base);
-    return {
-      end: Object.keys(diff).length > 0 ? diff : undefined,
+  const options = useMemo<ZoneOptions>(
+    () => ({
+      // A range equal to the named one is printed by name
+      end: custom && String(shown) !== String(base) ? shown : named,
       midpoint: auto ? undefined : midpoint,
       minGap: auto ? unlessDefault(minGap, defaultPaletteOptions.minGap) : undefined,
-      steepness: !fade ? undefined : hard ? Infinity : unlessDefault(steepness, defaultPaletteOptions.steepness),
-    };
-  }, [shownEnd, base, auto, midpoint, minGap, fade, hard, steepness]);
+      // Switching at once is the default
+      steepness: fade && fadeIn ? steepness : undefined,
+    }),
+    [custom, shown, base, named, auto, midpoint, minGap, fade, fadeIn, steepness],
+  );
 
   const controls = (
     <Group legend="Later colors">
-      <Check label="Move later colors to an end region" checked={on} onChange={setOn} />
+      <label className="field">
+        <span>End zone</span>
+        <select
+          value={direction}
+          onChange={(e) => {
+            setDirection(e.target.value as typeof direction);
+            setRange(null);
+          }}
+        >
+          <option value="none">None</option>
+          <option value="darker">Darker</option>
+          <option value="lighter">Lighter</option>
+        </select>
+      </label>
+      <p className="hint">
+        An end zone gives later colors their own lightness, so they never look like the first ones. Midpoint is how many
+        colors come before it; automatic fits as many as stay Min gap apart.
+      </p>
       <Check label="Automatic midpoint" checked={auto} onChange={setAuto} disabled={!on} />
       <Slider label="Midpoint" value={midpoint} onChange={setMidpoint} min={0} max={64} disabled={!on || auto} />
       <Slider label="Min gap" value={minGap} onChange={setMinGap} min={0} max={0.1} step={0.005} disabled={!on || !auto} />
-      {fade && (
+      {fade !== undefined && (
         <>
-          <Check label="Hard switch" checked={hard} onChange={setHard} disabled={!on} />
-          <Slider label="Steepness" value={steepness} onChange={setSteepness} min={1} max={10} step={0.5} disabled={!on || hard} />
+          <Check label="Fade into the end zone (sequence method only)" checked={fadeIn} onChange={setFadeIn} disabled={!on || !fade} />
+          <Slider
+            label="Steepness"
+            value={steepness}
+            onChange={setSteepness}
+            min={1}
+            max={10}
+            step={0.5}
+            disabled={!on || !fade || !fadeIn}
+          />
         </>
       )}
-      <Check
-        label="Override the end region"
-        checked={override}
-        disabled={!on}
-        onChange={(checked) => {
-          setOverride(checked);
-          if (checked) setEnd(base);
-        }}
+      <Check label="Set the end zone's lightness" checked={custom} onChange={setCustom} disabled={!on} />
+      <RangeSliders
+        label="End zone lightness"
+        value={shown}
+        onChange={setRange}
+        min={0}
+        max={1}
+        step={0.01}
+        disabled={!on || !custom}
       />
-      <RegionControls region={shownEnd} onChange={setEnd} disabled={!on || !override} />
-      {on && override && (
-        <button type="button" className="btn" onClick={() => setEnd(base)}>
-          Reset to lighter top region
+      {on && custom && range && (
+        <button type="button" className="btn" onClick={() => setRange(null)}>
+          Reset
         </button>
       )}
     </Group>
