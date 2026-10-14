@@ -48,10 +48,6 @@ export type PaletteOptions = Partial<Region> &
      * at once, which keeps later colors furthest from the top zone.
      */
     steepness?: number;
-    /** Passed to stops() */
-    strength?: number;
-    /** Passed to stops() */
-    skewness?: number;
   };
 
 export const defaultPaletteOptions = {
@@ -87,16 +83,12 @@ export function palette(n: number | number[] = 16, options: PaletteOptions = {})
     midpoint = defaultPaletteOptions.midpoint,
     minGap = defaultPaletteOptions.minGap,
     steepness = defaultPaletteOptions.steepness,
-    like,
     end,
-    strength,
-    skewness,
   } = options;
-  const top = resolveRegion(options, like ? inferRegion(like) : typeof hue === "number" ? undefined : schemeRegion(hue));
+  const { top, bottom } = paletteRegions(options);
 
   const hueAt = hueSource(hue, reverse);
-  const huesFor = (count: number | number[]) =>
-    stops(count, { strength, skewness }).map(({ start }) => hueAt(fract(start + offset)));
+  const huesFor = (count: number | number[]) => stops(count).map(({ start }) => hueAt(fract(start + offset)));
   const colorAt = (hues: number[], i: number, region: Region) =>
     regionColor(region, hues[i], vanDerCorput(i + lightnessOffset, 3), vanDerCorput(i + chromaOffset, 5));
 
@@ -104,7 +96,6 @@ export function palette(n: number | number[] = 16, options: PaletteOptions = {})
   const first = hues.map((_, i) => colorAt(hues, i, top));
   if (end === false) return first.map(labToHex);
 
-  const bottom = resolveRegion(end ?? {}, defaultEnd(top));
   let m = typeof midpoint === "number" ? midpoint : 0;
   if (midpoint === "auto") {
     // The top zone must not depend on n, so look past the n colors when needed.
@@ -118,6 +109,17 @@ export function palette(n: number | number[] = 16, options: PaletteOptions = {})
     const t = zoneWeight(i, m, steepness);
     return labToHex(t === 0 ? lab : colorAt(hues, i, mixRegion(top, bottom, t)));
   });
+}
+
+/**
+ * The regions palette() picks from: the top region for the first colors
+ * and the end region for later ones (the top region if zones are off).
+ */
+export function paletteRegions(options: PaletteOptions = {}): { top: Region; bottom: Region } {
+  const { hue = defaultPaletteOptions.hue, like, end } = options;
+  const top = resolveRegion(options, like ? inferRegion(like) : typeof hue === "number" ? undefined : schemeRegion(hue));
+  const bottom = end === false ? top : resolveRegion(end ?? {}, defaultEnd(top));
+  return { top, bottom };
 }
 
 const fract = (x: number) => x - Math.floor(x);

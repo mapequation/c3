@@ -68,6 +68,10 @@ export type Options = Partial<Interval> & {
   offset?: number;
   reverse?: boolean;
   strength?: number;
+  /**
+   * @deprecated Exponential weights that give the first colors more hue space.
+   * They only help when colors differ in hue alone, as in colors(); palette() uses zones instead.
+   */
   skewness?: number;
 };
 
@@ -140,6 +144,10 @@ export function colors(
 
 export type StopsOptions = Partial<Interval> & {
   strength?: number;
+  /**
+   * @deprecated Exponential weights that give the first colors more hue space.
+   * They only help when colors differ in hue alone, as in colors(); palette() uses zones instead.
+   */
   skewness?: number;
 };
 

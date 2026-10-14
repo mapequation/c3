@@ -6,6 +6,7 @@ import {
   defaultRegion,
   distance,
   extend,
+  hierarchy,
   inferRegion,
   palette,
   presets,
@@ -285,5 +286,77 @@ describe("distance()", () => {
 
   it("is about 1 between black and white", () => {
     expect(distance("black", "white")).toBeCloseTo(1, 3);
+  });
+});
+
+describe("hierarchy()", () => {
+  const zipf = (n: number) => {
+    const w = Array.from({ length: n }, (_, i) => 1 / (i + 1) ** 1.3);
+    const s = w.reduce((a, b) => a + b);
+    return w.map((x) => x / s);
+  };
+  // Infomap-like: a few large modules with many submodules, module 1 three levels deep
+  const counts = [14, 9, 6, 5, 4, 3, 2, 2, 1, 1];
+  const modules = zipf(10).flatMap((flow, i) =>
+    zipf(counts[i]!).flatMap((childFlow, j) =>
+      i === 0 && j < 3
+        ? zipf(6).map((f, k) => ({ path: [i + 1, j + 1, k + 1], flow: flow * childFlow * f }))
+        : [{ path: [i + 1, j + 1], flow: flow * childFlow }],
+    ),
+  );
+  const color = hierarchy(modules);
+  const level2 = [...new Set(modules.map((m) => m.path.slice(0, 2).join(":")))].map((k) => k.split(":").map(Number));
+
+  it("gives top modules palette() colors by flow", () => {
+    const flows = zipf(10).map((f, i) => modules.filter((m) => m.path[0] === i + 1).reduce((s, m) => s + m.flow, 0));
+    const top = palette(flows);
+    top.forEach((c, i) => expect(color([i + 1])).toBe(c));
+  });
+
+  it("keeps siblings distinct", () => {
+    for (let p = 1; p <= 8; ++p) {
+      const siblings = level2.filter((path) => path[0] === p).map(color) as string[];
+      expect(minDistance(siblings)).toBeGreaterThan(0.02);
+    }
+  });
+
+  it("keeps children closer to their parent than to most other top modules", () => {
+    const tops = Array.from({ length: 10 }, (_, i) => [i + 1]);
+    const own = level2.filter((path) => {
+      const nearest = tops.reduce((best, t) => (distance(color(path)!, color(t)!) < distance(color(path)!, color(best)!) ? t : best));
+      return nearest[0] === path[0];
+    });
+    expect(own.length / level2.length).toBeGreaterThan(0.9);
+  });
+
+  it("falls back to the deepest known module and adds missing parents", () => {
+    expect(color([1, 1, 2, 99])).toBe(color([1, 1, 2]));
+    expect(color([1, 1])).toMatch(HEX);
+    expect(color([11])).toBeUndefined();
+  });
+
+  it("keeps the other colors here when module 7 gets a new child, with module flows given", () => {
+    const flow7 = modules.filter((m) => m.path[0] === 7).reduce((s, m) => s + m.flow, 0);
+    const before = hierarchy([...modules, { path: [7], flow: flow7 }]);
+    const after = hierarchy([...modules, { path: [7], flow: flow7 }, { path: [7, 3], flow: 0.001 }]);
+    for (const { path } of modules) expect(after(path)).toBe(before(path));
+  });
+
+  it("lists all modules depth first with their balls", () => {
+    expect(color.modules[0]!.path).toEqual([1]);
+    expect(color.modules[1]!.path).toEqual([1, 1]);
+    expect(color.modules.length).toBe(10 + level2.length + 18);
+    for (const m of color.modules) {
+      expect(m.color).toBe(color(m.path));
+      const parent = color.modules.find((p) => p.path.join(":") === m.path.slice(0, -1).join(":"));
+      if (parent) expect(distance(m.color, parent.color)).toBeLessThanOrEqual(parent.radius + 0.01);
+      if (m.radius > 0) expect(modules.some((x) => x.path.length > m.path.length && x.path[0] === m.path[0])).toBe(true);
+    }
+  });
+
+  it("is deterministic and works without flows", () => {
+    expect(hierarchy(modules)([3, 2])).toBe(color([3, 2]));
+    const plain = hierarchy(modules.map(({ path }) => ({ path })));
+    expect(minDistance(level2.filter((p) => p[0] === 1).map(plain) as string[])).toBeGreaterThan(0.02);
   });
 });

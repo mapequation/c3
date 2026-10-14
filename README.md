@@ -21,7 +21,7 @@ which is a fractal that subdivides an interval recursively into smaller subsets.
 ### Usage
 
 ```js
-import { palette, extend, presets } from "@mapequation/c3";
+import { palette, extend, hierarchy, presets } from "@mapequation/c3";
 
 // Colors spread over hue, lightness and chroma in OKLCH
 palette(20);
@@ -33,6 +33,14 @@ palette(20, { hue: "Sinebow" });
 // Extend hand-picked colors with as distinct colors as possible
 extend(presets.mural, 50);
 extend(["#e78c6e", "#838eab"], 20, { method: "halton" });
+
+// Nested modules: children vary around their parent's color
+const color = hierarchy([
+  { path: [1, 1], flow: 0.3 },
+  { path: [1, 2], flow: 0.2 },
+  { path: [2, 1], flow: 0.1 },
+]);
+color([1, 2]);
 ```
 
 #### `palette(n, options)`
@@ -42,6 +50,11 @@ Hue comes from the Cantor stops, lightness and chroma from base-3 and base-5
 [van der Corput sequences](https://en.wikipedia.org/wiki/Van_der_Corput_sequence).
 Together they form a [Halton sequence](https://en.wikipedia.org/wiki/Halton_sequence),
 which fills the region evenly and never moves earlier colors when extended.
+
+`n` can also be an array of weights, such as module flows in descending order.
+Each new stop then splits the hue between its two neighbors in proportion to their weights,
+so heavy colors keep more free hue on both sides.
+The space follows the weights but compressed: a color with half of the total weight gets about a third of the hue circle.
 
 | Option | Default | |
 |---|---|---|
@@ -79,10 +92,30 @@ It takes the same zone options as `palette()`, except `steepness`.
 
 `presets.mural` holds five colors from the Englewood mural to start from.
 
+#### `hierarchy(modules, options)`
+
+Colors for nested modules, such as an Infomap hierarchy.
+Pass each module as `{ path, flow }`, where `path` is like `[1, 4, 3]` for the third submodule of the fourth submodule of module 1.
+Missing parents are added, with the sum of their children's flow.
+Without flow, all modules count equally.
+
+Top modules get `palette()` colors, weighted by flow, and `palette()` options apply to them.
+Each module then gets a ball in OKLab around its color.
+Its radius splits the distance to every other module on the same level by the square root of their flows, minus `padding` (default `0.2`),
+so large modules have room for distinct submodules and children stay apart from their cousins.
+Children get colors as far apart as possible inside their parent's ball, in path order.
+
+It returns a function from path to color.
+For a path longer than the known modules, such as a node path, it gives the color of the deepest module on it.
+Its `modules` property lists every module depth first with `path`, `flow`, `color` and the `radius` of its ball.
+Adding a module never changes its earlier siblings or the modules above its level.
+With module flows given, other modules only change if the new module is now closest to them, and then only their children change.
+
 #### `colors(n, options)` (deprecated)
 
 Picks colors from a d3 color scheme at the Cantor stops, optionally with HSL saturation and lightness by depth.
 Use `palette({ hue: scheme })` instead, which gives more distinct colors for every scheme.
+Its `skewness` option, which gives the first colors more hue space, is deprecated too: it only helps when colors differ in hue alone.
 
 #### Measuring distinctness
 
