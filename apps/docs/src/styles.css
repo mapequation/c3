@@ -988,3 +988,155 @@ pre.output {
     transition: none;
   }
 }
+
+/* Hierarchy */
+
+figure.wide {
+  flex: none;
+  max-width: none;
+}
+
+.icicle {
+  position: relative;
+  cursor: pointer;
+}
+
+.icicle canvas {
+  display: block;
+  width: 100%;
+}
+
+.icicle-mark {
+  position: absolute;
+  min-width: 3px;
+  pointer-events: none;
+}
+
+.icicle-mark.hover {
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.icicle-mark.selected {
+  box-shadow: 0 0 0 1px var(--bg), 0 0 0 3px var(--ink);
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 6px;
+  font: 12.5px var(--font-mono);
+  color: var(--ink-3);
+}
+
+.crumbs button {
+  font: inherit;
+  padding: 2px 4px;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.crumbs button[aria-current] {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ball-view circle {
+  cursor: pointer;
+}
+
+.ball {
+  fill-opacity: 0.12;
+  stroke-width: 1.25;
+}
+
+.ball.context {
+  opacity: 0.4;
+}
+
+.ball.focus {
+  fill-opacity: 0.08;
+  stroke-width: 2;
+}
+
+.ball-dot {
+  stroke: var(--dot-line);
+}
+
+.ball-dot.context {
+  opacity: 0.5;
+}
+
+.ball-view .ball-ring {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.ball-ring.hover {
+  stroke-width: 1;
+}
+
+.ball-limit {
+  stroke: var(--ink-3);
+  stroke-dasharray: 4 3;
+}
+
+.ball-scale line {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.ball-scale text {
+  fill: var(--ink-3);
+  font: 10px var(--font-mono);
+}
+
+.ball-notes {
+  flex: 1 1 220px;
+  max-width: 420px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.ball-notes h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.ball-notes p {
+  margin: 0 0 8px;
+}
+
+.ball-notes dl {
+  margin: 0;
+}
+
+.ball-notes dt {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.ball-notes dd {
+  margin: 0 0 8px;
+}
+
+.hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

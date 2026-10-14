@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { useCopy } from "../util";
 
 /** The library call for the current settings and its output, both copyable */
-export function CodeSnippet({ code, colors }: { code: string; colors: string[] }) {
+export function CodeSnippet({ code, colors, title = "Hex values" }: { code: string; colors: string[]; title?: string }) {
   const { copy, label } = useCopy();
   const array = `[${colors.map((c) => JSON.stringify(c)).join(", ")}]`;
 
@@ -18,7 +18,7 @@ export function CodeSnippet({ code, colors }: { code: string; colors: string[] }
         <code>{code}</code>
       </pre>
       <div className="snippet-head">
-        <h3>Hex values</h3>
+        <h3>{title}</h3>
         <button type="button" className="btn" onClick={() => copy("array", array)}>
           {label("array", "Copy array")}
         </button>

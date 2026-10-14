@@ -3,6 +3,7 @@ import { palette } from "@mapequation/c3";
 import { SchemesMode } from "./modes/SchemesMode";
 import { PaletteMode } from "./modes/PaletteMode";
 import { ExtendMode } from "./modes/ExtendMode";
+import { HierarchyMode } from "./modes/HierarchyMode";
 import { ApiReference } from "./components/ApiReference";
 
 const FEATURES = [
@@ -28,6 +29,14 @@ const MODES = [
     fn: "extend()",
     about: "Start from your own colors and add new ones, each as far as possible from all colors before it.",
     Mode: ExtendMode,
+  },
+  {
+    id: "hierarchy",
+    label: "Hierarchy",
+    fn: "hierarchy()",
+    about:
+      "Color nested modules, like an Infomap tree. Top modules get palette() colors by flow, and children get colors that are distinct from each other inside a ball around their parent's color.",
+    Mode: HierarchyMode,
   },
   {
     // Keeps its old id, so links to #schemes still work

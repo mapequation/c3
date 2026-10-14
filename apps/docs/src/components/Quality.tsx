@@ -26,7 +26,7 @@ function niceStep(span: number, count: number) {
 }
 
 /** Width of an element in CSS pixels, so the chart text keeps its size */
-function useWidth<T extends HTMLElement>(fallback: number) {
+export function useWidth<T extends HTMLElement>(fallback: number) {
   const ref = useRef<T>(null);
   const [width, setWidth] = useState(fallback);
   useLayoutEffect(() => {

@@ -3,7 +3,13 @@ import { round } from "./util";
 
 const MAX_LINE = 60;
 
+/** Code printed as is, like a variable name */
+export class Raw {
+  constructor(readonly code: string) {}
+}
+
 function format(value: unknown, indent: string): string {
+  if (value instanceof Raw) return value.code;
   if (value === presets.mural) return "presets.mural";
   if (typeof value === "number") return String(round(value));
   if (typeof value === "string") return JSON.stringify(value);
