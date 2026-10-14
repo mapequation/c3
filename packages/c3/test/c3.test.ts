@@ -2,10 +2,9 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   colors,
-  defaultEnd,
   defaultRegion,
   distance,
-  extend,
+  endLightness,
   hierarchy,
   inferRegion,
   palette,
@@ -104,7 +103,7 @@ describe("palette() without zones", () => {
 });
 
 describe("palette() zones", () => {
-  const end = { lightness: [0.9, 0.95] as [number, number] };
+  const end: [number, number] = [0.9, 0.95];
   const lightness = (colors: string[]) => colors.map((c) => parseOklch(c)[0]);
 
   it("switches to the end region at the midpoint", () => {
@@ -123,20 +122,21 @@ describe("palette() zones", () => {
   });
 
   it("is consistent when n grows, also with an automatic midpoint and a fade", () => {
+    const fade = { end: "darker" as const, steepness: 4 };
     for (const n of [5, 15, 21, 22, 23, 40]) {
-      expect(palette(100).slice(0, n)).toEqual(palette(n));
-      expect(palette(100, { hue: "Turbo" }).slice(0, n)).toEqual(palette(n, { hue: "Turbo" }));
+      expect(palette(100, fade).slice(0, n)).toEqual(palette(n, fade));
+      expect(palette(100, { ...fade, hue: "Turbo" }).slice(0, n)).toEqual(palette(n, { ...fade, hue: "Turbo" }));
     }
   });
 
-  it("fades by default", () => {
-    const L = lightness(palette(60, { end }));
+  it("fades with a finite steepness", () => {
+    const L = lightness(palette(60, { end, steepness: 4 }));
     expect(L.slice(10, 40).some((l) => l > 0.84 && l < 0.9)).toBe(true);
   });
 
   it("keeps the top zone apart from later colors", () => {
-    const colors = palette(250, { steepness: Infinity });
-    const m = lightness(colors).findIndex((l) => l > 0.85);
+    const colors = palette(250, { end: "darker" });
+    const m = lightness(colors).findIndex((l) => l < 0.65);
     const top = colors.slice(0, m).map(parseOklab);
     const rest = colors.slice(m).map(parseOklab);
     const gap = Math.min(...top.flatMap((a) => rest.map((b) => labDistance(a, b))));
@@ -152,20 +152,25 @@ describe("palette() zones", () => {
   });
 });
 
-describe("defaultEnd()", () => {
-  it("is lighter when there is room above the top region", () => {
-    expect(defaultEnd(defaultRegion).lightness[0]).toBeGreaterThan(defaultRegion.lightness[1]);
+describe("end zone", () => {
+  it("is just below the top zone by default, or just above with \"lighter\"", () => {
+    const [min, max] = defaultRegion.lightness;
+    const darker = endLightness(defaultRegion.lightness);
+    const lighter = endLightness(defaultRegion.lightness, "lighter");
+    expect(darker[1]).toBeCloseTo(min - 0.03, 9);
+    expect(darker[1] - darker[0]).toBeCloseTo(0.22, 9);
+    expect(lighter[0]).toBeCloseTo(max + 0.03, 9);
+    expect(lighter[1]).toBeLessThanOrEqual(0.95);
   });
 
-  it("is darker when the top region is already light", () => {
-    const end = defaultEnd({ ...defaultRegion, lightness: [0.5, 0.9] });
-    expect(end.lightness[1]).toBeLessThan(0.5);
-  });
-
-  it("is greyer when there is no room above or below", () => {
-    const end = defaultEnd({ ...defaultRegion, lightness: [0.3, 0.95], chroma: [0.1, 0.2] });
-    expect(end.lightness).toEqual([0.3, 0.95]);
-    expect(end.chroma[1]).toBeLessThan(0.1);
+  it("is chosen with end: \"darker\", \"lighter\", a lightness range or false", () => {
+    const L = (colors: string[]) => colors.slice(40).map((c) => parseOklch(c)[0]);
+    const hard = { steepness: Infinity, midpoint: 20 };
+    for (const l of L(palette(60, { ...hard, end: "darker" }))) expect(l).toBeLessThan(0.65);
+    for (const l of L(palette(60, { ...hard, end: "lighter" }))) expect(l).toBeGreaterThan(0.85);
+    for (const l of L(palette(60, { ...hard, end: [0.5, 0.55] }))) expect(l).toBeLessThan(0.56);
+    expect(palette(60, { end: false })).toEqual(palette(60));
+    expect(palette(60, { ...hard, end: false })).toEqual(palette(60, { end: false }));
   });
 });
 
@@ -182,7 +187,11 @@ describe("palette({ hue: scheme })", () => {
 
   it("is more distinct than colors() for the same scheme", () => {
     for (const scheme of ["Sinebow", "Turbo", "Spectral"] as const) {
-      expect(minDistance(palette(20, { hue: scheme }))).toBeGreaterThan(minDistance(colors(20, { scheme })));
+      // Within the top zone with the default fade, and for many colors with a hard switch
+      expect(minDistance(palette(10, { hue: scheme }))).toBeGreaterThan(minDistance(colors(10, { scheme })));
+      expect(minDistance(palette(50, { hue: scheme, steepness: Infinity }))).toBeGreaterThan(
+        minDistance(colors(50, { scheme })),
+      );
     }
   });
 
@@ -193,69 +202,67 @@ describe("palette({ hue: scheme })", () => {
   });
 });
 
-describe("extend()", () => {
+describe("palette({ seeds })", () => {
   const seeds = presets.mural;
 
-  for (const method of ["greedy", "halton"] as const) {
+  for (const method of ["farthest", "lookahead"] as const) {
     describe(method, () => {
       it("keeps the seeds first", () => {
-        expect(extend(seeds, 20, { method }).slice(0, 5)).toEqual([...seeds]);
+        expect(palette(20, { seeds, method }).slice(0, 5)).toEqual([...seeds]);
       });
 
       it("is deterministic and consistent when n grows", () => {
-        const a = extend(seeds, 25, { method });
-        expect(extend(seeds, 25, { method })).toEqual(a);
-        expect(extend(seeds, 50, { method }).slice(0, 25)).toEqual(a);
+        const a = palette(25, { seeds, method });
+        expect(palette(25, { seeds, method })).toEqual(a);
+        expect(palette(50, { seeds, method }).slice(0, 25)).toEqual(a);
       });
 
       it("adds distinct colors", () => {
-        const p = extend(seeds, 20, { method });
+        const p = palette(20, { seeds, method });
         expect(p).toHaveLength(20);
         for (const c of p) expect(c).toMatch(HEX);
         expect(minDistance(p)).toBeGreaterThan(0.04);
       });
+
+      it("fills the top zone minGap apart, then the end zone", () => {
+        const end: [number, number] = [0.9, 0.95];
+        const colors = palette(120, { seeds, method, end });
+        const L = colors.map((c) => parseOklch(c)[0]);
+        const m = L.findIndex((l, i) => i >= seeds.length && l > 0.89);
+        expect(m).toBeGreaterThan(seeds.length + 5);
+        for (const l of L.slice(m)) expect(l).toBeGreaterThan(0.89);
+        expect(minDistance(colors.slice(seeds.length, m))).toBeGreaterThan(0.038);
+        expect(palette(60, { seeds, method, end })).toEqual(colors.slice(0, 60));
+      });
     });
   }
 
+  it("uses farthest by default with seeds, and needs it or lookahead", () => {
+    expect(palette(20, { seeds })).toEqual(palette(20, { seeds, method: "farthest" }));
+    expect(() => palette(20, { seeds, method: "sequence" })).toThrow(/farthest/);
+  });
+
+  it("switches to the end zone at a fixed midpoint", () => {
+    const L = palette(30, { seeds, end: [0.9, 0.95], midpoint: 12 }).map((c) => parseOklch(c)[0]);
+    for (const l of L.slice(5, 12)) expect(l).toBeLessThan(0.84);
+    for (const l of L.slice(12)) expect(l).toBeGreaterThan(0.89);
+  });
+
   it("truncates when n is smaller than the number of seeds", () => {
-    expect(extend(seeds, 3)).toEqual(seeds.slice(0, 3));
-    expect(extend(seeds, 0)).toEqual([]);
+    expect(palette(3, { seeds })).toEqual(seeds.slice(0, 3));
+    expect(palette(0, { seeds })).toEqual([]);
   });
 
   it("works without seeds", () => {
-    expect(extend([], 10)).toHaveLength(10);
+    expect(palette(10, { method: "farthest" })).toHaveLength(10);
+    expect(minDistance(palette(20, { method: "farthest", end: false }))).toBeGreaterThan(
+      minDistance(palette(20, { end: false })),
+    );
   });
 
-  it("accepts any CSS color", () => {
-    expect(extend(["red", "rgb(0, 0, 255)"], 4).slice(0, 2)).toEqual(["#ff0000", "#0000ff"]);
-  });
-
-  it("throws on invalid colors", () => {
-    expect(() => extend(["not a color"], 4)).toThrow(/Invalid color/);
-  });
-});
-
-describe("extend() zones", () => {
-  const seeds = presets.mural;
-  const end = { lightness: [0.9, 0.95] as [number, number] };
-  const lightness = (colors: string[]) => colors.map((c) => parseOklch(c)[0]);
-
-  for (const method of ["greedy", "halton"] as const) {
-    it(`${method}: fills the top zone minGap apart, then the end region`, () => {
-      const colors = extend(seeds, 120, { method, end });
-      const L = lightness(colors);
-      const m = L.findIndex((l, i) => i >= seeds.length && l > 0.89);
-      expect(m).toBeGreaterThan(seeds.length + 5);
-      for (const l of L.slice(m)) expect(l).toBeGreaterThan(0.89);
-      expect(minDistance(colors.slice(seeds.length, m))).toBeGreaterThan(0.038);
-      expect(extend(seeds, 60, { method, end })).toEqual(colors.slice(0, 60));
-    });
-  }
-
-  it("switches at a fixed midpoint", () => {
-    const L = lightness(extend(seeds, 30, { end, midpoint: 12 }));
-    for (const l of L.slice(5, 12)) expect(l).toBeLessThan(0.84);
-    for (const l of L.slice(12)) expect(l).toBeGreaterThan(0.89);
+  it("accepts any CSS color and throws on invalid ones", () => {
+    expect(palette(4, { seeds: ["red", "rgb(0, 0, 255)"] }).slice(0, 2)).toEqual(["#ff0000", "#0000ff"]);
+    expect(() => palette(4, { seeds: ["not a color"] })).toThrow(/Invalid color/);
   });
 });
 
@@ -291,7 +298,7 @@ describe("distance()", () => {
 
 describe("hierarchy()", () => {
   const zipf = (n: number) => {
-    const w = Array.from({ length: n }, (_, i) => 1 / (i + 1) ** 1.3);
+    const w = Array.from({ length: n }, (_, i) => 1 / (i + 1));
     const s = w.reduce((a, b) => a + b);
     return w.map((x) => x / s);
   };

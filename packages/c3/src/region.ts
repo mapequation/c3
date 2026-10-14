@@ -1,5 +1,4 @@
 import { gamutMap, lchToLab, parseOklch, type Lab } from "./oklab.js";
-import { vanDerCorput } from "./halton.js";
 
 export type Range = [min: number, max: number];
 
@@ -49,15 +48,6 @@ export function regionColor(region: Region, hue: number, u: number, v: number): 
   const L = lerp(lightness, u);
   const C = chroma[0] + (chroma[1] - chroma[0]) * v * scale;
   return lchToLab(gamutMap([L, C, hue]));
-}
-
-/**
- * The i:th point of a Halton sequence in the region.
- * Hue from base 2, lightness from base 3 and chroma from base 5.
- */
-export function haltonColor(region: Region, i: number, hue = 0): Lab {
-  const h = (hue + 360 * vanDerCorput(i, 2)) % 360;
-  return regionColor(region, h, vanDerCorput(i, 3), vanDerCorput(i, 5));
 }
 
 const MIN_LIGHTNESS_SPAN = 0.1;
@@ -163,23 +153,20 @@ export function zoneWeight(i: number, midpoint: number, steepness: number) {
   return 1 - (m / k) ** steepness;
 }
 
-const END_SPAN = 0.08; // smallest lightness span for the end region
-const END_GAP = 0.03; // lightness between the top and end regions
-const LIGHTEST = 0.97;
-const DARKEST = 0.3;
+const END_GAP = 0.03; // lightness between the top zone and the end zone
+const END_SPAN = 0.22; // lightness span of the end zone
+const DARKEST = 0.3; // below and above these, colors barely show their hue
+const LIGHTEST = 0.95;
 
 /**
- * Region for later colors, apart from the top region: lighter if there is room,
- * otherwise darker, otherwise greyer.
+ * Lightness range for later colors: just below ("darker") or just above ("lighter")
+ * the given range, 0.03 apart from it and 0.22 wide, kept between 0.3 and 0.95.
  */
-export function defaultEnd(top: Region): Region {
-  const [L0, L1] = top.lightness;
-  if (L1 + END_GAP + END_SPAN <= LIGHTEST) {
-    return { ...top, lightness: [L1 + END_GAP, Math.max(L1 + END_GAP + END_SPAN, 0.95)] };
+export function endLightness([L0, L1]: Range, direction: "darker" | "lighter" = "darker"): Range {
+  if (direction === "darker") {
+    const max = Math.max(DARKEST, L0 - END_GAP);
+    return [Math.max(DARKEST, max - END_SPAN), max];
   }
-  const below = L0 - END_GAP;
-  if (below - DARKEST >= END_SPAN) {
-    return { ...top, lightness: [Math.max(DARKEST, below - 0.25), below] };
-  }
-  return { ...top, chroma: [0, Math.max(0.03, top.chroma[0] - END_GAP)], tilt: 0 };
+  const min = Math.min(LIGHTEST, L1 + END_GAP);
+  return [min, Math.min(LIGHTEST, min + END_SPAN)];
 }
