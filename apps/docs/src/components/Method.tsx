@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { defaultPaletteOptions, type Method } from "@mapequation/c3";
+import type { Method } from "@mapequation/c3";
+import { defaultPaletteOptions } from "@mapequation/c3/internal";
 import { Slider } from "./Controls";
 import { unlessDefault } from "../util";
 

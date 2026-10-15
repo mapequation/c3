@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { oklch, presets, type Region, type SchemeName } from "@mapequation/c3";
+import { oklch, swatches, tones, type Tone, type ToneName, type ToneOption, type SchemeName } from "@mapequation/c3";
 
 /** The d3 schemes the explorer offers, by kind */
 export const SCHEMES: Record<string, SchemeName[]> = {
@@ -8,10 +8,10 @@ export const SCHEMES: Record<string, SchemeName[]> = {
   Diverging: ["Spectral", "RdYlBu", "RdYlGn", "BrBG", "PiYG", "PuOr"],
 };
 
-/** The region palette({ hue: scheme }) uses */
-export { schemeRegion } from "@mapequation/c3";
+/** The tone palette({ hue: scheme }) uses */
+export { schemeTone } from "@mapequation/c3/internal";
 
-/** colors() returns rgb() or hex strings, depending on the scheme */
+/** d3 schemes return rgb() or hex strings, depending on the scheme */
 export function toHex(color: string) {
   if (/^#[0-9a-f]{6}$/i.test(color)) return color.toLowerCase();
   const m = color.match(/rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i);
@@ -37,17 +37,29 @@ export function timed<T>(fn: () => T): [result: T, ms: number] {
 /** Leave out options that equal their default, so the code snippet stays short */
 export const unlessDefault = <T,>(value: T, fallback: T) => (value === fallback ? undefined : value);
 
-/** The region keys that differ from the base region */
-export function regionDiff(region: Region, base: Region): Partial<Region> {
-  const keys = Object.keys(region) as (keyof Region)[];
-  return Object.fromEntries(
-    keys.filter((k) => String(region[k]) !== String(base[k])).map((k) => [k, region[k]]),
-  );
+/** The tone fields that differ from the base tone */
+export function toneDiff(tone: Tone, base: Tone): Partial<Tone> {
+  const keys = Object.keys(tone) as (keyof Tone)[];
+  return Object.fromEntries(keys.filter((k) => String(tone[k]) !== String(base[k])).map((k) => [k, tone[k]]));
+}
+
+/** The name of the named tone equal to this one, if any */
+export const toneName = (tone: Tone) =>
+  (Object.keys(tones) as ToneName[]).find((name) => Object.keys(toneDiff(tone, tones[name])).length === 0);
+
+/**
+ * The tone option that gives the tone, or undefined when the base tone already is it:
+ * a name for an unmodified named tone, else the fields that differ from the base.
+ */
+export function toneOption(tone: Tone, base: Tone): ToneOption | undefined {
+  const diff = toneDiff(tone, base);
+  if (Object.keys(diff).length === 0) return undefined;
+  return toneName(tone) ?? diff;
 }
 
 export const isMural = (colors: readonly string[]) =>
-  colors.length === presets.mural.length &&
-  colors.every((c, i) => c.toLowerCase() === presets.mural[i]);
+  colors.length === swatches.mural.length &&
+  colors.every((c, i) => c.toLowerCase() === swatches.mural[i]);
 
 /** Copy text to the clipboard and remember which key was copied for a moment */
 export function useCopy() {

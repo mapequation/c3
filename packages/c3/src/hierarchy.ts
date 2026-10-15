@@ -1,11 +1,11 @@
 import { vanDerCorput } from "./halton.js";
 import { inGamut, labDistance, labToHex, labToLch, parseOklab, type Lab } from "./oklab.js";
-import { palette, paletteRegions, type PaletteOptions } from "./palette.js";
+import { palette, paletteTones, type PaletteOptions } from "./palette.js";
 
 export type Module = {
   /** Path from the top module, like [1, 4, 3] for the third child of the fourth child of module 1 */
   path: readonly number[];
-  /** Flow or another size. Modules without flow get the sum of their children's, or 1. */
+  /** Flow or another size, summed over repeated paths. Modules without flow get the sum of their children's, or 1. */
   flow?: number;
 };
 
@@ -55,7 +55,7 @@ for (let i = 1; ball.length < BALL_POINTS; ++i) {
  * gets a ball in OKLab around its color, splitting the distance to the other
  * modules on the same level by the square root of their flows, and its
  * children get colors as distinct as possible inside that ball.
- * @param modules Modules by path; missing parents are added
+ * @param modules Modules by path, like one per node with its module path and flow; missing parents are added
  * @param options palette() options for the top modules, and padding
  * @returns a function from path to color, which for a longer path gives the color of
  * its deepest module, with all modules in depth-first order as `modules`
@@ -65,15 +65,22 @@ export function hierarchy(modules: readonly Module[], options: HierarchyOptions 
   const nodes = buildTree(modules);
   const top = nodes.get("")!.children;
 
-  // Keep children inside the lightness and chroma the palette uses
-  const { top: topRegion, bottom } = paletteRegions(options);
+  // Keep children inside the lightness and chroma ranges the palette uses, so they don't
+  // grey out. Where the gamut holds a parent below the chroma range, its children may
+  // go as low as the parent.
+  const { top: topTone, bottom } = paletteTones(options);
   const bounds = {
-    lightness: [Math.min(topRegion.lightness[0], bottom.lightness[0]), Math.max(topRegion.lightness[1], bottom.lightness[1])],
-    chroma: Math.max(topRegion.chroma[1], bottom.chroma[1]),
+    lightness: [Math.min(topTone.lightness[0], bottom.lightness[0]), Math.max(topTone.lightness[1], bottom.lightness[1])],
+    chroma: [Math.min(topTone.chroma[0], bottom.chroma[0]), Math.max(topTone.chroma[1], bottom.chroma[1])],
   };
-  const allowed = (lab: Lab) => {
-    const [L, C] = labToLch(lab);
-    return L >= bounds.lightness[0] && L <= bounds.lightness[1] && C <= bounds.chroma && inGamut(lab);
+  const allowedAround = (parent: Lab) => {
+    const minChroma = Math.min(bounds.chroma[0], labToLch(parent)[1]);
+    return (lab: Lab) => {
+      const [L, C] = labToLch(lab);
+      return (
+        L >= bounds.lightness[0] && L <= bounds.lightness[1] && C >= minChroma && C <= bounds.chroma[1] && inGamut(lab)
+      );
+    };
   };
 
   const topColors = palette(
@@ -86,7 +93,7 @@ export function hierarchy(modules: readonly Module[], options: HierarchyOptions 
     for (const node of level) {
       if (node.children.length === 0) continue;
       node.radius = (1 - padding) * share(node, level);
-      placeChildren(node, node.radius, allowed);
+      placeChildren(node, node.radius, allowedAround(node.lab!));
     }
   }
 
@@ -122,7 +129,7 @@ function buildTree(modules: readonly Module[]) {
       nodes.set(k, node);
       nodes.get(key(path.slice(0, n - 1)))!.children.push(node);
     }
-    if (flow !== undefined) given.set(key(path), flow);
+    if (flow !== undefined) given.set(key(path), (given.get(key(path)) ?? 0) + flow);
   }
 
   // Children in path order, which for Infomap is by flow

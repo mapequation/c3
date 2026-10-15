@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { oklch, type Region } from "@mapequation/c3";
+import { oklch, type Tone } from "@mapequation/c3";
 import { delegatedHover, NONE, type Hover } from "./Hover";
 
 const SIZE = 320;
@@ -19,8 +19,8 @@ const point = (hue: number, r: number) => {
   return [r * Math.cos(a), -r * Math.sin(a)] as const;
 };
 
-/** Outline of the chroma range the region allows at each hue */
-function regionPath({ chroma: [lo, hi], warmHue, tilt }: Region, scale: (c: number) => number) {
+/** Outline of the chroma range the tone allows at each hue */
+function tonePath({ chroma: [lo, hi], warmHue, tilt }: Tone, scale: (c: number) => number) {
   const hues = Array.from({ length: HUE_STEPS + 1 }, (_, i) => (360 * i) / HUE_STEPS);
   const outer = hues.map((h) => {
     const warmth = (1 + Math.cos(((h - warmHue) * Math.PI) / 180)) / 2;
@@ -37,15 +37,15 @@ function regionPath({ chroma: [lo, hi], warmHue, tilt }: Region, scale: (c: numb
  */
 export function PolarPlot({
   colors,
-  region,
+  tone,
   seeds = 0,
   hovered = NONE,
   onHover,
-}: { colors: string[]; region: Region; seeds?: number } & Partial<Hover>) {
+}: { colors: string[]; tone: Tone; seeds?: number } & Partial<Hover>) {
   // Everything but the highlight, so hovering does not redraw the plot
   const plot = useMemo(() => {
     const lch = colors.map(oklch);
-    const top = Math.max(0.1, region.chroma[1], ...lch.map(([, C]) => C));
+    const top = Math.max(0.1, tone.chroma[1], ...lch.map(([, C]) => C));
     const max = Math.ceil(top / 0.05) * 0.05;
     const scale = (c: number) => (c / max) * R;
     const rings = Array.from({ length: Math.round(max / 0.05) }, (_, i) => (i + 1) * 0.05);
@@ -82,7 +82,7 @@ export function PolarPlot({
             {+c.toFixed(2)}
           </text>
         ))}
-        <path className="polar-region" d={regionPath(region, scale)} fillRule="evenodd" />
+        <path className="polar-region" d={tonePath(tone, scale)} fillRule="evenodd" />
         {order.map((i) => (
           <circle key={i} data-i={i} cx={xy[i][0]} cy={xy[i][1]} r={radius(i)} fill={colors[i]} className={dotClass(i)}>
             <title>{`${i + 1}${i < seeds ? " (seed)" : ""} ${colors[i]}`}</title>
@@ -91,7 +91,7 @@ export function PolarPlot({
       </>
     );
     return { content, xy, radius, dotClass };
-  }, [colors, region, seeds]);
+  }, [colors, tone, seeds]);
 
   return (
     <svg

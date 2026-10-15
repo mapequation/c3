@@ -1,4 +1,4 @@
-import type { Interval } from "@mapequation/c3";
+import type { Interval } from "@mapequation/c3/internal";
 import { inkOn } from "../util";
 
 const SIZE = 300;

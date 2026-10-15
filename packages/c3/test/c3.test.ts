@@ -1,24 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import {
-  colors,
-  defaultRegion,
-  distance,
-  endLightness,
-  hierarchy,
-  inferRegion,
-  palette,
-  presets,
-  stops,
-  vanDerCorput,
-  type Options,
-} from "../src/index.js";
+import { distance, hierarchy, inferTone, palette, swatches, tones } from "../src/index.js";
+import { defaultTone, endLightness, getScheme, stops, vanDerCorput } from "../src/internal.js";
 import { labDistance, parseOklab, parseOklch } from "../src/oklab.js";
 
-type Fixture = { name: string; n: number | number[]; opts: Options; colors?: string[]; stops?: number[][] };
-const fixtures: Fixture[] = JSON.parse(
-  readFileSync(new URL("./colors-v1.1.1.json", import.meta.url), "utf8"),
-);
 const beforeZones: Record<string, string[]> = JSON.parse(
   readFileSync(new URL("./palette-before-zones.json", import.meta.url), "utf8"),
 );
@@ -32,18 +17,6 @@ function minDistance(hex: string[]) {
     for (let j = 0; j < i; ++j) min = Math.min(min, labDistance(lab[i]!, lab[j]!));
   return min;
 }
-
-describe("colors() is unchanged from v1.1.1", () => {
-  for (const f of fixtures) {
-    it(f.name, () => {
-      if (f.stops) {
-        expect(stops(f.n).map(({ start, end }) => [start, end])).toEqual(f.stops);
-      } else {
-        expect(colors(f.n, f.opts)).toEqual(f.colors);
-      }
-    });
-  }
-});
 
 describe("vanDerCorput", () => {
   it("matches the unweighted Cantor stops in base 2", () => {
@@ -70,7 +43,7 @@ describe("palette()", () => {
   });
 
   it("stays within the lightness range", () => {
-    for (const c of palette(100, { lightness: [0.6, 0.7], end: false })) {
+    for (const c of palette(100, { tone: { lightness: [0.6, 0.7] } })) {
       const [L] = parseOklch(c);
       expect(L).toBeGreaterThan(0.59);
       expect(L).toBeLessThan(0.71);
@@ -78,12 +51,20 @@ describe("palette()", () => {
   });
 
   it("keeps the first 20 colors distinct", () => {
-    expect(minDistance(palette(20, { steepness: Infinity }))).toBeGreaterThan(0.04);
+    expect(minDistance(palette(20))).toBeGreaterThan(0.04);
   });
 
-  it("changes the first color with hue but not the spacing", () => {
-    const a = palette(20, { hue: 0 });
-    const b = palette(20, { hue: 180 });
+  it("starts at the offset hue on the hue circle, 245 by default", () => {
+    const circular = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+    expect(circular(parseOklch(palette(1)[0]!)[2], 245)).toBeLessThan(1);
+    expect(circular(parseOklch(palette(1, { offset: 30 })[0]!)[2], 30)).toBeLessThan(1);
+    expect(palette(20, { offset: 400 })).toEqual(palette(20, { offset: 40 }));
+    expect(palette(20, { hue: "Oklch" })).toEqual(palette(20));
+  });
+
+  it("changes the first color with the offset but not the spacing", () => {
+    const a = palette(20, { offset: 0 });
+    const b = palette(20, { offset: 180 });
     expect(a[0]).not.toEqual(b[0]);
     expect(minDistance(b)).toBeGreaterThan(0.03);
   });
@@ -94,11 +75,58 @@ describe("palette()", () => {
 });
 
 describe("palette() without zones", () => {
-  it("is unchanged from before zones were added", () => {
-    expect(palette(50, { end: false })).toEqual(beforeZones.default);
-    expect(palette(30, { hue: 40, end: false })).toEqual(beforeZones.hue40);
-    expect(palette(30, { like: presets.mural, end: false })).toEqual(beforeZones.likeMural);
-    expect(palette([5, 1, 3, 2, 8], { end: false })).toEqual(beforeZones.weights);
+  it("is unchanged from before zones were added, with the soft tone and the old default hue", () => {
+    const offset = 125;
+    expect(palette(50, { tone: "soft", offset })).toEqual(beforeZones.default);
+    expect(palette(30, { tone: "soft", offset: 40 })).toEqual(beforeZones.hue40);
+    expect(palette(30, { tone: swatches.mural, offset })).toEqual(beforeZones.likeMural);
+    expect(palette([5, 1, 3, 2, 8], { tone: "soft", offset })).toEqual(beforeZones.weights);
+  });
+});
+
+describe("palette({ tone })", () => {
+  const range = (colors: string[], k: 0 | 1) => {
+    const xs = colors.map((c) => parseOklch(c)[k]);
+    return [Math.min(...xs), Math.max(...xs)];
+  };
+
+  it("is strong by default", () => {
+    expect(palette(30)).toEqual(palette(30, { tone: "strong" }));
+    expect(palette(30)).toEqual(palette(30, { tone: tones.strong }));
+  });
+
+  it("keeps each named tone's lightness and chroma, up to the gamut", () => {
+    for (const tone of Object.keys(tones) as (keyof typeof tones)[]) {
+      const colors = palette(50, { tone });
+      const [L0, L1] = range(colors, 0);
+      const [, C1] = range(colors, 1);
+      expect(L0).toBeGreaterThan(tones[tone].lightness[0] - 0.01);
+      expect(L1).toBeLessThan(tones[tone].lightness[1] + 0.01);
+      expect(C1).toBeLessThan(tones[tone].chroma[1] + 0.01);
+    }
+  });
+
+  it("puts tone fields over the base tone, and infers a tone from colors", () => {
+    const lighter = palette(20, { tone: { lightness: [0.8, 0.9] } });
+    expect(range(lighter, 0)[0]).toBeGreaterThan(0.79);
+    expect(range(lighter, 1)[1]).toBeGreaterThan(0.12); // strong chroma kept
+    expect(palette(20, { tone: swatches.mural })).toEqual(palette(20, { tone: inferTone(swatches.mural) }));
+  });
+
+  it("takes the base tone from seeds, which a tone overrides", () => {
+    const seeds = swatches.mural;
+    expect(palette(20, { seeds })).toEqual(palette(20, { seeds, tone: inferTone(seeds) }));
+    expect(palette(20, { seeds, tone: "vivid" })).not.toEqual(palette(20, { seeds }));
+    const lighter = palette(20, { seeds, tone: { lightness: [0.85, 0.9] } }).slice(seeds.length);
+    expect(range(lighter, 0)[0]).toBeGreaterThan(0.84);
+    expect(range(lighter, 1)[1]).toBeLessThan(inferTone(seeds).chroma[1] + 0.01);
+  });
+
+  it("throws on unknown tone names", () => {
+    // @ts-expect-error unknown tone
+    expect(() => palette(5, { tone: "neon" })).toThrow(/Unknown tone/);
+    // @ts-expect-error not an own property
+    expect(() => palette(5, { tone: "toString" })).toThrow(/Unknown tone/);
   });
 });
 
@@ -107,13 +135,13 @@ describe("palette() zones", () => {
   const lightness = (colors: string[]) => colors.map((c) => parseOklch(c)[0]);
 
   it("switches to the end region at the midpoint", () => {
-    const L = lightness(palette(40, { end, midpoint: 10, steepness: Infinity }));
+    const L = lightness(palette(40, { end: { lightness: end, midpoint: 10 } }));
     for (const l of L.slice(0, 10)) expect(l).toBeLessThan(0.84);
     for (const l of L.slice(10)) expect(l).toBeGreaterThan(0.89);
   });
 
   it("puts as many colors as fit minGap apart in the top zone", () => {
-    const colors = palette(100, { end, steepness: Infinity });
+    const colors = palette(100, { end });
     const m = lightness(colors).findIndex((l) => l > 0.89);
     expect(m).toBeGreaterThan(10);
     // hex rounding can shrink a distance slightly
@@ -122,7 +150,7 @@ describe("palette() zones", () => {
   });
 
   it("is consistent when n grows, also with an automatic midpoint and a fade", () => {
-    const fade = { end: "darker" as const, steepness: 4 };
+    const fade = { end: { steepness: 4 } };
     for (const n of [5, 15, 21, 22, 23, 40]) {
       expect(palette(100, fade).slice(0, n)).toEqual(palette(n, fade));
       expect(palette(100, { ...fade, hue: "Turbo" }).slice(0, n)).toEqual(palette(n, { ...fade, hue: "Turbo" }));
@@ -130,13 +158,14 @@ describe("palette() zones", () => {
   });
 
   it("fades with a finite steepness", () => {
-    const L = lightness(palette(60, { end, steepness: 4 }));
-    expect(L.slice(10, 40).some((l) => l > 0.84 && l < 0.9)).toBe(true);
+    const L = lightness(palette(60, { end: { lightness: end, steepness: 4 } }));
+    expect(L.slice(10, 40).some((l) => l > 0.77 && l < 0.9)).toBe(true);
   });
 
   it("keeps the top zone apart from later colors", () => {
     const colors = palette(250, { end: "darker" });
-    const m = lightness(colors).findIndex((l) => l < 0.65);
+    // The first color below the top zone, between it and the darker end zone
+    const m = lightness(colors).findIndex((l) => l < (defaultTone.lightness[0] + endLightness(defaultTone.lightness)[1]) / 2);
     const top = colors.slice(0, m).map(parseOklab);
     const rest = colors.slice(m).map(parseOklab);
     const gap = Math.min(...top.flatMap((a) => rest.map((b) => labDistance(a, b))));
@@ -144,19 +173,19 @@ describe("palette() zones", () => {
   });
 
   it("fades smoothly with a finite steepness", () => {
-    const L = lightness(palette(200, { end, midpoint: 10, steepness: 3 }));
+    const L = lightness(palette(200, { end: { lightness: end, midpoint: 10, steepness: 3 } }));
     const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
     expect(mean(L.slice(0, 5))).toBeLessThan(0.8);
     expect(mean(L.slice(100))).toBeGreaterThan(0.88);
-    expect(L.slice(8, 30).some((l) => l > 0.84 && l < 0.9)).toBe(true);
+    expect(L.slice(8, 30).some((l) => l > 0.77 && l < 0.9)).toBe(true);
   });
 });
 
 describe("end zone", () => {
   it("is just below the top zone by default, or just above with \"lighter\"", () => {
-    const [min, max] = defaultRegion.lightness;
-    const darker = endLightness(defaultRegion.lightness);
-    const lighter = endLightness(defaultRegion.lightness, "lighter");
+    const [min, max] = defaultTone.lightness;
+    const darker = endLightness(defaultTone.lightness);
+    const lighter = endLightness(defaultTone.lightness, "lighter");
     expect(darker[1]).toBeCloseTo(min - 0.03, 9);
     expect(darker[1] - darker[0]).toBeCloseTo(0.22, 9);
     expect(lighter[0]).toBeCloseTo(max + 0.03, 9);
@@ -165,34 +194,43 @@ describe("end zone", () => {
 
   it("is chosen with end: \"darker\", \"lighter\", a lightness range or false", () => {
     const L = (colors: string[]) => colors.slice(40).map((c) => parseOklch(c)[0]);
-    const hard = { steepness: Infinity, midpoint: 20 };
-    for (const l of L(palette(60, { ...hard, end: "darker" }))) expect(l).toBeLessThan(0.65);
-    for (const l of L(palette(60, { ...hard, end: "lighter" }))) expect(l).toBeGreaterThan(0.85);
-    for (const l of L(palette(60, { ...hard, end: [0.5, 0.55] }))) expect(l).toBeLessThan(0.56);
+    const midpoint = 20;
+    const darker = endLightness(defaultTone.lightness);
+    const lighter = endLightness(defaultTone.lightness, "lighter");
+    for (const l of L(palette(60, { end: { lightness: "darker", midpoint } }))) expect(l).toBeLessThan(darker[1] + 0.01);
+    for (const l of L(palette(60, { end: { lightness: "lighter", midpoint } }))) expect(l).toBeGreaterThan(lighter[0] - 0.01);
+    for (const l of L(palette(60, { end: { lightness: [0.5, 0.55], midpoint } }))) expect(l).toBeLessThan(0.56);
+    expect(palette(60, { end: { midpoint } })).toEqual(palette(60, { end: { lightness: "darker", midpoint } }));
+    expect(palette(60, { end: "lighter" })).toEqual(palette(60, { end: { lightness: "lighter" } }));
     expect(palette(60, { end: false })).toEqual(palette(60));
-    expect(palette(60, { ...hard, end: false })).toEqual(palette(60, { end: false }));
   });
 });
 
 describe("palette({ hue: scheme })", () => {
   const circular = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+  const schemeColors = (n: number, scheme: Parameters<typeof getScheme>[0]) =>
+    stops(n).map(({ start }) => getScheme(scheme)(start));
 
   it("takes hues from the scheme at the Cantor stops", () => {
-    const fromScheme = colors(20, { scheme: "Sinebow" });
-    const fromPalette = palette(20, { hue: "Sinebow", end: false });
+    const fromScheme = schemeColors(20, "Sinebow");
+    const fromPalette = palette(20, { hue: "Sinebow" });
     fromPalette.forEach((c, i) => {
       expect(circular(parseOklch(c)[2], parseOklch(fromScheme[i]!)[2])).toBeLessThan(6);
     });
   });
 
-  it("is more distinct than colors() for the same scheme", () => {
+  it("is more distinct than the scheme's own colors at the same stops", () => {
     for (const scheme of ["Sinebow", "Turbo", "Spectral"] as const) {
-      // Within the top zone with the default fade, and for many colors with a hard switch
-      expect(minDistance(palette(10, { hue: scheme }))).toBeGreaterThan(minDistance(colors(10, { scheme })));
-      expect(minDistance(palette(50, { hue: scheme, steepness: Infinity }))).toBeGreaterThan(
-        minDistance(colors(50, { scheme })),
-      );
+      expect(minDistance(palette(10, { hue: scheme }))).toBeGreaterThan(minDistance(schemeColors(10, scheme)));
+      expect(minDistance(palette(50, { hue: scheme }))).toBeGreaterThan(minDistance(schemeColors(50, scheme)));
     }
+  });
+
+  it("starts at the scheme's start, and offset moves along it in degrees", () => {
+    const sinebow = getScheme("Sinebow");
+    const hueAt = (t: number) => parseOklch(sinebow(t))[2];
+    expect(circular(parseOklch(palette(1, { hue: "Sinebow" })[0]!)[2], hueAt(0))).toBeLessThan(6);
+    expect(circular(parseOklch(palette(1, { hue: "Sinebow", offset: 90 })[0]!)[2], hueAt(0.25))).toBeLessThan(6);
   });
 
   it("accepts an interpolator and throws on unknown names", () => {
@@ -203,7 +241,7 @@ describe("palette({ hue: scheme })", () => {
 });
 
 describe("palette({ seeds })", () => {
-  const seeds = presets.mural;
+  const seeds = swatches.mural;
 
   for (const method of ["farthest", "lookahead"] as const) {
     describe(method, () => {
@@ -243,7 +281,7 @@ describe("palette({ seeds })", () => {
   });
 
   it("switches to the end zone at a fixed midpoint", () => {
-    const L = palette(30, { seeds, end: [0.9, 0.95], midpoint: 12 }).map((c) => parseOklch(c)[0]);
+    const L = palette(30, { seeds, end: { lightness: [0.9, 0.95], midpoint: 12 } }).map((c) => parseOklch(c)[0]);
     for (const l of L.slice(5, 12)) expect(l).toBeLessThan(0.84);
     for (const l of L.slice(12)) expect(l).toBeGreaterThan(0.89);
   });
@@ -266,9 +304,9 @@ describe("palette({ seeds })", () => {
   });
 });
 
-describe("inferRegion()", () => {
+describe("inferTone()", () => {
   it("finds the mural's lightness and chroma ranges and warm hue", () => {
-    const r = inferRegion(presets.mural);
+    const r = inferTone(swatches.mural);
     expect(r.lightness[0]).toBeCloseTo(0.648, 2);
     expect(r.lightness[1]).toBeCloseTo(0.818, 2);
     expect(r.chroma[0]).toBeCloseTo(0.029, 2);
@@ -279,7 +317,7 @@ describe("inferRegion()", () => {
   });
 
   it("widens a single color to a usable range", () => {
-    const r = inferRegion(["#808080"]);
+    const r = inferTone(["#808080"]);
     expect(r.lightness[1] - r.lightness[0]).toBeGreaterThanOrEqual(0.1 - 1e-9);
     expect(r.tilt).toBe(0);
   });
@@ -365,5 +403,27 @@ describe("hierarchy()", () => {
     expect(hierarchy(modules)([3, 2])).toBe(color([3, 2]));
     const plain = hierarchy(modules.map(({ path }) => ({ path })));
     expect(minDistance(level2.filter((p) => p[0] === 1).map(plain) as string[])).toBeGreaterThan(0.02);
+  });
+
+  it("sums the flows of repeated paths, so it takes one entry per node", () => {
+    const nodes = modules.flatMap(({ path, flow }) => [
+      { path, flow: flow / 4 },
+      { path, flow: (3 * flow) / 4 },
+    ]);
+    const fromNodes = hierarchy(nodes);
+    for (const { path } of modules) expect(fromNodes(path)).toBe(color(path));
+  });
+
+  it("keeps children inside the tone's chroma range, or as colorful as their parent", () => {
+    for (const tone of Object.keys(tones) as (keyof typeof tones)[]) {
+      const h = hierarchy(modules, { tone });
+      const [minChroma] = tones[tone].chroma;
+      for (const m of h.modules) {
+        const parent = h.modules.find((p) => p.path.join(":") === m.path.slice(0, -1).join(":"));
+        if (!parent) continue;
+        const floor = Math.min(minChroma, parseOklch(parent.color)[1]);
+        expect(parseOklch(m.color)[1]).toBeGreaterThan(floor - 0.005); // hex rounding
+      }
+    }
   });
 });

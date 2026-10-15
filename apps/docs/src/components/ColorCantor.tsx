@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Node, type Interval } from "@mapequation/c3";
+import type { Interval } from "@mapequation/c3/internal";
 import { delegatedHover, NONE, type Hover } from "./Hover";
 
 const SIZE = 300;
@@ -15,14 +15,17 @@ type Row = { intervals: Interval[]; level: number; sub: number; split: number };
 
 /** Split [0, 1] in halves like stops() does with equal weights, keeping every step as a row */
 function cantorRows() {
-  const nodes = [new Node(0, 1)];
+  const nodes: Interval[] = [{ start: 0, end: 1 }];
   const snapshot = () => nodes.map(({ start, end }) => ({ start, end }));
   const rows: Row[] = [{ intervals: snapshot(), level: 0, sub: 0, split: 0 }];
   for (let level = 1; level <= LEVELS; ++level) {
     const count = nodes.length;
     for (let j = 0; j < count && nodes.length < MAX_STOPS; ++j) {
       const parent = nodes[j];
-      nodes.push(parent.split(1, 0));
+      // Split in halves: the parent keeps the first half and a new interval takes the second
+      const mid = (parent.start + parent.end) / 2;
+      nodes.push({ start: mid, end: parent.end });
+      parent.end = mid;
       rows.push({ intervals: snapshot(), level, sub: j, split: parent.end });
     }
   }
