@@ -72,11 +72,16 @@ export const API: ApiEntry[] = [
     options: [
       [
         "hue",
-        "number | SchemeName | (t) => string",
+        '"Oklch" | SchemeName | (t) => string',
         fmt(defaultPaletteOptions.hue),
-        "Hue of the first color in degrees, going toward lower hues. Or a d3 scheme name or interpolator to take the hue at each Cantor stop from.",
+        'Where hues come from: `"Oklch"` for the OKLCH hue circle, or a d3 scheme name or interpolator to take the hue at each Cantor stop from.',
       ],
-      ["offset", "number", fmt(defaultPaletteOptions.offset), "Shift the Cantor stops along the hue circle or scheme, from 0 to 1."],
+      [
+        "offset",
+        "number",
+        `${fmt(defaultPaletteOptions.offset)} on "Oklch", 0 on a scheme`,
+        'Where the first color sits, in degrees around the hue source: its hue on `"Oklch"`, where later colors go toward lower hues. On a scheme, 360 is the whole scheme.',
+      ],
       ["reverse", "boolean", fmt(defaultPaletteOptions.reverse), "Go toward higher hues, or read the scheme from 1 to 0."],
       [
         "tone",
@@ -113,7 +118,7 @@ export const API: ApiEntry[] = [
       ],
     ],
     returns: "Hex color strings.",
-    example: `palette(20);\npalette(20, { hue: "Sinebow" });\npalette(20, { tone: "pastel", hue: 40 });\npalette(20, { tone: { ...tones.vivid, lightness: [0.6, 0.7] } });\npalette(50, { seeds: swatches.mural });\npalette(100, { end: "darker" });`,
+    example: `palette(20);\npalette(20, { hue: "Sinebow" });\npalette(20, { tone: "pastel", offset: 40 });\npalette(20, { tone: { ...tones.vivid, lightness: [0.6, 0.7] } });\npalette(50, { seeds: swatches.mural });\npalette(100, { end: "darker" });`,
   },
   {
     name: "hierarchy",

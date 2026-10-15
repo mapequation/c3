@@ -40,6 +40,9 @@ export type EndZone = {
   steepness?: number;
 };
 
+/** Where hues come from: "Oklch" for the OKLCH hue circle, or a d3 color scheme */
+export type HueSource = "Oklch" | Scheme | SchemeName;
+
 export type PaletteOptions = {
   /**
    * Lightness and chroma: a tone name like "strong" or "pastel", colors to infer the tone from,
@@ -47,9 +50,12 @@ export type PaletteOptions = {
    * scheme's colors (with the default lightness), else the default "strong".
    */
   tone?: ToneOption;
-  /** Hue of the first color in degrees (OKLCH), or a d3 color scheme to take hues from */
-  hue?: number | Scheme | SchemeName;
-  /** Shift the stops along the hue circle or scheme, from 0 to 1 */
+  /** Where hues come from: "Oklch" for the OKLCH hue circle (default), or a d3 color scheme name or interpolator */
+  hue?: HueSource;
+  /**
+   * Where on the hue source the first color sits, in degrees: its hue on "Oklch", and on a
+   * scheme, 360 is the whole scheme. Default 245 (blue) on "Oklch" and 0, the scheme's start, on a scheme.
+   */
   offset?: number;
   /** Go around the hue circle toward higher hues, or read the scheme from 1 to 0 */
   reverse?: boolean;
@@ -74,8 +80,9 @@ export type PaletteOptions = {
 
 export const defaultPaletteOptions = {
   tone: "strong" as const,
-  hue: 245,
-  offset: 0,
+  hue: "Oklch" as const,
+  /** On "Oklch"; a scheme starts at 0 */
+  offset: 245,
   reverse: false,
   candidates: 4096,
   lookahead: 64,
@@ -83,6 +90,9 @@ export const defaultPaletteOptions = {
   chromaOffset: 4,
   end: false as const,
 };
+
+/** Where the first color sits by default: blue on the hue circle, the start of a scheme */
+export const defaultOffset = (hue: HueSource) => (hue === "Oklch" ? defaultPaletteOptions.offset : 0);
 
 export const defaultEndZone: Required<EndZone> = {
   lightness: "darker",
@@ -189,16 +199,15 @@ function choose(n: number, method: Exclude<Method, "sequence">, options: Palette
 function sequenceColor(options: PaletteOptions) {
   const {
     hue = defaultPaletteOptions.hue,
-    offset = defaultPaletteOptions.offset,
     reverse = defaultPaletteOptions.reverse,
     lightnessOffset = defaultPaletteOptions.lightnessOffset,
     chromaOffset = defaultPaletteOptions.chromaOffset,
   } = options;
-  const hueAt = hueSource(hue, reverse);
+  const hueAt = hueSource(hue, options.offset ?? defaultOffset(hue), reverse);
   return (i: number, tone: Tone, position = vanDerCorput(i, 2)) =>
     toneColor(
       tone,
-      hueAt(fract(position + offset)),
+      hueAt(position),
       vanDerCorput(i + lightnessOffset, 3),
       vanDerCorput(i + chromaOffset, 5),
     );
@@ -210,7 +219,7 @@ function sequenceColor(options: PaletteOptions) {
  */
 export function paletteTones(options: PaletteOptions = {}): { top: Tone; bottom: Tone } {
   const { hue = defaultPaletteOptions.hue, seeds = [], tone } = options;
-  const base = seeds.length > 0 ? inferTone(seeds) : typeof hue === "number" ? defaultTone : schemeTone(hue);
+  const base = seeds.length > 0 ? inferTone(seeds) : hue === "Oklch" ? defaultTone : schemeTone(hue);
   const top = resolveTone(tone, base);
   const zone = endZone(options.end);
   if (!zone) return { top, bottom: top };
@@ -237,15 +246,18 @@ export function schemeTone(scheme: Scheme | SchemeName): Tone {
   return { ...inferTone(samples), lightness: defaultTone.lightness };
 }
 
-/** Hue in degrees at position t in [0, 1] */
-function hueSource(hue: number | Scheme | SchemeName, reverse: boolean): (t: number) => number {
-  if (typeof hue === "number") {
+/** Hue in degrees at position t in [0, 1], with the first color offset degrees around the source */
+function hueSource(hue: HueSource, offset: number, reverse: boolean): (t: number) => number {
+  if (hue === "Oklch") {
     const direction = reverse ? 1 : -1;
-    return (t) => (((hue + direction * 360 * t) % 360) + 360) % 360;
+    return (t) => (((offset + direction * 360 * t) % 360) + 360) % 360;
   }
   const scheme = typeof hue === "string" ? getScheme(hue) : hue;
   if (!scheme) throw new Error(`Unknown color scheme: ${hue}`);
-  return (t) => parseOklch(scheme(reverse ? 1 - t : t))[2];
+  return (t) => {
+    const u = fract(t + offset / 360);
+    return parseOklch(scheme(reverse ? 1 - u : u))[2];
+  };
 }
 
 /**

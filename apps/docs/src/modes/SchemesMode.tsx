@@ -12,11 +12,11 @@ import { timed, toHex, unlessDefault } from "../util";
 
 const RING_SAMPLES = 120;
 
-/** The scheme's own colors at positions on [0, 1], shifted by offset like palette() shifts the Cantor stops */
+/** The scheme's own colors at positions on [0, 1], shifted by offset degrees like palette() shifts the Cantor stops */
 function schemeColors(name: SchemeName, positions: number[], offset: number, reverse: boolean) {
   const scheme = getScheme(name);
   return positions.map((p) => {
-    const t = (p + offset) % 1;
+    const t = (p + offset / 360) % 1;
     return toHex(scheme(reverse ? 1 - t : t));
   });
 }
@@ -58,7 +58,7 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
           </select>
         </label>
         <Check label="Reverse direction" checked={reverse} onChange={setReverse} />
-        <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={1} step={0.01} />
+        <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={360} />
         <p className="hint">Offset shifts the Cantor stops along the scheme.</p>
       </Group>
     </>

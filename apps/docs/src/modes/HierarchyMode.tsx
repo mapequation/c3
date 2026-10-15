@@ -1,6 +1,6 @@
 import { useDeferredValue, useId, useMemo, useRef, useState } from "react";
 import { hierarchy, type HierarchyOptions, type SchemeName, type Tone } from "@mapequation/c3";
-import { defaultHierarchyOptions, defaultPaletteOptions, defaultTone } from "@mapequation/c3/internal";
+import { defaultHierarchyOptions, defaultOffset, defaultPaletteOptions, defaultTone } from "@mapequation/c3/internal";
 import { Check, Group, SchemeOptions, Slider, ToneControls } from "../components/Controls";
 import { Icicle } from "../components/Icicle";
 import { BallView } from "../components/BallView";
@@ -51,8 +51,8 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
   const [skew, setSkew] = useState(1);
   const [text, setText] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
-  const [source, setSource] = useState<"circle" | SchemeName>("circle");
-  const [hue, setHue] = useState(defaultPaletteOptions.hue);
+  const [source, setSource] = useState<"Oklch" | SchemeName>(defaultPaletteOptions.hue);
+  const [offset, setOffset] = useState(defaultOffset(defaultPaletteOptions.hue));
   const method = useMethod(METHODS, METHOD_HINTS);
   const [padding, setPadding] = useState(defaultHierarchyOptions.padding);
   const [useFlows, setUseFlows] = useState(true);
@@ -68,7 +68,7 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
   const own = parsed !== null && !parsed.error;
   const modules = own ? parsed.modules : sample;
 
-  const scheme = source === "circle" ? undefined : source;
+  const scheme = source === "Oklch" ? undefined : source;
   // The tone palette() uses unless told otherwise; null until the tone select or a slider changes it
   const [custom, setCustom] = useState<Tone | null>(null);
   const inferred = useMemo(() => (scheme ? schemeTone(scheme) : defaultTone), [scheme]);
@@ -77,10 +77,11 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
     () => ({
       ...method.options,
       tone: toneOption(tone, inferred),
-      hue: scheme ?? unlessDefault(hue, defaultPaletteOptions.hue),
+      hue: unlessDefault(source, defaultPaletteOptions.hue),
+      offset: unlessDefault(offset, defaultOffset(source)),
       padding: unlessDefault(padding, defaultHierarchyOptions.padding),
     }),
-    [method.options, tone, inferred, scheme, hue, padding],
+    [method.options, tone, inferred, source, offset, padding],
   );
   const input = useMemo(() => (useFlows ? modules : modules.map(({ path }) => ({ path }))), [modules, useFlows]);
 
@@ -191,12 +192,19 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
       <Group legend="Top module colors">
         <label className="field">
           <span>Hue source</span>
-          <select value={source} onChange={(e) => setSource(e.target.value as typeof source)}>
-            <option value="circle">OKLCH hue circle</option>
+          <select
+            value={source}
+            onChange={(e) => {
+              const next = e.target.value as typeof source;
+              setSource(next);
+              setOffset(defaultOffset(next));
+            }}
+          >
+            <option value="Oklch">Oklch (OKLCH hue circle)</option>
             <SchemeOptions />
           </select>
         </label>
-        <Slider label="First hue" value={hue} onChange={setHue} min={0} max={360} disabled={!!scheme} />
+        <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={360} />
         {method.controls}
       </Group>
 

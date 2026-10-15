@@ -54,9 +54,17 @@ describe("palette()", () => {
     expect(minDistance(palette(20))).toBeGreaterThan(0.04);
   });
 
-  it("changes the first color with hue but not the spacing", () => {
-    const a = palette(20, { hue: 0 });
-    const b = palette(20, { hue: 180 });
+  it("starts at the offset hue on the hue circle, 245 by default", () => {
+    const circular = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+    expect(circular(parseOklch(palette(1)[0]!)[2], 245)).toBeLessThan(1);
+    expect(circular(parseOklch(palette(1, { offset: 30 })[0]!)[2], 30)).toBeLessThan(1);
+    expect(palette(20, { offset: 400 })).toEqual(palette(20, { offset: 40 }));
+    expect(palette(20, { hue: "Oklch" })).toEqual(palette(20));
+  });
+
+  it("changes the first color with the offset but not the spacing", () => {
+    const a = palette(20, { offset: 0 });
+    const b = palette(20, { offset: 180 });
     expect(a[0]).not.toEqual(b[0]);
     expect(minDistance(b)).toBeGreaterThan(0.03);
   });
@@ -68,11 +76,11 @@ describe("palette()", () => {
 
 describe("palette() without zones", () => {
   it("is unchanged from before zones were added, with the soft tone and the old default hue", () => {
-    const hue = 125;
-    expect(palette(50, { tone: "soft", hue })).toEqual(beforeZones.default);
-    expect(palette(30, { tone: "soft", hue: 40 })).toEqual(beforeZones.hue40);
-    expect(palette(30, { tone: swatches.mural, hue })).toEqual(beforeZones.likeMural);
-    expect(palette([5, 1, 3, 2, 8], { tone: "soft", hue })).toEqual(beforeZones.weights);
+    const offset = 125;
+    expect(palette(50, { tone: "soft", offset })).toEqual(beforeZones.default);
+    expect(palette(30, { tone: "soft", offset: 40 })).toEqual(beforeZones.hue40);
+    expect(palette(30, { tone: swatches.mural, offset })).toEqual(beforeZones.likeMural);
+    expect(palette([5, 1, 3, 2, 8], { tone: "soft", offset })).toEqual(beforeZones.weights);
   });
 });
 
@@ -216,6 +224,13 @@ describe("palette({ hue: scheme })", () => {
       expect(minDistance(palette(10, { hue: scheme }))).toBeGreaterThan(minDistance(schemeColors(10, scheme)));
       expect(minDistance(palette(50, { hue: scheme }))).toBeGreaterThan(minDistance(schemeColors(50, scheme)));
     }
+  });
+
+  it("starts at the scheme's start, and offset moves along it in degrees", () => {
+    const sinebow = getScheme("Sinebow");
+    const hueAt = (t: number) => parseOklch(sinebow(t))[2];
+    expect(circular(parseOklch(palette(1, { hue: "Sinebow" })[0]!)[2], hueAt(0))).toBeLessThan(6);
+    expect(circular(parseOklch(palette(1, { hue: "Sinebow", offset: 90 })[0]!)[2], hueAt(0.25))).toBeLessThan(6);
   });
 
   it("accepts an interpolator and throws on unknown names", () => {

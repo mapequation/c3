@@ -64,7 +64,7 @@ import { palette, hierarchy, tones, swatches } from "@mapequation/c3";
 
 // The first 20 colors of the sequence, in the default strong tone
 palette(20);
-palette(20, { tone: "pastel", hue: 40 });
+palette(20, { tone: "pastel", offset: 40 });
 palette(20, { tone: { ...tones.vivid, lightness: [0.6, 0.7] } });
 
 // Hues from a d3 color scheme
@@ -96,8 +96,8 @@ The space follows the weights but compressed: a color with half of the total wei
 
 | Option | Default | |
 |---|---|---|
-| `hue` | `245` | Hue of the first color in degrees, going toward lower hues, or a d3 scheme name or interpolator to take hues from |
-| `offset` | `0` | Shift the Cantor stops along the hue circle or scheme, from 0 to 1 |
+| `hue` | `"Oklch"` | Where hues come from: `"Oklch"` for the OKLCH hue circle, or a d3 scheme name or interpolator |
+| `offset` | `245` on `"Oklch"`, `0` on a scheme | Where the first color sits, in degrees around the hue source: its hue on `"Oklch"`, where later colors go toward lower hues. On a scheme, 360 is the whole scheme |
 | `reverse` | `false` | Go toward higher hues, or read the scheme from 1 to 0 |
 | `tone` | `"strong"` | Lightness and chroma of the colors, see [Tones](#tones) |
 | `seeds` | | Colors to start with, see [Seeds and methods](#seeds-and-methods) |

@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { oklch, palette, type PaletteOptions, type SchemeName, type Tone } from "@mapequation/c3";
-import { defaultPaletteOptions, defaultTone, endZone, getScheme } from "@mapequation/c3/internal";
+import { defaultOffset, defaultPaletteOptions, defaultTone, endZone, getScheme } from "@mapequation/c3/internal";
 import { Check, Group, ModeLayout, ToneControls, SchemeOptions, Slider } from "../components/Controls";
 import { ColorCantor } from "../components/ColorCantor";
 import { PolarPlot } from "../components/PolarPlot";
@@ -18,19 +18,19 @@ const STRIP_SAMPLES = 64;
 const METHODS = ["sequence", "farthest", "lookahead"] as const;
 
 /** The hue palette() takes at each point of [0, 1], shown at a fixed lightness and chroma */
-function hueStrip({ hue = defaultPaletteOptions.hue, offset = 0, reverse = false }: PaletteOptions) {
-  const scheme = typeof hue === "number" ? null : typeof hue === "string" ? getScheme(hue) : hue;
+function hueStrip({ hue = defaultPaletteOptions.hue, offset = defaultOffset(hue), reverse = false }: PaletteOptions) {
+  const scheme = hue === "Oklch" ? null : typeof hue === "string" ? getScheme(hue) : hue;
   return Array.from({ length: STRIP_SAMPLES }, (_, k) => {
-    const t = ((k + 0.5) / STRIP_SAMPLES + offset) % 1;
-    const h = scheme ? oklch(scheme(reverse ? 1 - t : t))[2] : (((hue as number) + (reverse ? 360 : -360) * t) % 360 + 360) % 360;
+    const p = (k + 0.5) / STRIP_SAMPLES;
+    const t = (p + offset / 360) % 1;
+    const h = scheme ? oklch(scheme(reverse ? 1 - t : t))[2] : (((offset + (reverse ? 360 : -360) * p) % 360) + 360) % 360;
     return `oklch(0.8 0.1 ${h.toFixed(1)})`;
   });
 }
 
 export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void }) {
-  const [source, setSource] = useState<"circle" | SchemeName>("circle");
-  const [hue, setHue] = useState(defaultPaletteOptions.hue);
-  const [offset, setOffset] = useState(defaultPaletteOptions.offset);
+  const [source, setSource] = useState<"Oklch" | SchemeName>(defaultPaletteOptions.hue);
+  const [offset, setOffset] = useState(defaultOffset(defaultPaletteOptions.hue));
   const [reverse, setReverse] = useState(defaultPaletteOptions.reverse);
   const [lightnessOffset, setLightnessOffset] = useState(defaultPaletteOptions.lightnessOffset);
   const [chromaOffset, setChromaOffset] = useState(defaultPaletteOptions.chromaOffset);
@@ -40,7 +40,7 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
   const [hovered, onHover] = useHover();
   const hover = { hovered, onHover };
 
-  const scheme = source === "circle" ? undefined : source;
+  const scheme = source === "Oklch" ? undefined : source;
   // The tone palette() uses unless told otherwise
   const base = useMemo(() => (scheme ? schemeTone(scheme) : defaultTone), [scheme]);
   const top = custom ?? base;
@@ -51,8 +51,8 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
   const [options, toggled] = useMemo<PaletteOptions[]>(() => {
     const common: PaletteOptions = {
       ...method.options,
-      hue: scheme ?? unlessDefault(hue, defaultPaletteOptions.hue),
-      offset: unlessDefault(offset, defaultPaletteOptions.offset),
+      hue: unlessDefault(source, defaultPaletteOptions.hue),
+      offset: unlessDefault(offset, defaultOffset(source)),
       reverse: unlessDefault(reverse, defaultPaletteOptions.reverse),
       // A name, or the fields that differ from the base
       tone: toneOption(top, base),
@@ -62,7 +62,7 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
     const on = { ...common, ...zones.options };
     const off = { ...common, end: undefined };
     return zones.on ? [on, off] : [off, on];
-  }, [scheme, hue, offset, reverse, top, base, lightnessOffset, chromaOffset, method.options, zones.on, zones.options]);
+  }, [source, offset, reverse, top, base, lightnessOffset, chromaOffset, method.options, zones.on, zones.options]);
 
   const deferred = useDeferredValue(useMemo(() => ({ n, options, toggled }), [n, options, toggled]));
   const result = useMemo(() => {
@@ -89,15 +89,21 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       <Group legend="Hue">
         <label className="field">
           <span>Hue source</span>
-          <select value={source} onChange={(e) => setSource(e.target.value as typeof source)}>
-            <option value="circle">OKLCH hue circle</option>
+          <select
+            value={source}
+            onChange={(e) => {
+              const next = e.target.value as typeof source;
+              setSource(next);
+              setOffset(defaultOffset(next));
+            }}
+          >
+            <option value="Oklch">Oklch (OKLCH hue circle)</option>
             <SchemeOptions />
           </select>
         </label>
-        <Slider label="First hue" value={hue} onChange={setHue} min={0} max={360} disabled={!!scheme} />
-        <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={1} step={0.01} />
+        <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={360} />
         <Check label="Reverse direction" checked={reverse} onChange={setReverse} />
-        <p className="hint">Offset shifts the Cantor stops along the hue circle or scheme.</p>
+        <p className="hint">Offset is where the first color sits, in degrees: its hue on the OKLCH hue circle. On a scheme, 360 is the whole scheme.</p>
       </Group>
 
       <Group legend="Method">{method.controls}</Group>

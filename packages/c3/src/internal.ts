@@ -1,7 +1,7 @@
 /**
  * Defaults and building blocks for the docs. Not part of the public API; may change in any release.
  */
-export { defaultPaletteOptions, defaultEndZone, endZone, paletteTones, schemeTone } from "./palette.js";
+export { defaultPaletteOptions, defaultOffset, defaultEndZone, endZone, paletteTones, schemeTone } from "./palette.js";
 export { defaultHierarchyOptions } from "./hierarchy.js";
 export { defaultTone, endLightness, toneColor } from "./tone.js";
 export { getScheme } from "./schemes.js";

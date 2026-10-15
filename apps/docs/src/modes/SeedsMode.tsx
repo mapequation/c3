@@ -36,7 +36,7 @@ function parseSeeds(text: string) {
 export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void }) {
   const [text, setText] = useState(MURAL);
   const method = useMethod(METHODS);
-  const [hue, setHue] = useState(defaultPaletteOptions.hue);
+  const [offset, setOffset] = useState(defaultPaletteOptions.offset);
   // The tone chosen with the select or the sliders; null until one changes it
   const [custom, setCustom] = useState<Tone | null>(null);
   const errorId = useId();
@@ -55,12 +55,12 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
       ...method.options,
       // Without seeds the default method is "sequence"
       method: seeds.length > 0 ? method.options.method : method.method,
-      hue: unlessDefault(hue, defaultPaletteOptions.hue),
+      offset: unlessDefault(offset, defaultPaletteOptions.offset),
       // The seeds give the tone, unless it was changed
       tone: seeds.length > 0 ? toneOption(shownTone, inferred) : toneOption(shownTone, defaultTone),
       ...(zones.on && zones.options),
     }),
-    [seeds, method.options, method.method, hue, shownTone, inferred, zones.on, zones.options],
+    [seeds, method.options, method.method, offset, shownTone, inferred, zones.on, zones.options],
   );
 
   const deferred = useDeferredValue(useMemo(() => ({ n, options }), [n, options]));
@@ -114,7 +114,7 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
 
       <Group legend="Method">
         {method.controls}
-        <Slider label="First hue" value={hue} onChange={setHue} min={0} max={360} />
+        <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={360} />
       </Group>
 
       <Group legend="Lightness and chroma">
