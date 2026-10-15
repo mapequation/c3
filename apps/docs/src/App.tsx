@@ -32,7 +32,7 @@ const MODES = [
     about: (
       <>
         Colors from the <a href="#how-it-works">Halton sequence</a>: hues at the Cantor stops on the OKLCH hue circle or
-        a d3 scheme, lightness and chroma (how colorful a color is) within the tone, vivid by default.
+        a d3 scheme, lightness and chroma (how colorful a color is) within the tone, strong by default.
       </>
     ),
     Mode: PaletteMode,

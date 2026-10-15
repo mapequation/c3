@@ -42,9 +42,9 @@ export type EndZone = {
 
 export type PaletteOptions = {
   /**
-   * Lightness and chroma: a tone name like "vivid" or "pastel", colors to infer the tone from,
+   * Lightness and chroma: a tone name like "strong" or "pastel", colors to infer the tone from,
    * or tone fields over the base tone. The base tone is inferred from seeds, else from a
-   * scheme's colors (with the default lightness), else the default "vivid".
+   * scheme's colors (with the default lightness), else the default "strong".
    */
   tone?: ToneOption;
   /** Hue of the first color in degrees (OKLCH), or a d3 color scheme to take hues from */
@@ -73,7 +73,7 @@ export type PaletteOptions = {
 };
 
 export const defaultPaletteOptions = {
-  tone: "vivid" as const,
+  tone: "strong" as const,
   hue: 245,
   offset: 0,
   reverse: false,

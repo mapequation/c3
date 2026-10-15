@@ -82,9 +82,9 @@ describe("palette({ tone })", () => {
     return [Math.min(...xs), Math.max(...xs)];
   };
 
-  it("is vivid by default", () => {
-    expect(palette(30)).toEqual(palette(30, { tone: "vivid" }));
-    expect(palette(30)).toEqual(palette(30, { tone: tones.vivid }));
+  it("is strong by default", () => {
+    expect(palette(30)).toEqual(palette(30, { tone: "strong" }));
+    expect(palette(30)).toEqual(palette(30, { tone: tones.strong }));
   });
 
   it("keeps each named tone's lightness and chroma, up to the gamut", () => {
@@ -101,7 +101,7 @@ describe("palette({ tone })", () => {
   it("puts tone fields over the base tone, and infers a tone from colors", () => {
     const lighter = palette(20, { tone: { lightness: [0.8, 0.9] } });
     expect(range(lighter, 0)[0]).toBeGreaterThan(0.79);
-    expect(range(lighter, 1)[1]).toBeGreaterThan(0.12); // vivid chroma kept
+    expect(range(lighter, 1)[1]).toBeGreaterThan(0.12); // strong chroma kept
     expect(palette(20, { tone: swatches.mural })).toEqual(palette(20, { tone: inferTone(swatches.mural) }));
   });
 
@@ -156,7 +156,8 @@ describe("palette() zones", () => {
 
   it("keeps the top zone apart from later colors", () => {
     const colors = palette(250, { end: "darker" });
-    const m = lightness(colors).findIndex((l) => l < 0.625);
+    // The first color below the top zone, between it and the darker end zone
+    const m = lightness(colors).findIndex((l) => l < (defaultTone.lightness[0] + endLightness(defaultTone.lightness)[1]) / 2);
     const top = colors.slice(0, m).map(parseOklab);
     const rest = colors.slice(m).map(parseOklab);
     const gap = Math.min(...top.flatMap((a) => rest.map((b) => labDistance(a, b))));
@@ -186,8 +187,10 @@ describe("end zone", () => {
   it("is chosen with end: \"darker\", \"lighter\", a lightness range or false", () => {
     const L = (colors: string[]) => colors.slice(40).map((c) => parseOklch(c)[0]);
     const midpoint = 20;
-    for (const l of L(palette(60, { end: { lightness: "darker", midpoint } }))) expect(l).toBeLessThan(0.62);
-    for (const l of L(palette(60, { end: { lightness: "lighter", midpoint } }))) expect(l).toBeGreaterThan(0.78);
+    const darker = endLightness(defaultTone.lightness);
+    const lighter = endLightness(defaultTone.lightness, "lighter");
+    for (const l of L(palette(60, { end: { lightness: "darker", midpoint } }))) expect(l).toBeLessThan(darker[1] + 0.01);
+    for (const l of L(palette(60, { end: { lightness: "lighter", midpoint } }))) expect(l).toBeGreaterThan(lighter[0] - 0.01);
     for (const l of L(palette(60, { end: { lightness: [0.5, 0.55], midpoint } }))) expect(l).toBeLessThan(0.56);
     expect(palette(60, { end: { midpoint } })).toEqual(palette(60, { end: { lightness: "darker", midpoint } }));
     expect(palette(60, { end: "lighter" })).toEqual(palette(60, { end: { lightness: "lighter" } }));

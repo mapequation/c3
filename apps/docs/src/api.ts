@@ -81,8 +81,8 @@ export const API: ApiEntry[] = [
       [
         "tone",
         'ToneName | string[] | Partial<Tone>',
-        '"vivid"',
-        'Lightness and chroma of the colors: a tone name (`"vivid"`, `"strong"`, `"deep"`, `"soft"`, `"pastel"` or `"muted"`), colors to infer the tone from, or the tone\'s fields over the base tone, such as `{ lightness: [0.6, 0.8] }`. The base tone is inferred from `seeds` if given, else from a d3 scheme set as `hue` (`chroma`, `warmHue` and `tilt` from the middle 90% of its colors, `lightness` from `"vivid"`), else it is `"vivid"`.',
+        '"strong"',
+        'Lightness and chroma of the colors: a tone name (`"vivid"`, `"bright"`, `"strong"`, `"deep"`, `"dark"`, `"soft"`, `"pastel"` or `"muted"`), colors to infer the tone from, or the tone\'s fields over the base tone, such as `{ lightness: [0.6, 0.8] }`. The base tone is inferred from `seeds` if given, else from a d3 scheme set as `hue` (`chroma`, `warmHue` and `tilt` from the middle 90% of its colors, `lightness` from `"strong"`), else it is `"strong"`.',
       ],
       [
         "seeds",
@@ -141,7 +141,7 @@ export const API: ApiEntry[] = [
     name: "tones",
     signature: "tones: Record<ToneName, Tone>",
     description: [
-      "Named tones for `palette({ tone })`: vivid (the default), strong, deep, soft, pastel and muted. A tone is the part of OKLCH the colors come from: a lightness and a chroma range. `Object.keys(tones)` lists the names. The sRGB gamut caps chroma below the range for some hues, most for cyan in the colorful tones.",
+      "Named tones for `palette({ tone })`: vivid, bright, strong (the default), deep, dark, soft, pastel and muted. A tone is the part of OKLCH the colors come from: a lightness and a chroma range. `Object.keys(tones)` lists the names. The sRGB gamut caps chroma below the range for some hues, most for cyan in the colorful tones.",
       "Start from a named tone with `{ ...tones.pastel, chroma: [0.08, 0.12] }`. These are the fields of a tone:",
     ],
     options: toneRows,

@@ -20,16 +20,21 @@ export type Tone = {
 };
 
 /**
- * Named tones. The sRGB gamut caps chroma below the range for some hues,
- * most for cyan in the colorful tones.
+ * Named tones, loosely after the PCCS tone system, but with narrower lightness ranges
+ * so that no hue stands out. The sRGB gamut caps chroma below the range for some hues,
+ * most for cyan and yellow in the colorful tones.
  */
 export const tones = {
-  /** Colorful at medium lightness, for small marks like nodes. The default */
-  vivid: { lightness: [0.64, 0.76], chroma: [0.12, 0.17], warmHue: 285, tilt: 0 },
-  /** Between vivid and deep, with wider ranges that fit the most distinct colors */
+  /** The most colorful, close to the sRGB limit for many hues */
+  vivid: { lightness: [0.55, 0.7], chroma: [0.15, 0.21], warmHue: 285, tilt: 0 },
+  /** Colorful and lighter than vivid, close to d3gl's module colors */
+  bright: { lightness: [0.64, 0.76], chroma: [0.12, 0.17], warmHue: 285, tilt: 0 },
+  /** Between vivid and deep, with wider ranges that fit the most distinct colors. The default */
   strong: { lightness: [0.55, 0.76], chroma: [0.08, 0.17], warmHue: 285, tilt: 0 },
   /** Dark and colorful, for light backgrounds */
   deep: { lightness: [0.45, 0.62], chroma: [0.1, 0.17], warmHue: 285, tilt: 0 },
+  /** Darker and less colorful than deep */
+  dark: { lightness: [0.36, 0.5], chroma: [0.06, 0.12], warmHue: 285, tilt: 0 },
   /** Lighter and less colorful, close to the Englewood mural */
   soft: { lightness: [0.67, 0.83], chroma: [0.045, 0.135], warmHue: 285, tilt: 0.15 },
   /** Light, for large areas or dark backgrounds */
@@ -43,7 +48,7 @@ export type ToneName = keyof typeof tones;
 /** A tone name, colors to infer the tone from, or tone fields over the base tone */
 export type ToneOption = ToneName | readonly string[] | Partial<Tone>;
 
-export const defaultTone: Tone = tones.vivid;
+export const defaultTone: Tone = tones.strong;
 
 const isColors = (tone: ToneOption): tone is readonly string[] => Array.isArray(tone);
 
