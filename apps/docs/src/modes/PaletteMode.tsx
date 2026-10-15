@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo, useState } from "react";
-import { inferTone, oklch, palette, swatches, type PaletteOptions, type SchemeName, type Tone } from "@mapequation/c3";
+import { oklch, palette, type PaletteOptions, type SchemeName, type Tone } from "@mapequation/c3";
 import { defaultPaletteOptions, defaultTone, endZone, getScheme } from "@mapequation/c3/internal";
 import { Check, Group, ModeLayout, ToneControls, SchemeOptions, Slider } from "../components/Controls";
 import { ColorCantor } from "../components/ColorCantor";
@@ -14,7 +14,6 @@ import { firstDifference } from "../quality";
 import { callCode } from "../code";
 import { schemeTone, timed, toneOption, unlessDefault } from "../util";
 
-const muralTone = inferTone(swatches.mural);
 const STRIP_SAMPLES = 64;
 const METHODS = ["sequence", "farthest", "lookahead"] as const;
 
@@ -35,7 +34,6 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
   const [reverse, setReverse] = useState(defaultPaletteOptions.reverse);
   const [lightnessOffset, setLightnessOffset] = useState(defaultPaletteOptions.lightnessOffset);
   const [chromaOffset, setChromaOffset] = useState(defaultPaletteOptions.chromaOffset);
-  const [like, setLike] = useState(false);
   // The tone chosen with the select or the sliders; null until one changes it
   const [custom, setCustom] = useState<Tone | null>(null);
   // Highlighted colors by index, linked across the views; apart from the memoized palettes
@@ -45,8 +43,7 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
   const scheme = source === "circle" ? undefined : source;
   // The tone palette() uses unless told otherwise
   const base = useMemo(() => (scheme ? schemeTone(scheme) : defaultTone), [scheme]);
-  const inferred = like ? muralTone : base;
-  const top = custom ?? inferred;
+  const top = custom ?? base;
   const method = useMethod(METHODS);
   const zones = useZones(top, method.method === "sequence");
 
@@ -57,15 +54,15 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       hue: scheme ?? unlessDefault(hue, defaultPaletteOptions.hue),
       offset: unlessDefault(offset, defaultPaletteOptions.offset),
       reverse: unlessDefault(reverse, defaultPaletteOptions.reverse),
-      // Colors to match give the tone, unless it was changed: then a name or the fields that differ from the base
-      tone: like && !custom ? swatches.mural : toneOption(top, base),
+      // A name, or the fields that differ from the base
+      tone: toneOption(top, base),
       lightnessOffset: unlessDefault(lightnessOffset, defaultPaletteOptions.lightnessOffset),
       chromaOffset: unlessDefault(chromaOffset, defaultPaletteOptions.chromaOffset),
     };
     const on = { ...common, ...zones.options };
     const off = { ...common, end: undefined };
     return zones.on ? [on, off] : [off, on];
-  }, [scheme, hue, offset, reverse, like, custom, top, base, lightnessOffset, chromaOffset, method.options, zones.on, zones.options]);
+  }, [scheme, hue, offset, reverse, top, base, lightnessOffset, chromaOffset, method.options, zones.on, zones.options]);
 
   const deferred = useDeferredValue(useMemo(() => ({ n, options, toggled }), [n, options, toggled]));
   const result = useMemo(() => {
@@ -106,8 +103,7 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       <Group legend="Method">{method.controls}</Group>
 
       <Group legend="Lightness and chroma">
-        <Check label="Infer from the mural swatches" checked={like} onChange={(on) => { setLike(on); setCustom(null); }} />
-        <ToneControls tone={top} onChange={setCustom} customLabel={custom ? "Custom" : like ? "From the mural" : "From the scheme"} />
+        <ToneControls tone={top} onChange={setCustom} customLabel={custom ? "Custom" : "From the scheme"} />
         {custom && (
           <button type="button" className="btn" onClick={() => setCustom(null)}>
             Reset

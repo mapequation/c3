@@ -67,11 +67,12 @@ describe("palette()", () => {
 });
 
 describe("palette() without zones", () => {
-  it("is unchanged from before zones were added, with the soft tone", () => {
-    expect(palette(50, { tone: "soft" })).toEqual(beforeZones.default);
+  it("is unchanged from before zones were added, with the soft tone and the old default hue", () => {
+    const hue = 125;
+    expect(palette(50, { tone: "soft", hue })).toEqual(beforeZones.default);
     expect(palette(30, { tone: "soft", hue: 40 })).toEqual(beforeZones.hue40);
-    expect(palette(30, { tone: swatches.mural })).toEqual(beforeZones.likeMural);
-    expect(palette([5, 1, 3, 2, 8], { tone: "soft" })).toEqual(beforeZones.weights);
+    expect(palette(30, { tone: swatches.mural, hue })).toEqual(beforeZones.likeMural);
+    expect(palette([5, 1, 3, 2, 8], { tone: "soft", hue })).toEqual(beforeZones.weights);
   });
 });
 

@@ -11,7 +11,7 @@ A library to generate distinct categorical colors, written in TypeScript.
 ### Features
 * **Unlimited colors**: Generate as many colors you want
 * **Any color scheme**: Hues come from the OKLCH hue circle or any [d3](https://github.com/d3/d3-scale-chromatic) color scheme.
-* **Tones**: Vivid, soft, pastel, muted or deep colors, or your own lightness and chroma ranges.
+* **Tones**: Vivid, strong, deep, soft, pastel or muted colors, or your own lightness and chroma ranges.
 * **Deterministic**: You always get the same colors for the same requested number of colors.
 * **Consistent**: If you increase the number of colors, it doesn't change the list of colors you already have.
 * **Fast**: `n` colors take time proportional to `n log(n)`. Choosing colors by distance, as with seeds, takes longer but stays within milliseconds for hundreds of colors.
@@ -96,7 +96,7 @@ The space follows the weights but compressed: a color with half of the total wei
 
 | Option | Default | |
 |---|---|---|
-| `hue` | `125` | Hue of the first color in degrees, going toward lower hues, or a d3 scheme name or interpolator to take hues from |
+| `hue` | `245` | Hue of the first color in degrees, going toward lower hues, or a d3 scheme name or interpolator to take hues from |
 | `offset` | `0` | Shift the Cantor stops along the hue circle or scheme, from 0 to 1 |
 | `reverse` | `false` | Go toward higher hues, or read the scheme from 1 to 0 |
 | `tone` | `"vivid"` | Lightness and chroma of the colors, see [Tones](#tones) |
@@ -113,10 +113,11 @@ A tone is the part of OKLCH the colors come from: a lightness and a chroma range
 | Tone | Lightness | Chroma | |
 |---|---|---|---|
 | `"vivid"` (default) | 0.64–0.76 | 0.12–0.17 | Colorful at medium lightness, for small marks like nodes |
+| `"strong"` | 0.55–0.76 | 0.08–0.17 | Between vivid and deep. Its wider ranges fit the most distinct colors: about 32 colors 0.04 apart, against 22 for vivid |
+| `"deep"` | 0.45–0.62 | 0.10–0.17 | Dark and colorful, for light backgrounds |
 | `"soft"` | 0.67–0.83 | 0.045–0.135 | Lighter and less colorful, close to the Englewood mural |
 | `"pastel"` | 0.82–0.92 | 0.05–0.10 | Light, for large areas or dark backgrounds |
 | `"muted"` | 0.55–0.75 | 0.03–0.08 | Greyish, so highlights stand out |
-| `"deep"` | 0.45–0.62 | 0.10–0.17 | Dark and colorful, for light backgrounds |
 
 The sRGB gamut caps chroma below the range for some hues, most for cyan in the colorful tones.
 

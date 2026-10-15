@@ -26,14 +26,16 @@ export type Tone = {
 export const tones = {
   /** Colorful at medium lightness, for small marks like nodes. The default */
   vivid: { lightness: [0.64, 0.76], chroma: [0.12, 0.17], warmHue: 285, tilt: 0 },
+  /** Between vivid and deep, with wider ranges that fit the most distinct colors */
+  strong: { lightness: [0.55, 0.76], chroma: [0.08, 0.17], warmHue: 285, tilt: 0 },
+  /** Dark and colorful, for light backgrounds */
+  deep: { lightness: [0.45, 0.62], chroma: [0.1, 0.17], warmHue: 285, tilt: 0 },
   /** Lighter and less colorful, close to the Englewood mural */
   soft: { lightness: [0.67, 0.83], chroma: [0.045, 0.135], warmHue: 285, tilt: 0.15 },
   /** Light, for large areas or dark backgrounds */
   pastel: { lightness: [0.82, 0.92], chroma: [0.05, 0.1], warmHue: 285, tilt: 0 },
   /** Greyish, so highlights stand out */
   muted: { lightness: [0.55, 0.75], chroma: [0.03, 0.08], warmHue: 285, tilt: 0 },
-  /** Dark and colorful, for light backgrounds */
-  deep: { lightness: [0.45, 0.62], chroma: [0.1, 0.17], warmHue: 285, tilt: 0 },
 } satisfies Record<string, Tone>;
 
 export type ToneName = keyof typeof tones;

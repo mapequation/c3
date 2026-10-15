@@ -74,7 +74,7 @@ export type PaletteOptions = {
 
 export const defaultPaletteOptions = {
   tone: "vivid" as const,
-  hue: 125,
+  hue: 245,
   offset: 0,
   reverse: false,
   candidates: 4096,
