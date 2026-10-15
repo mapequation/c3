@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
-import type { Range, Region } from "@mapequation/c3";
-import { SCHEMES } from "../util";
+import { tones, type Range, type Tone, type ToneName } from "@mapequation/c3";
+import { SCHEMES, toneName } from "../util";
 
 type SliderProps = {
   label: string;
@@ -79,25 +79,43 @@ export function RangeSliders({ label, value: [lo, hi], onChange, ...props }: Ran
   );
 }
 
-export function RegionControls({
-  region,
+/** Tone select, with a "custom" entry while the sliders have moved off every named tone */
+export function ToneControls({
+  tone,
   onChange,
-  disabled,
+  customLabel = "Custom",
 }: {
-  region: Region;
-  onChange: (region: Region) => void;
-  disabled?: boolean;
+  tone: Tone;
+  onChange: (tone: Tone) => void;
+  /** Label of the entry shown when the tone is none of the named ones */
+  customLabel?: string;
 }) {
-  const set = <K extends keyof Region>(key: K) => (value: Region[K]) => onChange({ ...region, [key]: value });
+  const name = toneName(tone);
+  const set = <K extends keyof Tone>(key: K) => (value: Tone[K]) => onChange({ ...tone, [key]: value });
   return (
     <>
-      <RangeSliders label="Lightness" value={region.lightness} onChange={set("lightness")} min={0} max={1} step={0.01} disabled={disabled} />
-      <RangeSliders label="Chroma" value={region.chroma} onChange={set("chroma")} min={0} max={0.37} step={0.005} disabled={disabled} />
-      <Slider label="Warm hue" value={region.warmHue} onChange={set("warmHue")} min={0} max={360} disabled={disabled} />
-      <Slider label="Tilt" value={region.tilt} onChange={set("tilt")} min={0} max={1} step={0.01} disabled={disabled} />
+      <label className="field">
+        <span>Tone</span>
+        <select value={name ?? "custom"} onChange={(e) => onChange(tones[e.target.value as ToneName])}>
+          {(Object.keys(tones) as ToneName[]).map((key) => (
+            <option key={key} value={key}>
+              {key}
+            </option>
+          ))}
+          {!name && (
+            <option value="custom" disabled>
+              {customLabel}
+            </option>
+          )}
+        </select>
+      </label>
+      <RangeSliders label="Lightness" value={tone.lightness} onChange={set("lightness")} min={0} max={1} step={0.01} />
+      <RangeSliders label="Chroma" value={tone.chroma} onChange={set("chroma")} min={0} max={0.37} step={0.005} />
+      <Slider label="Warm hue" value={tone.warmHue} onChange={set("warmHue")} min={0} max={360} />
+      <Slider label="Tilt" value={tone.tilt} onChange={set("tilt")} min={0} max={1} step={0.01} />
       <p className="hint">
-        The warm hue can get the most chroma. Tilt is how much less chroma hues far from it get: 0 for none, 1 for grey at
-        the opposite hue.
+        A tone is the lightness and chroma the colors come from. The warm hue can get the most chroma. Tilt is how much
+        less chroma hues far from it get: 0 for none, 1 for grey at the opposite hue.
       </p>
     </>
   );

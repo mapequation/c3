@@ -3,9 +3,9 @@ import { gamutMap, lchToLab, parseOklch, type Lab } from "./oklab.js";
 export type Range = [min: number, max: number];
 
 /**
- * A region of OKLCH color space to pick colors from.
+ * A tone: the region of OKLCH color space to pick colors from.
  */
-export type Region = {
+export type Tone = {
   /** OKLCH lightness range, 0 (black) to 1 (white) */
   lightness: Range;
   /** OKLCH chroma range, 0 (grey) to about 0.37 */
@@ -19,30 +19,59 @@ export type Region = {
   tilt: number;
 };
 
-export const defaultRegion: Region = {
-  lightness: [0.67, 0.83],
-  chroma: [0.045, 0.135],
-  warmHue: 285,
-  tilt: 0.15,
-};
+/**
+ * Named tones. The sRGB gamut caps chroma below the range for some hues,
+ * most for cyan in the colorful tones.
+ */
+export const tones = {
+  /** Colorful at medium lightness, for small marks like nodes. The default */
+  vivid: { lightness: [0.64, 0.76], chroma: [0.12, 0.17], warmHue: 285, tilt: 0 },
+  /** Lighter and less colorful, close to the Englewood mural */
+  soft: { lightness: [0.67, 0.83], chroma: [0.045, 0.135], warmHue: 285, tilt: 0.15 },
+  /** Light, for large areas or dark backgrounds */
+  pastel: { lightness: [0.82, 0.92], chroma: [0.05, 0.1], warmHue: 285, tilt: 0 },
+  /** Greyish, so highlights stand out */
+  muted: { lightness: [0.55, 0.75], chroma: [0.03, 0.08], warmHue: 285, tilt: 0 },
+  /** Dark and colorful, for light backgrounds */
+  deep: { lightness: [0.45, 0.62], chroma: [0.1, 0.17], warmHue: 285, tilt: 0 },
+} satisfies Record<string, Tone>;
 
-export function resolveRegion(options: Partial<Region> = {}, base = defaultRegion): Region {
+export type ToneName = keyof typeof tones;
+
+/** A tone name, colors to infer the tone from, or tone fields over the base tone */
+export type ToneOption = ToneName | readonly string[] | Partial<Tone>;
+
+export const defaultTone: Tone = tones.vivid;
+
+const isColors = (tone: ToneOption): tone is readonly string[] => Array.isArray(tone);
+
+/**
+ * The tone a tone option gives: a named tone, the tone inferred from colors,
+ * or the given fields over the base tone.
+ */
+export function resolveTone(tone: ToneOption | undefined, base: Tone = defaultTone): Tone {
+  if (tone === undefined) return base;
+  if (typeof tone === "string") {
+    if (!Object.prototype.hasOwnProperty.call(tones, tone)) throw new Error(`Unknown tone: ${tone}`);
+    return tones[tone];
+  }
+  if (isColors(tone)) return inferTone(tone);
   return {
-    lightness: options.lightness ?? base.lightness,
-    chroma: options.chroma ?? base.chroma,
-    warmHue: options.warmHue ?? base.warmHue,
-    tilt: options.tilt ?? base.tilt,
+    lightness: tone.lightness ?? base.lightness,
+    chroma: tone.chroma ?? base.chroma,
+    warmHue: tone.warmHue ?? base.warmHue,
+    tilt: tone.tilt ?? base.tilt,
   };
 }
 
 const lerp = ([a, b]: Range, t: number) => a + (b - a) * t;
 
 /**
- * Map hue (degrees) and u, v in [0, 1] to a color in the region.
+ * Map hue (degrees) and u, v in [0, 1] to a color in the tone.
  * u sets lightness, v sets chroma within the hue's chroma range.
  */
-export function regionColor(region: Region, hue: number, u: number, v: number): Lab {
-  const { lightness, chroma, warmHue, tilt } = region;
+export function toneColor(tone: Tone, hue: number, u: number, v: number): Lab {
+  const { lightness, chroma, warmHue, tilt } = tone;
   const warmth = (1 + Math.cos(((hue - warmHue) * Math.PI) / 180)) / 2;
   const scale = 1 - tilt + tilt * warmth;
   const L = lerp(lightness, u);
@@ -61,11 +90,11 @@ function widen([min, max]: Range, minSpan: number, upper: number): Range {
 }
 
 /**
- * Infer a region from example colors: the lightness and chroma ranges they span,
+ * Infer a tone from example colors: the lightness and chroma ranges they span,
  * and whether some hues are more saturated than others.
  */
-export function inferRegion(colors: readonly string[]): Region {
-  if (colors.length === 0) return defaultRegion;
+export function inferTone(colors: readonly string[]): Tone {
+  if (colors.length === 0) return defaultTone;
   const lch = colors.map(parseOklch);
   const Ls = lch.map((c) => c[0]);
   const Cs = lch.map((c) => c[1]);
@@ -126,9 +155,9 @@ function mixAngle(a: number, b: number, t: number) {
 }
 
 /**
- * Interpolate between two regions, t = 0 gives a and t = 1 gives b.
+ * Interpolate between two tones, t = 0 gives a and t = 1 gives b.
  */
-export function mixRegion(a: Region, b: Region, t: number): Region {
+export function mixTone(a: Tone, b: Tone, t: number): Tone {
   if (t <= 0) return a;
   if (t >= 1) return b;
   return {
@@ -140,8 +169,8 @@ export function mixRegion(a: Region, b: Region, t: number): Region {
 }
 
 /**
- * How far color i (0-based) has moved from the top region to the end region.
- * The first `midpoint` colors stay in the top region. Later colors move
+ * How far color i (0-based) has moved from the top tone to the end tone.
+ * The first `midpoint` colors stay in the top tone. Later colors move
  * 1 - (m / k)^steepness of the way, where k is the color number and m the
  * midpoint, so an infinite steepness switches at once.
  */

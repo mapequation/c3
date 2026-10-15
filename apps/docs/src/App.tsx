@@ -32,7 +32,7 @@ const MODES = [
     about: (
       <>
         Colors from the <a href="#how-it-works">Halton sequence</a>: hues at the Cantor stops on the OKLCH hue circle or
-        a d3 scheme, lightness and chroma (how colorful a color is) within their ranges.
+        a d3 scheme, lightness and chroma (how colorful a color is) within the tone, vivid by default.
       </>
     ),
     Mode: PaletteMode,
@@ -42,7 +42,7 @@ const MODES = [
     label: "Seeds",
     fn: "palette({ seeds })",
     about:
-      "Start from your own colors, the seeds, and add new ones from the Halton sequence, each as far as possible from the colors before it. New colors stay within the lightness and chroma ranges of the seeds.",
+      "Start from your own colors, the seeds, and add new ones from the Halton sequence, each as far as possible from the colors before it. New colors stay within the tone inferred from the seeds.",
     Mode: SeedsMode,
   },
   {
@@ -56,13 +56,13 @@ const MODES = [
   {
     // Keeps its old id, so links to #schemes still work
     id: "schemes",
-    label: "Classic",
-    fn: "colors()",
+    label: "Schemes",
+    fn: "palette({ hue: scheme })",
     about: (
       <>
-        Picks colors from a d3 color scheme at the Cantor stops, optionally with HSL saturation and lightness changing
-        with each round of stops. <strong>Deprecated:</strong> use <code>{"palette({ hue: scheme })"}</code>, which keeps
-        colors farther apart for every scheme.
+        Compare a d3 color scheme's own colors at the Cantor stops with <code>{"palette({ hue: scheme })"}</code>, which
+        takes only the hues from the scheme and sets lightness and chroma from the tone, keeping colors farther apart for
+        every scheme.
       </>
     ),
     Mode: SchemesMode,

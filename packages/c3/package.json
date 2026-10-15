@@ -10,7 +10,8 @@
     "access": "public"
   },
   "exports": {
-    ".": "./lib/index.js"
+    ".": "./lib/index.js",
+    "./internal": "./lib/internal.js"
   },
   "files": [
     "/lib"

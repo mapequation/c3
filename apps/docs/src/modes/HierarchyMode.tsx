@@ -1,12 +1,7 @@
 import { useDeferredValue, useId, useMemo, useRef, useState } from "react";
-import {
-  defaultHierarchyOptions,
-  defaultPaletteOptions,
-  hierarchy,
-  type HierarchyOptions,
-  type SchemeName,
-} from "@mapequation/c3";
-import { Check, Group, SchemeOptions, Slider } from "../components/Controls";
+import { hierarchy, type HierarchyOptions, type SchemeName, type Tone } from "@mapequation/c3";
+import { defaultHierarchyOptions, defaultPaletteOptions, defaultTone } from "@mapequation/c3/internal";
+import { Check, Group, SchemeOptions, Slider, ToneControls } from "../components/Controls";
 import { Icicle } from "../components/Icicle";
 import { BallView } from "../components/BallView";
 import { CodeSnippet } from "../components/CodeSnippet";
@@ -15,7 +10,7 @@ import { formatGap, formatMs } from "../components/Quality";
 import { Chip, HoverLabel, useHover, type Hover } from "../components/Hover";
 import { JUST_NOTICEABLE } from "../quality";
 import { callCode, Raw } from "../code";
-import { timed, unlessDefault } from "../util";
+import { schemeTone, timed, toneOption, unlessDefault } from "../util";
 import { indexTree, MAX_CHARS, parseTree, sampleTree, treeQuality, type Gap, type Tree } from "../tree";
 
 const METHODS = ["sequence", "farthest"] as const;
@@ -74,13 +69,18 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
   const modules = own ? parsed.modules : sample;
 
   const scheme = source === "circle" ? undefined : source;
+  // The tone palette() uses unless told otherwise; null until the tone select or a slider changes it
+  const [custom, setCustom] = useState<Tone | null>(null);
+  const inferred = useMemo(() => (scheme ? schemeTone(scheme) : defaultTone), [scheme]);
+  const tone = custom ?? inferred;
   const options = useMemo<HierarchyOptions>(
     () => ({
       ...method.options,
+      tone: toneOption(tone, inferred),
       hue: scheme ?? unlessDefault(hue, defaultPaletteOptions.hue),
       padding: unlessDefault(padding, defaultHierarchyOptions.padding),
     }),
-    [method.options, scheme, hue, padding],
+    [method.options, tone, inferred, scheme, hue, padding],
   );
   const input = useMemo(() => (useFlows ? modules : modules.map(({ path }) => ({ path }))), [modules, useFlows]);
 
@@ -198,6 +198,15 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
         </label>
         <Slider label="First hue" value={hue} onChange={setHue} min={0} max={360} disabled={!!scheme} />
         {method.controls}
+      </Group>
+
+      <Group legend="Lightness and chroma">
+        <ToneControls tone={tone} onChange={setCustom} customLabel={custom ? "Custom" : "From the scheme"} />
+        {custom && (
+          <button type="button" className="btn" onClick={() => setCustom(null)}>
+            Reset
+          </button>
+        )}
       </Group>
 
       <Group legend="Balls">

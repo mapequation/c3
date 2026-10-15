@@ -1,4 +1,5 @@
-import { defaultPaletteOptions, palette, vanDerCorput } from "@mapequation/c3";
+import { palette } from "@mapequation/c3";
+import { defaultPaletteOptions, vanDerCorput } from "@mapequation/c3/internal";
 
 const COUNT = 8;
 const { lightnessOffset, chromaOffset } = defaultPaletteOptions;

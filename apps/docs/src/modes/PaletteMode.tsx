@@ -1,17 +1,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
-import {
-  defaultPaletteOptions,
-  defaultRegion,
-  getScheme,
-  inferRegion,
-  oklch,
-  palette,
-  presets,
-  type PaletteOptions,
-  type Region,
-  type SchemeName,
-} from "@mapequation/c3";
-import { Check, Group, ModeLayout, RegionControls, SchemeOptions, Slider } from "../components/Controls";
+import { inferTone, oklch, palette, swatches, type PaletteOptions, type SchemeName, type Tone } from "@mapequation/c3";
+import { defaultPaletteOptions, defaultTone, endZone, getScheme } from "@mapequation/c3/internal";
+import { Check, Group, ModeLayout, ToneControls, SchemeOptions, Slider } from "../components/Controls";
 import { ColorCantor } from "../components/ColorCantor";
 import { PolarPlot } from "../components/PolarPlot";
 import { Swatches } from "../components/Swatches";
@@ -22,9 +12,9 @@ import { useMethod } from "../components/Method";
 import { useHover } from "../components/Hover";
 import { firstDifference } from "../quality";
 import { callCode } from "../code";
-import { regionDiff, schemeRegion, timed, unlessDefault } from "../util";
+import { schemeTone, timed, toneOption, unlessDefault } from "../util";
 
-const muralRegion = inferRegion(presets.mural);
+const muralTone = inferTone(swatches.mural);
 const STRIP_SAMPLES = 64;
 const METHODS = ["sequence", "farthest", "lookahead"] as const;
 
@@ -46,35 +36,36 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
   const [lightnessOffset, setLightnessOffset] = useState(defaultPaletteOptions.lightnessOffset);
   const [chromaOffset, setChromaOffset] = useState(defaultPaletteOptions.chromaOffset);
   const [like, setLike] = useState(false);
-  const [override, setOverride] = useState(false);
-  const [region, setRegion] = useState<Region | null>(null);
+  // The tone chosen with the select or the sliders; null until one changes it
+  const [custom, setCustom] = useState<Tone | null>(null);
   // Highlighted colors by index, linked across the views; apart from the memoized palettes
   const [hovered, onHover] = useHover();
   const hover = { hovered, onHover };
 
   const scheme = source === "circle" ? undefined : source;
-  // The region palette() uses unless told otherwise
-  const inferred = useMemo(() => (like ? muralRegion : scheme ? schemeRegion(scheme) : defaultRegion), [like, scheme]);
-  const top = override && region ? region : inferred;
+  // The tone palette() uses unless told otherwise
+  const base = useMemo(() => (scheme ? schemeTone(scheme) : defaultTone), [scheme]);
+  const inferred = like ? muralTone : base;
+  const top = custom ?? inferred;
   const method = useMethod(METHODS);
   const zones = useZones(top, method.method === "sequence");
 
   // The options, and the same call with the end zone toggled to compare against
   const [options, toggled] = useMemo<PaletteOptions[]>(() => {
-    const base: PaletteOptions = {
+    const common: PaletteOptions = {
       ...method.options,
       hue: scheme ?? unlessDefault(hue, defaultPaletteOptions.hue),
       offset: unlessDefault(offset, defaultPaletteOptions.offset),
       reverse: unlessDefault(reverse, defaultPaletteOptions.reverse),
-      like: like ? presets.mural : undefined,
-      ...regionDiff(top, inferred),
+      // Colors to match give the tone, unless it was changed: then a name or the fields that differ from the base
+      tone: like && !custom ? swatches.mural : toneOption(top, base),
       lightnessOffset: unlessDefault(lightnessOffset, defaultPaletteOptions.lightnessOffset),
       chromaOffset: unlessDefault(chromaOffset, defaultPaletteOptions.chromaOffset),
     };
-    const on = { ...base, ...zones.options };
-    const off = { ...base, end: undefined };
+    const on = { ...common, ...zones.options };
+    const off = { ...common, end: undefined };
     return zones.on ? [on, off] : [off, on];
-  }, [scheme, hue, offset, reverse, like, top, inferred, lightnessOffset, chromaOffset, method.options, zones.on, zones.options]);
+  }, [scheme, hue, offset, reverse, like, custom, top, base, lightnessOffset, chromaOffset, method.options, zones.on, zones.options]);
 
   const deferred = useDeferredValue(useMemo(() => ({ n, options, toggled }), [n, options, toggled]));
   const result = useMemo(() => {
@@ -89,7 +80,7 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       comparison: { label: on ? "no end zone" : "end zone", colors: other, ms: otherMs },
       // Mark where the end zone starts: where the same call with a hard switch differs.
       // Only the sequence method fades; the others switch at once.
-      endZone: on ? firstDifference(options.method ? hex : palette(n, { ...options, steepness: Infinity }), other) : -1,
+      endZone: on ? firstDifference(options.method ? hex : palette(n, { ...options, end: { ...endZone(options.end), steepness: Infinity } }), other) : -1,
       strip: hueStrip(options),
       inOrder: !options.method,
       code: callCode("palette", n, options),
@@ -115,18 +106,10 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       <Group legend="Method">{method.controls}</Group>
 
       <Group legend="Lightness and chroma">
-        <Check label="Infer from the mural preset" checked={like} onChange={setLike} />
-        <Check
-          label={like || scheme ? `Change the values inferred from ${like ? "the mural" : scheme}` : "Change the defaults"}
-          checked={override}
-          onChange={(checked) => {
-            setOverride(checked);
-            if (checked) setRegion(inferred);
-          }}
-        />
-        <RegionControls region={top} onChange={setRegion} disabled={!override} />
-        {override && (
-          <button type="button" className="btn" onClick={() => setRegion(inferred)}>
+        <Check label="Infer from the mural swatches" checked={like} onChange={(on) => { setLike(on); setCustom(null); }} />
+        <ToneControls tone={top} onChange={setCustom} customLabel={custom ? "Custom" : like ? "From the mural" : "From the scheme"} />
+        {custom && (
+          <button type="button" className="btn" onClick={() => setCustom(null)}>
             Reset
           </button>
         )}
@@ -150,12 +133,12 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
           <figcaption>
             The first 16 Cantor stops, one row each. Each color takes the hue behind its stop, from the{" "}
             {scheme ? "scheme" : "hue circle"} shifted by Offset. Lightness and chroma come from their own sequences, within
-            the ranges.
+            the tone.
             {!result.inOrder && " With this method, colors are taken out of order, so a dot can differ from the hue behind it."}
           </figcaption>
         </figure>
         <figure>
-          <PolarPlot colors={result.hex} region={top} {...hover} />
+          <PolarPlot colors={result.hex} tone={top} {...hover} />
           <figcaption>
             Colors by hue (angle) and chroma (distance from the center). The shaded band is the chroma each hue can get. It
             is narrower for hues far from the warm hue; Tilt sets how much.

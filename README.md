@@ -11,6 +11,7 @@ A library to generate distinct categorical colors, written in TypeScript.
 ### Features
 * **Unlimited colors**: Generate as many colors you want
 * **Any color scheme**: Hues come from the OKLCH hue circle or any [d3](https://github.com/d3/d3-scale-chromatic) color scheme.
+* **Tones**: Vivid, soft, pastel, muted or deep colors, or your own lightness and chroma ranges.
 * **Deterministic**: You always get the same colors for the same requested number of colors.
 * **Consistent**: If you increase the number of colors, it doesn't change the list of colors you already have.
 * **Fast**: `n` colors take time proportional to `n log(n)`. Choosing colors by distance, as with seeds, takes longer but stays within milliseconds for hundreds of colors.
@@ -28,8 +29,8 @@ write `i` in a base and mirror its digits around the decimal point.
   Each round fills the middle of every gap left by the earlier colors, like the halving steps of the
   [Cantor set](https://en.wikipedia.org/wiki/Cantor_set), and the mirrored digits make consecutive colors land far apart.
   We call these numbers the Cantor stops. They are placed on the [OKLCH](https://bottosson.github.io/posts/oklab/) hue circle, or along a d3 color scheme.
-* **Lightness** uses base 3: 0, 1/3, 2/3, 1/9, 4/9, …, scaled into the lightness range.
-* **Chroma**, how colorful a color is, uses base 5, scaled into the chroma range.
+* **Lightness** uses base 3: 0, 1/3, 2/3, 1/9, 4/9, …, scaled into the tone's lightness range.
+* **Chroma**, how colorful a color is, uses base 5, scaled into the tone's chroma range.
 
 Each base spreads its numbers evenly between 0 and 1.
 Different prime bases keep the three from lining up: with base 2 for all of them, lightness would simply follow hue.
@@ -52,24 +53,28 @@ Since the candidates are fixed and each choice depends only on the colors before
 Then each module gets a ball in OKLab: all colors within a radius of its color.
 For every other module on the same level, the distance between the two is split in proportion to the square roots of their flows.
 The radius is the smallest of these shares, made 20% smaller (`padding`) so that balls never touch.
-The module's children are then chosen inside its ball, within the palette's lightness and chroma ranges, each as far as possible from its siblings, as with `"farthest"`.
+The module's children are then chosen inside its ball, within the tone's lightness and chroma ranges, each as far as possible from its siblings, as with `"farthest"`.
 So children look like their parent, differ from each other, and stay apart from their cousins.
 A large module gets a large ball, with room for many distinct children.
 
 ### Usage
 
 ```js
-import { palette, hierarchy, presets } from "@mapequation/c3";
+import { palette, hierarchy, tones, swatches } from "@mapequation/c3";
 
-// The first 20 colors of the sequence
+// The first 20 colors of the sequence, in the default vivid tone
 palette(20);
-palette(20, { hue: 40, lightness: [0.6, 0.8], chroma: [0.05, 0.15] });
+palette(20, { tone: "pastel", hue: 40 });
+palette(20, { tone: { ...tones.vivid, lightness: [0.6, 0.7] } });
 
 // Hues from a d3 color scheme
 palette(20, { hue: "Sinebow" });
 
 // Start from hand-picked colors and add as distinct colors as possible
-palette(50, { seeds: presets.mural });
+palette(50, { seeds: swatches.mural });
+
+// Later colors darker, so they don't compete with the first ones
+palette(100, { end: "darker" });
 
 // Nested modules: children vary around their parent's color
 const color = hierarchy([
@@ -94,18 +99,40 @@ The space follows the weights but compressed: a color with half of the total wei
 | `hue` | `125` | Hue of the first color in degrees, going toward lower hues, or a d3 scheme name or interpolator to take hues from |
 | `offset` | `0` | Shift the Cantor stops along the hue circle or scheme, from 0 to 1 |
 | `reverse` | `false` | Go toward higher hues, or read the scheme from 1 to 0 |
-| `lightness` | `[0.67, 0.83]` | OKLCH lightness range `[min, max]`, where 0 is black and 1 is white |
-| `chroma` | `[0.045, 0.135]` | OKLCH chroma range `[min, max]`, where 0 is grey |
-| `warmHue` | `285` | The hue that can get the most chroma |
-| `tilt` | `0.15` | How much less chroma hues far from `warmHue` get: 0 for none, 1 for grey at the opposite hue |
-| `like` | | Colors to infer `lightness`, `chroma`, `warmHue` and `tilt` from |
+| `tone` | `"vivid"` | Lightness and chroma of the colors, see [Tones](#tones) |
 | `seeds` | | Colors to start with, see [Seeds and methods](#seeds-and-methods) |
 | `method` | `"sequence"` | How the next color is chosen, see [Seeds and methods](#seeds-and-methods) |
 | `end` | `false` | Lightness for later colors, see [End zone](#end-zone) |
 | `lightnessOffset`, `chromaOffset` | `7`, `4` | Where in the base-3 and base-5 sequences to start. Changes the colors, not how evenly they spread |
 
-With `hue` set to a scheme, `chroma`, `warmHue` and `tilt` are inferred from the middle 90% of the scheme's colors unless given.
-`lightness` keeps its default, so the first colors have similar lightness.
+#### Tones
+
+A tone is the part of OKLCH the colors come from: a lightness and a chroma range.
+`tone` takes a name, colors to match, or the tone's fields:
+
+| Tone | Lightness | Chroma | |
+|---|---|---|---|
+| `"vivid"` (default) | 0.64–0.76 | 0.12–0.17 | Colorful at medium lightness, for small marks like nodes |
+| `"soft"` | 0.67–0.83 | 0.045–0.135 | Lighter and less colorful, close to the Englewood mural |
+| `"pastel"` | 0.82–0.92 | 0.05–0.10 | Light, for large areas or dark backgrounds |
+| `"muted"` | 0.55–0.75 | 0.03–0.08 | Greyish, so highlights stand out |
+| `"deep"` | 0.45–0.62 | 0.10–0.17 | Dark and colorful, for light backgrounds |
+
+The sRGB gamut caps chroma below the range for some hues, most for cyan in the colorful tones.
+
+* **A name**: `tone: "pastel"`. The tones are exported as `tones`, so `Object.keys(tones)` lists them.
+* **Colors**: `tone: swatches.mural` infers the lightness and chroma ranges the colors span, and whether some hues are more colorful than others. `inferTone(colors)` returns that tone.
+* **Fields**: `tone: { lightness: [0.6, 0.8] }` replaces the given fields of the base tone and keeps the rest. Start from a named tone with `{ ...tones.pastel, chroma: [0.08, 0.12] }`.
+
+| Field | `"vivid"` | |
+|---|---|---|
+| `lightness` | `[0.64, 0.76]` | OKLCH lightness range `[min, max]`, where 0 is black and 1 is white |
+| `chroma` | `[0.12, 0.17]` | OKLCH chroma range `[min, max]`, where 0 is grey |
+| `warmHue` | `285` | The hue that can get the most chroma |
+| `tilt` | `0` | How much less chroma hues far from `warmHue` get: 0 for none, 1 for grey at the opposite hue |
+
+The base tone is inferred from `seeds` if given, else from a d3 scheme set as `hue`, else it is `"vivid"`.
+For a scheme, `chroma`, `warmHue` and `tilt` come from the middle 90% of its colors and `lightness` from `"vivid"`, so the first colors have similar lightness.
 
 #### Seeds and methods
 
@@ -125,9 +152,9 @@ With `hue` set to a scheme, `chroma`, `warmHue` and `tilt` are inferred from the
 
 `seeds` are colors to start the palette with, such as a few hand-picked ones.
 They come first and count toward `n`.
-`lightness`, `chroma`, `warmHue` and `tilt` are inferred from them unless you give `like` or set them.
+The tone is inferred from them unless you give `tone`.
 Seeds need `"farthest"` (the default with seeds) or `"lookahead"`, which choose new colors as far from the seeds as possible.
-`presets.mural` holds five colors from the Englewood mural to start from.
+`swatches.mural` holds five colors from the Englewood mural to start from.
 
 #### End zone
 
@@ -135,12 +162,16 @@ The first colors matter most, but with many colors, later ones can land close to
 `end` gives later colors their own lightness, the end zone, so they never look like the first ones.
 They can be less distinct from each other.
 
+`end` is `false` for none (the default), the end zone's `lightness` alone, or an object with these options:
+
 | Option | Default | |
 |---|---|---|
-| `end` | `false` | `"darker"`: 0.03 below the lightness range and 0.22 wide, but not below 0.3. `"lighter"`: the same above, but not above 0.95. `[min, max]`: your own lightness range. `false`: no end zone |
-| `midpoint` | `"auto"` | How many colors stay in the lightness range before the end zone, or `"auto"` for as many as fit `minGap` apart |
+| `lightness` | `"darker"` | `"darker"`: 0.03 below the tone's lightness range and 0.22 wide, but not below 0.3. `"lighter"`: the same above, but not above 0.95. `[min, max]`: your own lightness range |
+| `midpoint` | `"auto"` | How many colors stay in the tone before the end zone, or `"auto"` for as many as fit `minGap` apart |
 | `minGap` | `0.04` | Smallest OKLab distance between those first colors with `"auto"` |
 | `steepness` | `Infinity` | Switch to the end zone at once, or, with the `"sequence"` method, fade into it: the color at `k` times the midpoint moves `1 - 1/k^steepness` of the way, so for 4, 80% at 1.5 times and 94% at twice the midpoint |
+
+So `end: "darker"` is short for `end: { lightness: "darker" }`, and `end: { midpoint: 12, steepness: 4 }` fades into a darker end zone after 12 colors.
 
 How many colors stay before the end zone depends only on the colors, not on `n`, so asking for more colors never changes the earlier ones.
 Darker is usually the better choice, since sRGB has more room for distinct colors there.
@@ -150,6 +181,7 @@ Darker is usually the better choice, since sRGB has more room for distinct color
 Colors for nested modules, such as an Infomap hierarchy.
 Pass each module as `{ path, flow }`, where `path` is like `[1, 4, 3]` for the third submodule of the fourth submodule of module 1.
 Missing parents are added, with the sum of their children's flow.
+Flows of a repeated path add up, so you can pass one entry per node, with the node's module path and flow.
 Without flow, all modules count equally.
 
 Top modules get `palette()` colors, weighted by flow, and `palette()` options apply to them, including `seeds` and `method`.
@@ -157,6 +189,7 @@ Each module then gets a ball in OKLab around its color: all colors within a radi
 Its radius splits the distance to every other module on the same level by the square root of their flows, minus `padding` (default `0.2`),
 so large modules have room for distinct submodules and children stay apart from their cousins.
 Children get colors as far apart as possible inside their parent's ball, in path order.
+They stay within the tone's lightness and chroma ranges, so they never turn greyer than the tone, except where the gamut holds their parent below the chroma range: then they can be as grey as their parent.
 
 It returns a function from path to color.
 For a path longer than the known modules, such as a node path, it gives the color of the deepest module on it.
@@ -164,21 +197,15 @@ Its `modules` property lists every module depth first with `path`, `flow`, `colo
 Adding a module never changes its earlier siblings or the modules above its level.
 With module flows given, other modules only change if the new module is now closest to them, and then only their children change.
 
-#### `colors(n, options)` (deprecated)
-
-Picks colors from a d3 color scheme at the Cantor stops, optionally with HSL saturation and lightness by depth.
-Use `palette({ hue: scheme })` instead, which keeps colors farther apart for every scheme: in our tests, the smallest distance between colors was 1.1 to 7 times larger, least for Turbo.
-Its `skewness` option, which gives the first colors more hue space, is deprecated too: it only helps when colors differ in hue alone.
-
 #### Measuring distinctness
 
 `distance(a, b)` is the distance between two colors in OKLab, from 0 for equal colors to about 1 between black and white.
 About 0.02 is just noticeable, and categories are easiest to tell apart at 0.04 or more.
 `oklab(color)` and `oklch(color)` convert any CSS color.
 
-How distinct a palette can be depends on how wide its lightness and chroma ranges are.
-For example, the ranges inferred from `presets.mural` fit about 50 colors 0.05 apart, but 500 colors only about 0.024 apart.
-For many colors, widen `lightness` and `chroma`, or add an end zone.
+How distinct a palette can be depends on how wide its tone's lightness and chroma ranges are.
+For example, the tone inferred from `swatches.mural` fits about 50 colors 0.05 apart, but 500 colors only about 0.024 apart.
+For many colors, widen the tone's `lightness` and `chroma`, or add an end zone.
 
 ### Development
 

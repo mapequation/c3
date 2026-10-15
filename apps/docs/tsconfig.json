@@ -12,7 +12,8 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client"],
     "paths": {
-      "@mapequation/c3": ["../../packages/c3/src/index.ts"]
+      "@mapequation/c3": ["../../packages/c3/src/index.ts"],
+      "@mapequation/c3/internal": ["../../packages/c3/src/internal.ts"]
     }
   },
   "include": ["src"]

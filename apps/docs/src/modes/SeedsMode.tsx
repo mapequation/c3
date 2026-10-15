@@ -1,6 +1,7 @@
 import { Fragment, useDeferredValue, useId, useMemo, useState } from "react";
-import { defaultPaletteOptions, inferRegion, oklch, palette, presets, type PaletteOptions, type Region } from "@mapequation/c3";
-import { Check, Group, ModeLayout, RegionControls, Slider } from "../components/Controls";
+import { inferTone, oklch, palette, swatches, type PaletteOptions, type Tone } from "@mapequation/c3";
+import { defaultPaletteOptions, defaultTone } from "@mapequation/c3/internal";
+import { Group, ModeLayout, ToneControls, Slider } from "../components/Controls";
 import { PolarPlot } from "../components/PolarPlot";
 import { Swatches } from "../components/Swatches";
 import { CodeSnippet } from "../components/CodeSnippet";
@@ -10,9 +11,9 @@ import { useMethod } from "../components/Method";
 import { useHover } from "../components/Hover";
 import { firstDifference } from "../quality";
 import { callCode } from "../code";
-import { isMural, regionDiff, timed, unlessDefault } from "../util";
+import { isMural, timed, toneOption, unlessDefault } from "../util";
 
-const MURAL = presets.mural.join("\n");
+const MURAL = swatches.mural.join("\n");
 const METHODS = ["farthest", "lookahead"] as const;
 
 /** Split on new lines and on commas outside parentheses, so rgb(1, 2, 3) stays whole */
@@ -29,24 +30,24 @@ function parseSeeds(text: string) {
       invalid.push(color);
     }
   }
-  return { valid: isMural(valid) ? presets.mural : valid, invalid };
+  return { valid: isMural(valid) ? swatches.mural : valid, invalid };
 }
 
 export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void }) {
   const [text, setText] = useState(MURAL);
   const method = useMethod(METHODS);
   const [hue, setHue] = useState(defaultPaletteOptions.hue);
-  const [override, setOverride] = useState(false);
-  const [region, setRegion] = useState<Region | null>(null);
+  // The tone chosen with the select or the sliders; null until one changes it
+  const [custom, setCustom] = useState<Tone | null>(null);
   const errorId = useId();
   // Highlighted colors by index, linked across the views; apart from the memoized palettes
   const [hovered, onHover] = useHover();
   const hover = { hovered, onHover };
 
   const { valid: seeds, invalid } = useMemo(() => parseSeeds(text), [text]);
-  const inferred = useMemo(() => inferRegion(seeds), [seeds]);
-  const shownRegion = override && region ? region : inferred;
-  const zones = useZones(shownRegion);
+  const inferred = useMemo(() => inferTone(seeds), [seeds]);
+  const shownTone = custom ?? inferred;
+  const zones = useZones(shownTone);
 
   const options = useMemo<PaletteOptions>(
     () => ({
@@ -55,10 +56,11 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
       // Without seeds the default method is "sequence"
       method: seeds.length > 0 ? method.options.method : method.method,
       hue: unlessDefault(hue, defaultPaletteOptions.hue),
-      ...regionDiff(shownRegion, inferred),
+      // The seeds give the tone, unless it was changed
+      tone: seeds.length > 0 ? toneOption(shownTone, inferred) : toneOption(shownTone, defaultTone),
       ...(zones.on && zones.options),
     }),
-    [seeds, method.options, method.method, hue, shownRegion, inferred, zones.on, zones.options],
+    [seeds, method.options, method.method, hue, shownTone, inferred, zones.on, zones.options],
   );
 
   const deferred = useDeferredValue(useMemo(() => ({ n, options }), [n, options]));
@@ -116,17 +118,9 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
       </Group>
 
       <Group legend="Lightness and chroma">
-        <Check
-          label="Change the values inferred from the seeds"
-          checked={override}
-          onChange={(on) => {
-            setOverride(on);
-            if (on) setRegion(inferred);
-          }}
-        />
-        <RegionControls region={shownRegion} onChange={setRegion} disabled={!override} />
-        {override && (
-          <button type="button" className="btn" onClick={() => setRegion(inferred)}>
+        <ToneControls tone={shownTone} onChange={setCustom} customLabel={custom ? "Custom" : "From the seeds"} />
+        {custom && (
+          <button type="button" className="btn" onClick={() => setCustom(null)}>
             Reset
           </button>
         )}
@@ -140,7 +134,7 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
     <ModeLayout n={n} setN={setN} controls={controls}>
       <div className="figures">
         <figure>
-          <PolarPlot colors={result.hex} region={shownRegion} seeds={result.seeds} {...hover} />
+          <PolarPlot colors={result.hex} tone={shownTone} seeds={result.seeds} {...hover} />
           <figcaption>
             Colors by hue (angle) and chroma (distance from the center); seeds have a heavier outline. The shaded band is the
             chroma each hue can get, inferred from the seeds unless you change it.

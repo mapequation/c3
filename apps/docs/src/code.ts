@@ -1,4 +1,4 @@
-import { presets } from "@mapequation/c3";
+import { swatches } from "@mapequation/c3";
 import { round } from "./util";
 
 const MAX_LINE = 60;
@@ -10,7 +10,7 @@ export class Raw {
 
 function format(value: unknown, indent: string): string {
   if (value instanceof Raw) return value.code;
-  if (value === presets.mural) return "presets.mural";
+  if (value === swatches.mural) return "swatches.mural";
   if (typeof value === "number") return String(round(value));
   if (typeof value === "string") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map((v) => format(v, indent)).join(", ")}]`;
@@ -31,6 +31,6 @@ export function callCode(fn: string, ...args: unknown[]) {
   const last = format(args.at(-1), "");
   const shown = last === "{}" ? args.slice(0, -1) : args;
   const call = `${fn}(${shown.map((a) => format(a, "")).join(", ")});`;
-  const names = [fn, ...(call.includes("presets.") ? ["presets"] : [])];
+  const names = [fn, ...(call.includes("swatches.") ? ["swatches"] : [])];
   return `import { ${names.join(", ")} } from "@mapequation/c3";\n\n${call}`;
 }
