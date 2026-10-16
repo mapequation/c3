@@ -188,6 +188,9 @@ export default function App() {
               <code>npm install @mapequation/c3</code>
             </pre>
             <p>
+              <a className="version" href={`https://github.com/mapequation/c3/releases/tag/v${__C3_VERSION__}`}>
+                v{__C3_VERSION__}
+              </a>{" "}
               Source on <a href="https://github.com/mapequation/c3">GitHub</a>, package on{" "}
               <a href="https://www.npmjs.com/package/@mapequation/c3">npm</a>.{" "}
               <a href="#how-it-works">How it works</a>, <a href="#api">API reference</a>.
