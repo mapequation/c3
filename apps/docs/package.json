@@ -11,13 +11,15 @@
   "dependencies": {
     "@mapequation/c3": "workspace:*",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "shiki": "^4.5.0"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "marked": "^18.1.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
   }

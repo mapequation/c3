@@ -212,6 +212,15 @@ How distinct a palette can be depends on how wide its tone's lightness and chrom
 For example, the tone inferred from `swatches.mural` fits about 50 colors 0.05 apart, but 500 colors only about 0.024 apart.
 For many colors, widen the tone's `lightness` and `chroma`, or add an end zone.
 
+### Python
+
+A pure Python port is in [`python/`](python): `pip install c3-colors`, imported as `c3`.
+It gives the same colors as the npm package, checked against shared fixtures (within rounding).
+The API is the same with options as snake_case keyword arguments, like `c3.palette(10, tone="pastel", lightness_offset=3)`.
+The hue source is `"Oklch"`, the d3 schemes `"Turbo"`, `"Sinebow"` or `"Rainbow"`, or any callable such as a matplotlib colormap.
+Its version numbers follow the npm package, and the shared fixtures are in `fixtures/c3.json`.
+The [tutorial notebook](python/examples/tutorial.ipynb) shows it with matplotlib, geopandas, networkx and Infomap.
+
 ### Development
 
 This is a [pnpm](https://pnpm.io) workspace with the library in `packages/c3` and the documentation app in `apps/docs`.
@@ -221,6 +230,8 @@ pnpm install
 pnpm test    # library tests
 pnpm build   # library and docs
 pnpm dev     # docs app with live library source
+pnpm --filter @mapequation/c3 fixtures   # regenerate fixtures/c3.json after changing colors
+cd python && uv run pytest               # Python port
 ```
 
 ### Authors

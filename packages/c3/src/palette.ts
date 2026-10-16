@@ -168,6 +168,8 @@ function choose(n: number, method: Exclude<Method, "sequence">, options: Palette
     candidates = defaultPaletteOptions.candidates,
     lookahead: window = defaultPaletteOptions.lookahead,
   } = options;
+  if (method === "farthest" && !(candidates >= 1)) throw new RangeError(`candidates must be at least 1, got ${candidates}`);
+  if (method === "lookahead" && !(window >= 1)) throw new RangeError(`lookahead must be at least 1, got ${window}`);
   const total = Math.max(0, n);
   const zone = endZone(options.end);
   const { top, bottom } = paletteTones(options);
