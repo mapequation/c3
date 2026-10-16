@@ -1,12 +1,20 @@
 import { Fragment } from "react";
-import { API, type Row } from "../api";
+import { API, pythonName, toPython, type Row } from "../api";
+import { snake } from "../code";
+import { pick, useLang, type ByLang, type Lang } from "../lang";
+import { LangSwitch } from "./LangSwitch";
 
-/** Render `backtick` spans as code */
-function Text({ children }: { children: string }) {
-  return children.split("`").map((part, i) => (i % 2 ? <code key={i}>{part}</code> : <Fragment key={i}>{part}</Fragment>));
+/** Render `backtick` spans as code, in Python where it differs */
+function Text({ children, lang }: { children: string | ByLang; lang: Lang }) {
+  return pick(children, lang)
+    .split("`")
+    .map((part, i) =>
+      i % 2 ? <code key={i}>{lang === "py" ? toPython(part) : part}</code> : <Fragment key={i}>{part}</Fragment>,
+    );
 }
 
-function Table({ caption, rows }: { caption: string; rows: Row[] }) {
+function Table({ caption, rows, lang }: { caption: string; rows: Row[]; lang: Lang }) {
+  const py = lang === "py";
   return (
     <div className="api-table">
       <table>
@@ -23,14 +31,14 @@ function Table({ caption, rows }: { caption: string; rows: Row[] }) {
           {rows.map(([name, type, def, description]) => (
             <tr key={name}>
               <th scope="row">
-                <code>{name}</code>
+                <code>{py ? pythonName(name) : name}</code>
               </th>
               <td>
-                <code>{type}</code>
+                <code>{py ? toPython(pick(type, lang)) : pick(type, lang)}</code>
               </td>
-              <td>{def && <code>{def}</code>}</td>
+              <td>{pick(def, lang) && <code>{pick(def, lang)}</code>}</td>
               <td>
-                <Text>{description}</Text>
+                <Text lang={lang}>{description}</Text>
               </td>
             </tr>
           ))}
@@ -41,43 +49,63 @@ function Table({ caption, rows }: { caption: string; rows: Row[] }) {
 }
 
 export function ApiReference() {
+  const lang = useLang();
+  const py = lang === "py";
   return (
     <section className="api" aria-labelledby="api">
-      <h2 id="api">API</h2>
+      <div className="api-head">
+        <h2 id="api">API</h2>
+        <LangSwitch />
+      </div>
+      {py && (
+        <p className="api-intro">
+          The Python port, <code>import c3</code>, has the same functions and gives the same colors, with names in
+          snake_case and options as keyword arguments. New to it? Start with the{" "}
+          <a href={`${import.meta.env.BASE_URL}tutorial/`}>Python tutorial</a>.
+        </p>
+      )}
       <nav aria-label="API functions">
         <ul className="api-index">
           {API.map(({ name, deprecated }) => (
             <li key={name}>
               <a href={`#api-${name}`}>
-                <code>{name}</code>
+                <code>{py ? snake(name) : name}</code>
               </a>
               {deprecated && " (deprecated)"}
             </li>
           ))}
         </ul>
       </nav>
-      {API.map(({ name, deprecated, signature, description, params, options, returns, example }) => (
+      {API.map(({ name, deprecated, signature, description, params, options, optionsCaption, returns, example, python }) => (
+        // Ids keep the JS names, so links work in both languages
         <article key={name} id={`api-${name}`} className="api-entry">
           <h3>
-            <code>{signature}</code>
+            <code>{signature[lang]}</code>
           </h3>
           {deprecated && (
             <p>
-              <strong>Deprecated.</strong> <Text>{deprecated}</Text>
+              <strong>Deprecated.</strong> <Text lang={lang}>{deprecated}</Text>
             </p>
           )}
           {description.map((p) => (
-            <p key={p}>
-              <Text>{p}</Text>
+            <p key={pick(p, "js")}>
+              <Text lang={lang}>{p}</Text>
             </p>
           ))}
-          {params && <Table caption="Parameters" rows={params} />}
-          {options && <Table caption="Options" rows={options} />}
+          {py && python && (
+            <p className="api-note">
+              <strong>In Python</strong> <Text lang={lang}>{python}</Text>
+            </p>
+          )}
+          {params && <Table caption="Parameters" rows={params} lang={lang} />}
+          {options && (
+            <Table caption={optionsCaption ?? (py ? "Keyword arguments" : "Options")} rows={options} lang={lang} />
+          )}
           <p className="api-returns">
-            <strong>Returns</strong> <Text>{returns}</Text>
+            <strong>Returns</strong> <Text lang={lang}>{returns}</Text>
           </p>
           <pre>
-            <code>{example}</code>
+            <code>{example[lang]}</code>
           </pre>
         </article>
       ))}

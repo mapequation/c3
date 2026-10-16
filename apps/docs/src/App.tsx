@@ -6,6 +6,9 @@ import { SeedsMode } from "./modes/SeedsMode";
 import { HierarchyMode } from "./modes/HierarchyMode";
 import { ApiReference } from "./components/ApiReference";
 import { HowItWorks } from "./components/HowItWorks";
+import { LangSwitch } from "./components/LangSwitch";
+import { Band, Footer, Wordmark } from "./components/Page";
+import { PACKAGES, pick, useLang, type ByLang } from "./lang";
 
 const FEATURES: [string, ReactNode][] = [
   ["Unlimited colors", "Generate as many colors as you want."],
@@ -24,6 +27,13 @@ const FEATURES: [string, ReactNode][] = [
   ],
 ];
 
+/** A library call in the chosen language */
+function Call({ code }: { code: string | ByLang }) {
+  return <code>{pick(code, useLang())}</code>;
+}
+
+const SCHEME_CALL = { js: "palette({ hue: scheme })", py: "palette(hue=scheme)" };
+
 const MODES = [
   {
     id: "palette",
@@ -40,7 +50,7 @@ const MODES = [
   {
     id: "seeds",
     label: "Seeds",
-    fn: "palette({ seeds })",
+    fn: { js: "palette({ seeds })", py: "palette(seeds=...)" },
     about:
       "Start from your own colors, the seeds, and add new ones from the Halton sequence, each as far as possible from the colors before it. New colors stay within the tone inferred from the seeds.",
     Mode: SeedsMode,
@@ -57,12 +67,12 @@ const MODES = [
     // Keeps its old id, so links to #schemes still work
     id: "schemes",
     label: "Schemes",
-    fn: "palette({ hue: scheme })",
+    fn: SCHEME_CALL,
     about: (
       <>
-        Compare a d3 color scheme's own colors at the Cantor stops with <code>{"palette({ hue: scheme })"}</code>, which
-        takes only the hues from the scheme and sets lightness and chroma from the tone, keeping colors farther apart for
-        every scheme.
+        Compare a d3 color scheme's own colors at the Cantor stops with <Call code={SCHEME_CALL} />, which takes only
+        the hues from the scheme and sets lightness and chroma from the tone, keeping colors farther apart for every
+        scheme.
       </>
     ),
     Mode: SchemesMode,
@@ -74,12 +84,37 @@ type ModeId = (typeof MODES)[number]["id"];
 /** Old tab ids, so links to them still work */
 const ALIASES: Record<string, ModeId> = { extend: "seeds" };
 
-const band = palette(40);
 const markers = palette(FEATURES.length);
 
 function initialMode(): ModeId {
   const hash = window.location.hash.slice(1);
   return ALIASES[hash] ?? MODES.find((m) => m.id === hash)?.id ?? "palette";
+}
+
+/** How to install the package in the chosen language, with links */
+function Install() {
+  const lang = useLang();
+  return (
+    <div className="install">
+      <LangSwitch />
+      <pre>
+        <code>{lang === "py" ? `pip install ${PACKAGES.py}` : `npm install ${PACKAGES.js}`}</code>
+      </pre>
+      <p>
+        <a className="version" href={`https://github.com/mapequation/c3/releases/tag/v${__C3_VERSION__}`}>
+          v{__C3_VERSION__}
+        </a>{" "}
+        Source on <a href="https://github.com/mapequation/c3">GitHub</a>, package on{" "}
+        {lang === "py" ? (
+          <a href={`https://pypi.org/project/${PACKAGES.py}/`}>PyPI</a>
+        ) : (
+          <a href={`https://www.npmjs.com/package/${PACKAGES.js}`}>npm</a>
+        )}
+        . <a href="#how-it-works">How it works</a>, <a href="#api">API reference</a>,{" "}
+        <a href={`${import.meta.env.BASE_URL}tutorial/`}>Python tutorial</a>.
+      </p>
+    </div>
+  );
 }
 
 function Explorer() {
@@ -122,7 +157,7 @@ function Explorer() {
             onClick={() => select(id)}
             onKeyDown={(e) => onKeyDown(e, i)}
           >
-            {label} <code>{fn}</code>
+            {label} <Call code={fn} />
           </button>
         ))}
       </div>
@@ -144,30 +179,13 @@ export default function App() {
     <>
       <header className="page masthead">
         <h1 className="wordmark">
-          <span className="mark" aria-hidden="true">
-            C3
-          </span>
-          <span className="words">
-            <span>
-              C<span>onsistent</span>
-            </span>{" "}
-            <span>
-              C<span>ategorical</span>
-            </span>{" "}
-            <span>
-              C<span>olors</span>
-            </span>
-          </span>
+          <Wordmark />
         </h1>
         <p className="tagline">
           Deterministic colors for maps, inspired by the{" "}
           <a href="https://en.wikipedia.org/wiki/Cantor_set">Cantor set</a> fractal.
         </p>
-        <div className="band" aria-hidden="true">
-          {band.map((c, i) => (
-            <span key={i} style={{ background: c }} />
-          ))}
-        </div>
+        <Band />
       </header>
 
       <main className="page">
@@ -183,19 +201,7 @@ export default function App() {
               </div>
             ))}
           </dl>
-          <div className="install">
-            <pre>
-              <code>npm install @mapequation/c3</code>
-            </pre>
-            <p>
-              <a className="version" href={`https://github.com/mapequation/c3/releases/tag/v${__C3_VERSION__}`}>
-                v{__C3_VERSION__}
-              </a>{" "}
-              Source on <a href="https://github.com/mapequation/c3">GitHub</a>, package on{" "}
-              <a href="https://www.npmjs.com/package/@mapequation/c3">npm</a>.{" "}
-              <a href="#how-it-works">How it works</a>, <a href="#api">API reference</a>.
-            </p>
-          </div>
+          <Install />
         </section>
 
         <Explorer />
@@ -205,12 +211,7 @@ export default function App() {
         <ApiReference />
       </main>
 
-      <footer className="page footer">
-        <p>
-          C3 by Daniel Edler and Anton Eriksson, <a href="https://www.mapequation.org">mapequation.org</a>. Apache-2.0
-          license.
-        </p>
-      </footer>
+      <Footer />
     </>
   );
 }
