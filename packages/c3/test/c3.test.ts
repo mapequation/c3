@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { distance, hierarchy, inferTone, palette, swatches, tones } from "../src/index.js";
+import { distance, hierarchy, inferTone, palette, swatches, tones, type Module, type ModuleColor } from "../src/index.js";
 import { defaultTone, endLightness, getScheme, stops, vanDerCorput } from "../src/internal.js";
 import { labDistance, parseOklab, parseOklch } from "../src/oklab.js";
 
@@ -71,6 +71,30 @@ describe("palette()", () => {
 
   it("accepts weights", () => {
     expect(palette([1, 2, 3])).toHaveLength(3);
+  });
+
+  it("gives zero weights valid, distinct colors", () => {
+    for (const weights of [[0], [0, 0], [0, 0, 1], [1, 0, 0], [5, 0, 0, 0, 0, 0, 0, 1], Array(9).fill(0), [3, 0, 2, 0, 0, 1]]) {
+      const colors = palette(weights);
+      expect(colors).toHaveLength(weights.length);
+      for (const c of colors) expect(c).toMatch(HEX);
+      if (weights.length > 1) expect(minDistance(colors)).toBeGreaterThan(0.02);
+    }
+  });
+
+  it("counts a zero weight as the smallest positive weight, and all zeros as equal weights", () => {
+    expect(palette([3, 0, 2, 0, 0.5])).toEqual(palette([3, 0.5, 2, 0.5, 0.5]));
+    expect(palette([0, 0, 0, 0, 0])).toEqual(palette(5));
+  });
+});
+
+describe("stops()", () => {
+  it("gives zero weights their own stops", () => {
+    for (const weights of [[0, 0, 1], [1, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0]]) {
+      const starts = stops(weights).map(({ start }) => start);
+      expect(starts.every(Number.isFinite)).toBe(true);
+      expect(new Set(starts).size).toBe(weights.length);
+    }
   });
 });
 
@@ -280,6 +304,11 @@ describe("palette({ seeds })", () => {
     expect(() => palette(20, { seeds, method: "sequence" })).toThrow(/farthest/);
   });
 
+  it("needs at least one candidate and a lookahead of at least one", () => {
+    expect(() => palette(3, { method: "farthest", candidates: 0 })).toThrow(RangeError);
+    expect(() => palette(3, { method: "lookahead", lookahead: 0 })).toThrow(RangeError);
+  });
+
   it("switches to the end zone at a fixed midpoint", () => {
     const L = palette(30, { seeds, end: { lightness: [0.9, 0.95], midpoint: 12 } }).map((c) => parseOklch(c)[0]);
     for (const l of L.slice(5, 12)) expect(l).toBeLessThan(0.84);
@@ -412,6 +441,49 @@ describe("hierarchy()", () => {
     ]);
     const fromNodes = hierarchy(nodes);
     for (const { path } of modules) expect(fromNodes(path)).toBe(color(path));
+  });
+
+  it("colors zero-flow modules distinctly, also adjacent ones and their children", () => {
+    const trees: Module[][] = [
+      // Infomap order: zero-flow modules last
+      [1, 0.5, 0.3, 0.2, 0.1, 0, 0, 0].map((flow, i) => ({ path: [i + 1], flow })),
+      [{ path: [1], flow: 0 }, { path: [2], flow: 0 }],
+      [
+        { path: [1, 1], flow: 0.6 },
+        { path: [1, 2], flow: 0.4 },
+        { path: [2, 1], flow: 0 },
+        { path: [2, 2], flow: 0 },
+        { path: [2, 3], flow: 0 },
+        { path: [3], flow: 0 },
+      ],
+      [[1, 1], [1, 2], [2, 1]].map((path) => ({ path, flow: 0 })),
+    ];
+    for (const modules of trees) {
+      const h = hierarchy(modules);
+      for (const m of h.modules) expect(m.color).toMatch(HEX);
+      const parentKey = (m: ModuleColor) => m.path.slice(0, -1).join(":");
+      for (const parent of ["", ...h.modules.map((m) => m.path.join(":"))]) {
+        const children = h.modules.filter((m) => parentKey(m) === parent);
+        if (children.length > 1) expect(minDistance(children.map((m) => m.color))).toBeGreaterThan(0.01);
+        const color = parent && h(parent.split(":").map(Number));
+        for (const child of children) expect(child.color).not.toBe(color);
+      }
+    }
+  });
+
+  it("counts a zero flow as the smallest positive flow on its level", () => {
+    const withZero: Module[] = [
+      { path: [1, 1], flow: 0.5 },
+      { path: [1, 2], flow: 0.2 },
+      { path: [2], flow: 0 },
+      { path: [2, 1], flow: 0 },
+      { path: [2, 2], flow: 0 },
+      { path: [3], flow: 0.1 },
+    ];
+    // The smallest positive flows are 0.1 on the top level and 0.2 below it
+    const smallest = withZero.map(({ path, flow }) => ({ path, flow: flow || [0.1, 0.2][path.length - 1] }));
+    const colors = (modules: Module[]) => hierarchy(modules).modules.map((m) => m.color);
+    expect(colors(withZero)).toEqual(colors(smallest));
   });
 
   it("keeps children inside the tone's chroma range, or as colorful as their parent", () => {

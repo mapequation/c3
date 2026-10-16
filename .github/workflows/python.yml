@@ -1,0 +1,54 @@
+name: Test Python package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.11", "3.14" ]
+
+    defaults:
+      run:
+        working-directory: python
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          working-directory: python
+          enable-cache: true
+
+      - name: Test
+        run: uv run --locked pytest
+
+  notebook:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: python
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.14"
+          working-directory: python
+          enable-cache: true
+
+      # Runs every cell (it downloads the Census state boundaries) and fails on errors,
+      # without writing the outputs back
+      - name: Execute the tutorial notebook
+        run: uv run --locked --group notebook jupyter execute examples/tutorial.ipynb

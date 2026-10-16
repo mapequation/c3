@@ -1,0 +1,41 @@
+[project]
+name = "c3-colors"
+version = "2.0.0"
+description = "Consistent Categorical Colors - Deterministic colors for maps"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "@mapequation" }]
+requires-python = ">=3.11"
+dependencies = []
+keywords = ["colors", "palette", "categorical", "oklab", "oklch"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/mapequation/c3"
+Repository = "https://github.com/mapequation/c3"
+Issues = "https://github.com/mapequation/c3/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/c3"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+notebook = [
+    "geopandas>=1.0",
+    "infomap>=2.8",
+    "ipykernel>=6.29",
+    "matplotlib>=3.9",
+    "nbclient>=0.10",
+    "networkx>=3.4",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

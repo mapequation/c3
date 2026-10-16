@@ -1,6 +1,7 @@
 import { vanDerCorput } from "./halton.js";
 import { inGamut, labDistance, labToHex, labToLch, parseOklab, type Lab } from "./oklab.js";
 import { palette, paletteTones, type PaletteOptions } from "./palette.js";
+import { positiveWeights } from "./stops.js";
 
 export type Module = {
   /** Path from the top module, like [1, 4, 3] for the third child of the fourth child of module 1 */
@@ -90,11 +91,13 @@ export function hierarchy(modules: readonly Module[], options: HierarchyOptions 
   top.forEach((node, i) => (node.lab = parseOklab(topColors[i])));
 
   for (let level = top; level.length > 0; level = ([] as TreeNode[]).concat(...level.map((node) => node.children))) {
-    for (const node of level) {
-      if (node.children.length === 0) continue;
-      node.radius = (1 - padding) * share(node, level);
+    // Zero flows count as the smallest flow on the level, like zero weights in palette()
+    const sizes = positiveWeights(level.map((node) => node.flow)).map(Math.sqrt);
+    level.forEach((node, i) => {
+      if (node.children.length === 0) return;
+      node.radius = (1 - padding) * share(i, level, sizes);
       placeChildren(node, node.radius, allowedAround(node.lab!));
-    }
+    });
   }
 
   const colors = new Map<string, string>();
@@ -144,18 +147,17 @@ function buildTree(modules: readonly Module[]) {
 }
 
 /**
- * Largest distance from the node's color that stays on its side of every
- * other module on the level, splitting each distance by the square root of the flows.
+ * Largest distance from the color of the i:th module on the level that stays on its side
+ * of every other module there, splitting each distance by the sizes, the square roots of the flows.
  */
-function share(node: TreeNode, level: TreeNode[]) {
-  const w = Math.sqrt(node.flow);
+function share(i: number, level: TreeNode[], sizes: number[]) {
+  const node = level[i];
+  const w = sizes[i];
   let radius = Infinity;
-  for (const other of level) {
-    if (other === node) continue;
-    const v = Math.sqrt(other.flow);
-    const part = w + v > 0 ? w / (w + v) : 0.5;
-    radius = Math.min(radius, labDistance(node.lab!, other.lab!) * part);
-  }
+  level.forEach((other, j) => {
+    if (j === i) return;
+    radius = Math.min(radius, labDistance(node.lab!, other.lab!) * (w / (w + sizes[j])));
+  });
   return Number.isFinite(radius) ? radius : 0.05;
 }
 
