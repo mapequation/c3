@@ -1,11 +1,12 @@
 import { Fragment } from "react";
 import { useCopy } from "../util";
-import { useLang, type ByLang } from "../lang";
+import { GRAMMAR, useLang, type ByLang } from "../lang";
+import { Code } from "./Code";
 import { delegatedHover, NONE, type Hover } from "./Hover";
 import { LangSwitch } from "./LangSwitch";
 
 /**
- * The library call for the current settings in JS or Python, and its output, both copyable.
+ * The library call for the current settings in TypeScript or Python, and its output, both copyable.
  * With onHover, hovering a color in the output highlights it in the other views.
  */
 export function CodeSnippet({
@@ -16,7 +17,8 @@ export function CodeSnippet({
   onHover,
 }: { code: ByLang; colors: string[]; title?: string } & Partial<Hover>) {
   const { copy, label } = useCopy();
-  const shown = code[useLang()];
+  const lang = useLang();
+  const shown = code[lang];
   const array = `[${colors.map((c) => JSON.stringify(c)).join(", ")}]`;
 
   return (
@@ -31,7 +33,7 @@ export function CodeSnippet({
         </div>
       </div>
       <pre>
-        <code>{shown}</code>
+        <Code code={shown} lang={GRAMMAR[lang]} />
       </pre>
       <div className="snippet-head">
         <h3>{title}</h3>

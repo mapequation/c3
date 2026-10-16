@@ -1,7 +1,7 @@
 import notebook from "../../../python/examples/tutorial.ipynb";
 import notebookUrl from "../../../python/examples/tutorial.ipynb?url&no-inline";
 import type { Output } from "./notebook";
-import { Band, Footer, Wordmark } from "./components/Page";
+import { Band, Footer, SiteNav, Wordmark } from "./components/Page";
 
 const COLAB = "https://colab.research.google.com/github/mapequation/c3/blob/main/python/examples/tutorial.ipynb";
 const HOME = import.meta.env.BASE_URL;
@@ -22,6 +22,7 @@ function CellOutput({ output }: { output: Output }) {
 export default function Tutorial() {
   return (
     <>
+      <SiteNav tutorial />
       <header className="page masthead">
         <a className="wordmark" href={HOME}>
           <Wordmark />
@@ -36,11 +37,6 @@ export default function Tutorial() {
           <li>
             <a className="btn" href={notebookUrl} download="tutorial.ipynb">
               Download notebook
-            </a>
-          </li>
-          <li>
-            <a className="btn" href={HOME}>
-              Back to the explorer and API
             </a>
           </li>
         </ul>
@@ -65,7 +61,8 @@ export default function Tutorial() {
             ) : (
               <div key={i} className="nb-code">
                 <pre>
-                  <code>{cell.source}</code>
+                  {/* Highlighted from the notebook at build time */}
+                  <code className="shiki" dangerouslySetInnerHTML={{ __html: cell.html }} />
                 </pre>
                 {cell.outputs.map((output, j) => (
                   <CellOutput key={j} output={output} />

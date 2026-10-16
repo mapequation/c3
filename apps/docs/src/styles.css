@@ -91,10 +91,107 @@ h2 {
   }
 }
 
+/* Site navigation: sections and tutorial on the left, release and source on the right */
+
+.site-nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-nav .page {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.site-nav ul {
+  display: flex;
+  gap: 24px;
+  margin: 0 auto 0 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.site-nav ul a {
+  display: block;
+  padding-block: 15px 13px;
+  border-bottom: 2px solid transparent;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.site-nav ul a:hover {
+  color: var(--ink);
+}
+
+.site-nav ul a[aria-current="page"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.version {
+  padding: 1px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.version:hover {
+  border-color: var(--ink-3);
+}
+
+.github {
+  display: block;
+  padding: 4px;
+  margin-right: -4px;
+  color: var(--ink-2);
+}
+
+.github:hover {
+  color: var(--ink);
+}
+
+.icon {
+  display: block;
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
+/* On phones, the release and source above the links */
+@media (max-width: 600px) {
+  .site-nav .page {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0 14px;
+    padding-top: 8px;
+  }
+
+  .site-nav ul {
+    order: 1;
+    flex: 1 0 100%;
+    gap: 18px;
+  }
+
+  .site-nav ul a {
+    padding-block: 8px 10px;
+  }
+
+  .site-nav .wide {
+    display: none;
+  }
+}
+
 /* Header */
 
 .masthead {
-  padding-top: 48px;
+  padding-top: 40px;
 }
 
 .wordmark {
@@ -174,33 +271,93 @@ h2 {
   flex: none;
 }
 
-.install {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 20px;
-  margin-top: 28px;
+/* Packages: the TypeScript library and the Python package */
+
+.packages {
+  margin-top: 56px;
 }
 
-.install p {
-  margin: 0;
-  font-size: 14px;
+.packages > p {
+  margin: 0 0 20px;
   color: var(--ink-2);
 }
 
-.install .version {
-  margin-right: 6px;
-  padding: 1px 8px;
-  border: 1px solid var(--line-2);
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--ink);
-  text-decoration: none;
+.package-cards {
+  display: grid;
+  gap: 16px;
 }
 
-.install .version:hover {
-  border-color: var(--ink-3);
+@media (min-width: 720px) {
+  .package-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+}
+
+.package {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.package h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 19px;
+}
+
+.package h3 .icon {
+  width: 28px;
+  height: 28px;
+}
+
+.package p {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.package-install {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+  background: var(--code-bg);
+  border-radius: 4px;
+}
+
+.package-install pre {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0;
+}
+
+.package-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.package-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.package-links .icon {
+  width: 20px;
+  height: 20px;
 }
 
 /* Explorer */
@@ -910,6 +1067,17 @@ pre {
   background: var(--code-bg);
   border-radius: 4px;
   overflow-x: auto;
+}
+
+/* Code highlighted by Shiki in src/shiki.ts: token colors for the theme, on the page's own code background */
+.shiki span {
+  color: var(--shiki-light);
+}
+
+@media (prefers-color-scheme: dark) {
+  .shiki span {
+    color: var(--shiki-dark);
+  }
 }
 
 pre.output {

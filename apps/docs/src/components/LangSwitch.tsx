@@ -1,11 +1,11 @@
 import { setLang, useLang, type Lang } from "../lang";
 
 const LANGS: [Lang, string][] = [
-  ["js", "JS"],
+  ["js", "TypeScript"],
   ["py", "Python"],
 ];
 
-/** The JS/Python switch. Every switch on the page shows and sets the same language. */
+/** The TypeScript/Python switch. Every switch on the page shows and sets the same language. */
 export function LangSwitch() {
   const lang = useLang();
   return (

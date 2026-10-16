@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Marked } from "marked";
 import type { Plugin } from "vite";
 import type { Notebook, Output } from "./src/notebook.ts";
+import { highlight, type CodeLang, type Line } from "./src/shiki.ts";
 
 /** nbformat text: a string or a list of lines */
 type Source = string | string[];
@@ -26,6 +27,34 @@ const slug = (text: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "section";
+
+const escape = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** A highlighted line as HTML, colored by styles.css like the Code component on the main page */
+const lineHtml = (line: Line) =>
+  line
+    .map(({ text, light, dark }) =>
+      light ? `<span style="--shiki-light:${light};--shiki-dark:${dark}">${escape(text)}</span>` : escape(text),
+    )
+    .join("");
+
+const html = (code: string, lang: CodeLang) => highlight(code, lang).map(lineHtml).join("\n");
+
+/** A code cell as highlighted HTML. IPython magics, like %config, aren't Python and stay plain text. */
+function codeHtml(source: string) {
+  const lines = source.split("\n");
+  const magic = (line: string) => /^\s*[%!]/.test(line);
+  const tokens = highlight(lines.map((line) => (magic(line) ? "" : line)).join("\n"), "python");
+  return tokens.map((line, i) => (magic(lines[i]) ? escape(lines[i]) : lineHtml(line))).join("\n");
+}
+
+/** The grammars for code blocks in markdown cells */
+const LANGS: Record<string, CodeLang> = {
+  sh: "shellscript",
+  bash: "shellscript",
+  shell: "shellscript",
+  python: "python",
+};
 
 /** Width and height in CSS pixels from the svg element, where matplotlib gives them in pt */
 function svgSize(svg: string) {
@@ -62,6 +91,10 @@ function render(cells: RawCell[], figure: (data: Buffer, ext: string) => string)
         if (depth === 2 || depth === 3) contents.push({ id, text: heading, depth });
         return `<h${depth} id="${id}">${this.parser.parseInline(tokens)}</h${depth}>\n`;
       },
+      code({ text, lang = "" }) {
+        if (!LANGS[lang]) return false;
+        return `<pre><code class="shiki">${html(text, LANGS[lang])}</code></pre>\n`;
+      },
     },
   });
 
@@ -84,7 +117,8 @@ function render(cells: RawCell[], figure: (data: Buffer, ext: string) => string)
     cells: cells.flatMap((cell): Notebook["cells"] => {
       const source = join(cell.source);
       if (cell.cell_type === "markdown") return [{ type: "markdown", html: marked.parse(source, { async: false }) }];
-      if (cell.cell_type === "code") return [{ type: "code", source, outputs: (cell.outputs ?? []).flatMap(output) }];
+      if (cell.cell_type === "code")
+        return [{ type: "code", html: codeHtml(source), outputs: (cell.outputs ?? []).flatMap(output) }];
       return [];
     }),
     contents,

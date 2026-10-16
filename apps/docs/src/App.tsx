@@ -5,10 +5,12 @@ import { PaletteMode } from "./modes/PaletteMode";
 import { SeedsMode } from "./modes/SeedsMode";
 import { HierarchyMode } from "./modes/HierarchyMode";
 import { ApiReference } from "./components/ApiReference";
+import { Code } from "./components/Code";
 import { HowItWorks } from "./components/HowItWorks";
-import { LangSwitch } from "./components/LangSwitch";
-import { Band, Footer, Wordmark } from "./components/Page";
+import { Icon } from "./components/Icon";
+import { Band, Footer, SiteNav, Wordmark } from "./components/Page";
 import { PACKAGES, pick, useLang, type ByLang } from "./lang";
+import { useCopy } from "./util";
 
 const FEATURES: [string, ReactNode][] = [
   ["Unlimited colors", "Generate as many colors as you want."],
@@ -91,29 +93,65 @@ function initialMode(): ModeId {
   return ALIASES[hash] ?? MODES.find((m) => m.id === hash)?.id ?? "palette";
 }
 
-/** How to install the package in the chosen language, with links */
-function Install() {
-  const lang = useLang();
+const CARDS = [
+  {
+    lang: "js",
+    name: "TypeScript",
+    logo: "typescript",
+    about: "A typed ES module for the browser and Node.js.",
+    install: `npm install ${PACKAGES.js}`,
+    registry: { name: "npm", icon: "npm", href: `https://www.npmjs.com/package/${PACKAGES.js}` },
+  },
+  {
+    lang: "py",
+    name: "Python",
+    logo: "python",
+    about: "Pure Python with no dependencies.",
+    install: `pip install ${PACKAGES.py}`,
+    registry: { name: "PyPI", icon: "pypi", href: `https://pypi.org/project/${PACKAGES.py}/` },
+  },
+] as const;
+
+/** The TypeScript library and the Python package, with how to install them */
+function Packages() {
+  const { copy, label } = useCopy();
   return (
-    <div className="install">
-      <LangSwitch />
-      <pre>
-        <code>{lang === "py" ? `pip install ${PACKAGES.py}` : `npm install ${PACKAGES.js}`}</code>
-      </pre>
-      <p>
-        <a className="version" href={`https://github.com/mapequation/c3/releases/tag/v${__C3_VERSION__}`}>
-          v{__C3_VERSION__}
-        </a>{" "}
-        Source on <a href="https://github.com/mapequation/c3">GitHub</a>, package on{" "}
-        {lang === "py" ? (
-          <a href={`https://pypi.org/project/${PACKAGES.py}/`}>PyPI</a>
-        ) : (
-          <a href={`https://www.npmjs.com/package/${PACKAGES.js}`}>npm</a>
-        )}
-        . <a href="#how-it-works">How it works</a>, <a href="#api">API reference</a>,{" "}
-        <a href={`${import.meta.env.BASE_URL}tutorial/`}>Python tutorial</a>.
-      </p>
-    </div>
+    <section className="packages" aria-labelledby="install">
+      <h2 id="install">Install</h2>
+      <p>Two packages with the same functions and the same colors, released together.</p>
+      <div className="package-cards">
+        {CARDS.map(({ lang, name, logo, about, install, registry }) => (
+          <article key={lang} className="package" aria-labelledby={`package-${lang}`}>
+            <h3 id={`package-${lang}`}>
+              <Icon name={logo} brand />
+              {name}
+            </h3>
+            <p>{about}</p>
+            <div className="package-install">
+              <pre>
+                <Code code={install} lang="shellscript" />
+              </pre>
+              <button type="button" className="btn" onClick={() => copy(lang, install)}>
+                {label(lang, "Copy")}
+              </button>
+            </div>
+            <ul className="package-links">
+              <li>
+                <a href={registry.href}>
+                  <Icon name={registry.icon} brand />
+                  {registry.name}
+                </a>
+              </li>
+              {lang === "py" && (
+                <li>
+                  <a href={`${import.meta.env.BASE_URL}tutorial/`}>Python tutorial</a>
+                </li>
+              )}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -177,6 +215,7 @@ function Explorer() {
 export default function App() {
   return (
     <>
+      <SiteNav />
       <header className="page masthead">
         <h1 className="wordmark">
           <Wordmark />
@@ -201,8 +240,9 @@ export default function App() {
               </div>
             ))}
           </dl>
-          <Install />
         </section>
+
+        <Packages />
 
         <Explorer />
 

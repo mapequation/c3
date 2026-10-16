@@ -6,6 +6,9 @@ export type Lang = "js" | "py";
 /** The package names, on npm and on PyPI. The versions are the same. */
 export const PACKAGES = { js: "@mapequation/c3", py: "c3-colors" };
 
+/** The grammar for highlighting code in each language */
+export const GRAMMAR = { js: "typescript", py: "python" } as const;
+
 /** Text in both languages */
 export type ByLang = { js: string; py: string };
 

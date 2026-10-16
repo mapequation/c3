@@ -1,8 +1,13 @@
 import { Fragment } from "react";
 import { API, pythonName, toPython, type Row } from "../api";
 import { snake } from "../code";
-import { pick, useLang, type ByLang, type Lang } from "../lang";
+import { GRAMMAR, pick, useLang, type ByLang, type Lang } from "../lang";
+import { Code } from "./Code";
 import { LangSwitch } from "./LangSwitch";
+
+/** Context for the grammar, so that a signature highlights as a declaration */
+const declaration = (signature: string, lang: Lang) =>
+  signature.includes("(") ? (lang === "py" ? "def " : "declare function ") : lang === "py" ? "" : "declare const ";
 
 /** Render `backtick` spans as code, in Python where it differs */
 function Text({ children, lang }: { children: string | ByLang; lang: Lang }) {
@@ -80,7 +85,7 @@ export function ApiReference() {
         // Ids keep the JS names, so links work in both languages
         <article key={name} id={`api-${name}`} className="api-entry">
           <h3>
-            <code>{signature[lang]}</code>
+            <Code code={signature[lang]} lang={GRAMMAR[lang]} prefix={declaration(signature[lang], lang)} />
           </h3>
           {deprecated && (
             <p>
@@ -105,7 +110,7 @@ export function ApiReference() {
             <strong>Returns</strong> <Text lang={lang}>{returns}</Text>
           </p>
           <pre>
-            <code>{example[lang]}</code>
+            <Code code={example[lang]} lang={GRAMMAR[lang]} />
           </pre>
         </article>
       ))}

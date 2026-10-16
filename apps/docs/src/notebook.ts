@@ -5,7 +5,8 @@ export type Notebook = {
   contents: { id: string; text: string; depth: number }[];
 };
 
-export type Cell = { type: "markdown"; html: string } | { type: "code"; source: string; outputs: Output[] };
+/** Markdown as HTML, and code cells as HTML highlighted for styles.css */
+export type Cell = { type: "markdown"; html: string } | { type: "code"; html: string; outputs: Output[] };
 
 /** Figures, and text output: results, stdout and errors */
 export type Output =
