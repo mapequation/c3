@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="218.277187pt" height="64.296pt" viewBox="0 0 218.277187 64.296" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 64.296 
+L 218.277188 64.296 
+L 218.277188 0 
+L 0 0 
+L 0 64.296 
+z
+" style="fill: none"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 60.417187 57.096 
+L 211.077188 57.096 
+L 211.077188 7.2 
+L 60.417187 7.2 
+L 60.417187 57.096 
+z
+" style="fill: none"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 62.300438 9.0711 
+L 83.643938 9.0711 
+L 83.643938 30.2769 
+L 62.300438 30.2769 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #2b9bea"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 87.410438 9.0711 
+L 108.753938 9.0711 
+L 108.753938 30.2769 
+L 87.410438 30.2769 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #cf9f71"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 112.520438 9.0711 
+L 133.863938 9.0711 
+L 133.863938 30.2769 
+L 112.520438 30.2769 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #3b8559"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 137.630438 9.0711 
+L 158.973938 9.0711 
+L 158.973938 30.2769 
+L 137.630438 30.2769 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #b46ba5"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 162.740438 9.0711 
+L 184.083938 9.0711 
+L 184.083938 30.2769 
+L 162.740438 30.2769 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #00b3bb"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 187.850438 9.0711 
+L 209.193938 9.0711 
+L 209.193938 30.2769 
+L 187.850438 30.2769 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #c64c53"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 62.300438 34.0191 
+L 83.643938 34.0191 
+L 83.643938 55.2249 
+L 62.300438 55.2249 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #2b9bea"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 87.410438 34.0191 
+L 108.753938 34.0191 
+L 108.753938 55.2249 
+L 87.410438 55.2249 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #cf9f71"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 112.520438 34.0191 
+L 133.863938 34.0191 
+L 133.863938 55.2249 
+L 112.520438 55.2249 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #667e37"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 137.630438 34.0191 
+L 158.973938 34.0191 
+L 158.973938 55.2249 
+L 137.630438 55.2249 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #c4677f"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 162.740438 34.0191 
+L 184.083938 34.0191 
+L 184.083938 55.2249 
+L 162.740438 55.2249 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #62b466"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 187.850438 34.0191 
+L 209.193938 34.0191 
+L 209.193938 55.2249 
+L 187.850438 55.2249 
+z
+" clip-path="url(#pc44959ee9f)" style="fill: #c54b5c"/>
+   </g>
+   <g id="matplotlib.axis_1"/>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="text_1">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: end; fill: #888888" x="53.417187" y="23.473219" transform="rotate(-0 53.417187 23.473219)">equal</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="text_2">
+      <text style="font-size: 10px; font-family: 'DejaVu Sans', 'Bitstream Vera Sans', 'Computer Modern Sans Serif', 'Lucida Grande', 'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica', 'Avant Garde', sans-serif; text-anchor: end; fill: #888888" x="53.417187" y="48.421219" transform="rotate(-0 53.417187 48.421219)">weighted</text>
+     </g>
+    </g>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc44959ee9f">
+   <rect x="60.417187" y="7.2" width="150.66" height="49.896"/>
+  </clipPath>
+ </defs>
+</svg>
