@@ -26,6 +26,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/c3"]
 
+# The tests and the tutorial need the rest of the repo
+[tool.hatch.build.targets.sdist]
+include = ["src", "README.md"]
+
 [dependency-groups]
 dev = ["pytest>=8"]
 notebook = [
