@@ -48,7 +48,7 @@ export function useZones(top: Tone, fade?: boolean) {
   }, [custom, shown, base, named, auto, midpoint, minGap, fade, fadeIn, steepness]);
 
   const controls = (
-    <Group legend="Later colors">
+    <Group legend="Later colors" closed>
       <label className="field">
         <span>End zone</span>
         <select

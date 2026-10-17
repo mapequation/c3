@@ -474,6 +474,51 @@ h2 {
   color: var(--ink-3);
 }
 
+.group[data-closed] {
+  margin-bottom: 12px;
+}
+
+.group[data-closed] legend {
+  margin-bottom: 0;
+}
+
+.group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.group-toggle:hover {
+  color: var(--ink-2);
+}
+
+/* A chevron that points right when closed and down when open */
+.group-toggle::before {
+  content: "";
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid currentColor;
+  transition: transform 0.15s;
+}
+
+.group-toggle[aria-expanded="true"]::before {
+  transform: rotate(90deg);
+}
+
+.controls .hint {
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .slider {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -489,6 +534,16 @@ h2 {
 
 .slider[data-disabled] {
   opacity: 0.45;
+}
+
+.slider-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 14px;
+}
+
+.slider-pair .num {
+  width: 6ch;
 }
 
 .slider input[type="range"] {
@@ -545,6 +600,29 @@ h2 {
   margin-bottom: 10px;
   font-size: 13px;
   color: var(--ink-2);
+}
+
+.field-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.text-btn {
+  padding: 0;
+  font: inherit;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.text-btn:hover {
+  color: var(--ink);
 }
 
 select,
@@ -1522,7 +1600,8 @@ a.wordmark {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .swatch span {
+  .swatch span,
+  .group-toggle::before {
     transition: none;
   }
 }

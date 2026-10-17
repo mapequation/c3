@@ -109,17 +109,12 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       <Group legend="Method">{method.controls}</Group>
 
       <Group legend="Lightness and chroma">
-        <ToneControls tone={top} onChange={setCustom} customLabel={custom ? "Custom" : "From the scheme"} />
-        {custom && (
-          <button type="button" className="btn" onClick={() => setCustom(null)}>
-            Reset
-          </button>
-        )}
+        <ToneControls tone={top} onChange={setCustom} autoLabel={scheme ? "Auto (from the scheme)" : "Auto (default)"} auto={!custom} />
       </Group>
 
       {zones.controls}
 
-      <Group legend="Sequence start">
+      <Group legend="Sequence start" closed>
         <Slider label="Lightness offset" value={lightnessOffset} onChange={setLightnessOffset} min={0} max={40} />
         <Slider label="Chroma offset" value={chromaOffset} onChange={setChromaOffset} min={0} max={40} />
         <p className="hint">Where lightness and chroma start in their sequences. Changes the colors, not how evenly they spread.</p>
