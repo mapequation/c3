@@ -84,18 +84,25 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
   const controls = (
     <>
       <Group legend="Seed colors">
-        <label className="field" htmlFor={`${errorId}-seeds`}>
-          <span>One per line or comma separated, any CSS color</span>
-        </label>
-        <textarea
-          id={`${errorId}-seeds`}
-          rows={6}
-          spellCheck={false}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          aria-invalid={invalid.length > 0}
-          aria-describedby={invalid.length > 0 ? errorId : undefined}
-        />
+        <div className="field">
+          <div className="field-head">
+            <label htmlFor={`${errorId}-seeds`}>One per line or comma separated, any CSS color</label>
+            {text !== MURAL && (
+              <button type="button" className="text-btn" onClick={() => setText(MURAL)}>
+                Load mural preset
+              </button>
+            )}
+          </div>
+          <textarea
+            id={`${errorId}-seeds`}
+            rows={5}
+            spellCheck={false}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            aria-invalid={invalid.length > 0}
+            aria-describedby={invalid.length > 0 ? errorId : undefined}
+          />
+        </div>
         {invalid.length > 0 && (
           <p className="error" id={errorId} role="alert">
             Not a color, left out:{" "}
@@ -107,9 +114,6 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
             ))}
           </p>
         )}
-        <button type="button" className="btn" onClick={() => setText(MURAL)} disabled={text === MURAL}>
-          Load mural preset
-        </button>
       </Group>
 
       <Group legend="Method">
@@ -118,12 +122,7 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
       </Group>
 
       <Group legend="Lightness and chroma">
-        <ToneControls tone={shownTone} onChange={setCustom} customLabel={custom ? "Custom" : "From the seeds"} />
-        {custom && (
-          <button type="button" className="btn" onClick={() => setCustom(null)}>
-            Reset
-          </button>
-        )}
+        <ToneControls tone={shownTone} onChange={setCustom} autoLabel={seeds.length > 0 ? "Auto (from the seeds)" : "Auto (default)"} auto={!custom} />
       </Group>
 
       {zones.controls}
