@@ -109,6 +109,17 @@ h2 {
   flex: none;
 }
 
+.site-nav .app {
+  flex: none;
+  margin-left: -6px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.07em;
+  line-height: 1;
+  color: var(--ink);
+  text-decoration: none;
+}
+
 .site-nav ul {
   display: flex;
   gap: 24px;
@@ -169,7 +180,7 @@ h2 {
   height: 22px;
 }
 
-/* On phones, mapequation.org, the release and the source above the links */
+/* On phones, mapequation.org, C3, the release and the source above the links */
 @media (max-width: 600px) {
   .site-nav .page {
     flex-wrap: wrap;
@@ -178,7 +189,7 @@ h2 {
     padding-top: 8px;
   }
 
-  .site-nav .home {
+  .site-nav .app {
     margin-right: auto;
   }
 
