@@ -4,6 +4,7 @@ node_modules
 lib
 dist
 packages/c3/README.md
+packages/c3/LICENSE
 
 # Python
 .venv

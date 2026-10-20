@@ -21,7 +21,7 @@
     "watch": "tsc --watch",
     "test": "vitest run",
     "fixtures": "UPDATE_FIXTURES=1 vitest run test/fixtures.test.ts",
-    "prepack": "cp ../../README.md . && pnpm build"
+    "prepack": "cp ../../README.md ../../LICENSE . && pnpm build"
   },
   "repository": {
     "type": "git",
