@@ -74,4 +74,4 @@ jobs:
           path: dist/
 
       - name: Publish
-        run: npm publish dist/*.tgz
+        run: npm publish ./dist/*.tgz
