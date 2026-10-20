@@ -7,7 +7,10 @@ import { ColorBar } from "../components/ColorBar";
 import { Swatches } from "../components/Swatches";
 import { CodeSnippet } from "../components/CodeSnippet";
 import { Quality } from "../components/Quality";
+import { useHover } from "../components/Hover";
+import { UsMap } from "../components/UsMap";
 import { callCode } from "../code";
+import { DIVISIONS, STATES } from "../us";
 import { timed, toHex, unlessDefault } from "../util";
 
 const RING_SAMPLES = 120;
@@ -25,6 +28,9 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
   const [scheme, setScheme] = useState<SchemeName>("Sinebow");
   const [reverse, setReverse] = useState(false);
   const [offset, setOffset] = useState(0);
+  // Highlighted colors by index, linked across the swatches, the quality chips and the map
+  const [hovered, onHover] = useHover();
+  const hover = { hovered, onHover };
 
   const deferred = useDeferredValue(useMemo(() => ({ n, scheme, reverse, offset }), [n, scheme, reverse, offset]));
 
@@ -42,6 +48,11 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
       comparison: { label: "palette()", colors: picked, ms: paletteMs },
       code: callCode("palette", n, options),
       picked,
+      // The scheme's own colors at the first Cantor stops, one per area of the map
+      map: {
+        divisionColors: schemeColors(scheme, stops(DIVISIONS.length).map((s) => s.start), offset, reverse),
+        stateColors: schemeColors(scheme, stops(STATES.length).map((s) => s.start), offset, reverse),
+      },
     };
   }, [deferred]);
 
@@ -73,8 +84,15 @@ export function SchemesMode({ n, setN }: { n: number; setN: (n: number) => void 
         </figure>
       </div>
       <ColorBar colors={result.hex} />
-      <Swatches colors={result.hex} />
-      <Quality colors={result.hex} ms={result.ms} label="scheme colors" comparison={result.comparison} />
+      <Swatches colors={result.hex} {...hover} />
+      <Quality colors={result.hex} ms={result.ms} label="scheme colors" comparison={result.comparison} {...hover} />
+      <figure className="wide">
+        <UsMap {...result.map} {...hover} />
+        <figcaption>
+          The scheme's own colors on a map of the US: one per Census division, or one per state and DC, in division order.
+          The switch sets the level.
+        </figcaption>
+      </figure>
       <CodeSnippet code={result.code} colors={result.picked} />
     </ModeLayout>
   );
