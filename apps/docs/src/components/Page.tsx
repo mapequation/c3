@@ -6,7 +6,7 @@ const HOME = import.meta.env.BASE_URL;
 const REPO = "https://github.com/mapequation/c3";
 const MAPEQUATION = "https://mapequation.org";
 
-/** mapequation.org, the site's sections, the tutorial, the release and the source. On the tutorial, sections link to the main page. */
+/** mapequation.org, the C3 home page, the site's sections, the tutorial, the release and the source. On the tutorial, sections link to the main page. */
 export function SiteNav({ tutorial = false }: { tutorial?: boolean }) {
   const main = tutorial ? HOME : "";
   return (
@@ -14,6 +14,9 @@ export function SiteNav({ tutorial = false }: { tutorial?: boolean }) {
       <div className="page">
         <a className="home" href={MAPEQUATION} aria-label="mapequation.org" title="mapequation.org">
           <img alt="" width="28" height="28" src={`${MAPEQUATION}/assets/img/twocolormapicon_whiteboarder.svg`} />
+        </a>
+        <a className="app" href={HOME} aria-label="C3 home" title="C3">
+          C3
         </a>
         <ul>
           <li>
