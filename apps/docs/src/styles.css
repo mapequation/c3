@@ -104,6 +104,11 @@ h2 {
   gap: 16px;
 }
 
+.site-nav .home {
+  display: flex;
+  flex: none;
+}
+
 .site-nav ul {
   display: flex;
   gap: 24px;
@@ -164,13 +169,17 @@ h2 {
   height: 22px;
 }
 
-/* On phones, the release and source above the links */
+/* On phones, mapequation.org, the release and the source above the links */
 @media (max-width: 600px) {
   .site-nav .page {
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0 14px;
     padding-top: 8px;
+  }
+
+  .site-nav .home {
+    margin-right: auto;
   }
 
   .site-nav ul {
