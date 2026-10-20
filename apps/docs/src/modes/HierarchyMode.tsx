@@ -134,7 +134,7 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
         <p className="hint">How unequal the sample tree's flows are.</p>
       </Group>
 
-      <Group legend="Your Infomap tree">
+      <Group legend="Your Infomap tree" closed>
         <label className="field" htmlFor={`${id}-tree`}>
           <span>Paste a .tree file or open one</span>
         </label>
@@ -209,15 +209,10 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
       </Group>
 
       <Group legend="Lightness and chroma">
-        <ToneControls tone={tone} onChange={setCustom} customLabel={custom ? "Custom" : "From the scheme"} />
-        {custom && (
-          <button type="button" className="btn" onClick={() => setCustom(null)}>
-            Reset
-          </button>
-        )}
+        <ToneControls tone={tone} onChange={setCustom} autoLabel={scheme ? "Auto (from the scheme)" : "Auto (default)"} auto={!custom} />
       </Group>
 
-      <Group legend="Balls">
+      <Group legend="Balls" closed>
         <Slider label="Padding" value={padding} onChange={setPadding} min={0} max={0.6} step={0.01} />
         <Check label="Use flows" checked={useFlows} onChange={setUseFlows} />
         <p className="hint">
