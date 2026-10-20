@@ -9,8 +9,10 @@ import { Quality } from "../components/Quality";
 import { useZones } from "../components/Zones";
 import { useMethod } from "../components/Method";
 import { useHover } from "../components/Hover";
+import { UsMap } from "../components/UsMap";
 import { firstDifference } from "../quality";
 import { callCode } from "../code";
+import { DIVISIONS, STATES } from "../us";
 import { isMural, timed, toneOption, unlessDefault } from "../util";
 
 const MURAL = swatches.mural.join("\n");
@@ -70,7 +72,9 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
     const method = options.method ?? METHODS[0];
     // Where the end zone starts: the first color that differs without it
     const endZone = options.end ? firstDifference(hex, palette(n, { ...options, end: false })) : -1;
-    return { hex, ms, method, endZone, code: callCode("palette", n, options), seeds: options.seeds?.length ?? 0 };
+    // The same palette, one color per area of the map; the seeds come first
+    const map = { divisionColors: palette(DIVISIONS.length, options), stateColors: palette(STATES.length, options) };
+    return { hex, ms, method, endZone, map, code: callCode("palette", n, options), seeds: options.seeds?.length ?? 0 };
   }, [deferred]);
 
   // The same seeds and options with the other method
@@ -142,6 +146,13 @@ export function SeedsMode({ n, setN }: { n: number; setN: (n: number) => void })
       </div>
       <Swatches colors={result.hex} seeds={result.seeds} {...hover} />
       <Quality colors={result.hex} ms={result.ms} label={result.method} comparison={comparison} seeds={result.seeds} endZone={result.endZone} {...hover} />
+      <figure className="wide">
+        <UsMap {...result.map} {...hover} />
+        <figcaption>
+          The first colors on a map of the US: one per Census division, or one per state and DC, in division order. The
+          switch sets the level.
+        </figcaption>
+      </figure>
       <CodeSnippet code={result.code} colors={result.hex} {...hover} />
     </ModeLayout>
   );

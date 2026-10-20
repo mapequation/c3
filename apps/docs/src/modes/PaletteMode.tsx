@@ -10,8 +10,10 @@ import { Quality } from "../components/Quality";
 import { useZones } from "../components/Zones";
 import { useMethod } from "../components/Method";
 import { useHover } from "../components/Hover";
+import { UsMap } from "../components/UsMap";
 import { firstDifference } from "../quality";
 import { callCode } from "../code";
+import { DIVISIONS, STATES } from "../us";
 import { schemeTone, timed, toneOption, unlessDefault } from "../util";
 
 const STRIP_SAMPLES = 64;
@@ -81,6 +83,8 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       strip: hueStrip(options),
       inOrder: !options.method,
       code: callCode("palette", n, options),
+      // The same palette, one color per area of the map
+      map: { divisionColors: palette(DIVISIONS.length, options), stateColors: palette(STATES.length, options) },
     };
   }, [deferred]);
 
@@ -144,6 +148,13 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       </div>
       <Swatches colors={result.hex} {...hover} />
       <Quality colors={result.hex} ms={result.ms} label={result.label} comparison={result.comparison} endZone={result.endZone} {...hover} />
+      <figure className="wide">
+        <UsMap {...result.map} {...hover} />
+        <figcaption>
+          The first colors on a map of the US: one per Census division, or one per state and DC, in division order. The
+          switch sets the level.
+        </figcaption>
+      </figure>
       <CodeSnippet code={result.code} colors={result.hex} {...hover} />
     </ModeLayout>
   );

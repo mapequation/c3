@@ -29,10 +29,10 @@ export const tones = {
   vivid: { lightness: [0.55, 0.7], chroma: [0.15, 0.21], warmHue: 285, tilt: 0 },
   /** Colorful and lighter than vivid, close to d3gl's module colors */
   bright: { lightness: [0.64, 0.76], chroma: [0.12, 0.17], warmHue: 285, tilt: 0 },
-  /** Between vivid and deep, with wider ranges that fit the most distinct colors. The default */
-  strong: { lightness: [0.55, 0.76], chroma: [0.08, 0.17], warmHue: 285, tilt: 0 },
-  /** Dark and colorful, for light backgrounds */
-  deep: { lightness: [0.45, 0.62], chroma: [0.1, 0.17], warmHue: 285, tilt: 0 },
+  /** A step less colorful than vivid and a little lighter. The default */
+  strong: { lightness: [0.58, 0.76], chroma: [0.11, 0.17], warmHue: 285, tilt: 0 },
+  /** As colorful as vivid but darker, for light backgrounds */
+  deep: { lightness: [0.45, 0.62], chroma: [0.13, 0.2], warmHue: 285, tilt: 0 },
   /** Darker and less colorful than deep */
   dark: { lightness: [0.36, 0.5], chroma: [0.06, 0.12], warmHue: 285, tilt: 0 },
   /** Lighter and less colorful, close to the Englewood mural */

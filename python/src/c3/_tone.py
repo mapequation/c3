@@ -51,10 +51,10 @@ tones: dict[str, Tone] = {
     "vivid": _tone((0.55, 0.7), (0.15, 0.21), 285, 0),
     # Colorful and lighter than vivid, close to d3gl's module colors
     "bright": _tone((0.64, 0.76), (0.12, 0.17), 285, 0),
-    # Between vivid and deep, with wider ranges that fit the most distinct colors. The default
-    "strong": _tone((0.55, 0.76), (0.08, 0.17), 285, 0),
-    # Dark and colorful, for light backgrounds
-    "deep": _tone((0.45, 0.62), (0.1, 0.17), 285, 0),
+    # A step less colorful than vivid and a little lighter. The default
+    "strong": _tone((0.58, 0.76), (0.11, 0.17), 285, 0),
+    # As colorful as vivid but darker, for light backgrounds
+    "deep": _tone((0.45, 0.62), (0.13, 0.2), 285, 0),
     # Darker and less colorful than deep
     "dark": _tone((0.36, 0.5), (0.06, 0.12), 285, 0),
     # Lighter and less colorful, close to the Englewood mural

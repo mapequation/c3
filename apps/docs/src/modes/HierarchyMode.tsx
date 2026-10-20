@@ -8,8 +8,10 @@ import { CodeSnippet } from "../components/CodeSnippet";
 import { useMethod } from "../components/Method";
 import { formatGap, formatMs } from "../components/Quality";
 import { Chip, HoverLabel, useHover, type Hover } from "../components/Hover";
+import { UsMap } from "../components/UsMap";
 import { JUST_NOTICEABLE } from "../quality";
 import { callCode, Raw } from "../code";
+import { DIVISION_PATHS, STATES } from "../us";
 import { schemeTone, timed, toneOption, unlessDefault } from "../util";
 import { indexTree, MAX_CHARS, parseTree, sampleTree, treeQuality, type Gap, type Tree } from "../tree";
 
@@ -99,6 +101,12 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
       padding: options.padding ?? defaultHierarchyOptions.padding,
     };
   }, [deferred]);
+
+  // The states as a tree of regions, divisions and states, with the same options and no flows
+  const map = useMemo(() => {
+    const colors = hierarchy(STATES.map(({ path }) => ({ path })), deferred.options);
+    return { divisionColors: DIVISION_PATHS.map((path) => colors(path)!), stateColors: STATES.map(({ path }) => colors(path)!) };
+  }, [deferred.options]);
 
   const { tree, quality: q } = result;
   // Keys survive a new tree as long as the module is still there
@@ -258,6 +266,14 @@ export function HierarchyMode(_props: { n: number; setN: (n: number) => void }) 
             Siblings share a parent; cousins are on the same level with different parents.
           </p>
         </section>
+
+        <figure className="wide">
+          <UsMap {...map} />
+          <figcaption>
+            The states and DC as a tree: four regions, nine Census divisions, then the states. Colored with the options
+            above, without flows. The switch sets the level.
+          </figcaption>
+        </figure>
 
         <CodeSnippet code={result.code} colors={result.colors} title="Module colors, depth first" {...hover} />
       </div>

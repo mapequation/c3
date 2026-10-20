@@ -104,6 +104,11 @@ h2 {
   gap: 16px;
 }
 
+.site-nav .home {
+  display: flex;
+  flex: none;
+}
+
 .site-nav ul {
   display: flex;
   gap: 24px;
@@ -164,13 +169,17 @@ h2 {
   height: 22px;
 }
 
-/* On phones, the release and source above the links */
+/* On phones, mapequation.org, the release and the source above the links */
 @media (max-width: 600px) {
   .site-nav .page {
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0 14px;
     padding-top: 8px;
+  }
+
+  .site-nav .home {
+    margin-right: auto;
   }
 
   .site-nav ul {
@@ -892,6 +901,43 @@ figcaption {
   font: 12.5px var(--font-mono);
   color: var(--ink-2);
   white-space: pre-wrap;
+}
+
+/* US map */
+
+.map-level {
+  display: flex;
+  gap: 16px;
+}
+
+/* A thin stroke in the fill color hides the seams between areas */
+.us-map path[data-i] {
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+  outline: none;
+}
+
+.us-map-borders,
+.us-map-hover {
+  fill: none;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.us-map-borders {
+  stroke: #fff;
+  stroke-width: 0.5;
+}
+
+/* Hovered here or in another view of the tab, like a swatch */
+.us-map-hover {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.us-map .readout span + span {
+  margin-left: 2em;
 }
 
 /* Quality */

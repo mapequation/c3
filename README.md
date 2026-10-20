@@ -114,8 +114,8 @@ A tone is the part of OKLCH the colors come from: a lightness and a chroma range
 |---|---|---|---|
 | `"vivid"` | 0.55–0.70 | 0.15–0.21 | The most colorful, close to the sRGB limit for many hues |
 | `"bright"` | 0.64–0.76 | 0.12–0.17 | Colorful and lighter than vivid, close to d3gl's module colors |
-| `"strong"` (default) | 0.55–0.76 | 0.08–0.17 | Between vivid and deep. Its wider ranges fit the most distinct colors: about 32 colors 0.04 apart, against 22 to 24 for vivid and bright |
-| `"deep"` | 0.45–0.62 | 0.10–0.17 | Dark and colorful, for light backgrounds |
+| `"strong"` (default) | 0.58–0.76 | 0.11–0.17 | A step less colorful than vivid and a little lighter. It fits the most distinct colors: about 32 colors 0.04 apart, against 22 to 24 for vivid and bright |
+| `"deep"` | 0.45–0.62 | 0.13–0.20 | As colorful as vivid but darker, for light backgrounds |
 | `"dark"` | 0.36–0.50 | 0.06–0.12 | Darker and less colorful than deep |
 | `"soft"` | 0.67–0.83 | 0.045–0.135 | Lighter and less colorful, close to the Englewood mural |
 | `"pastel"` | 0.82–0.92 | 0.05–0.10 | Light, for large areas or dark backgrounds |
@@ -131,8 +131,8 @@ The sRGB gamut caps chroma below the range for some hues, most for cyan and yell
 
 | Field | `"strong"` | |
 |---|---|---|
-| `lightness` | `[0.55, 0.76]` | OKLCH lightness range `[min, max]`, where 0 is black and 1 is white |
-| `chroma` | `[0.08, 0.17]` | OKLCH chroma range `[min, max]`, where 0 is grey |
+| `lightness` | `[0.58, 0.76]` | OKLCH lightness range `[min, max]`, where 0 is black and 1 is white |
+| `chroma` | `[0.11, 0.17]` | OKLCH chroma range `[min, max]`, where 0 is grey |
 | `warmHue` | `285` | The hue that can get the most chroma |
 | `tilt` | `0` | How much less chroma hues far from `warmHue` get: 0 for none, 1 for grey at the opposite hue |
 
