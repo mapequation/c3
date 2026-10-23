@@ -336,7 +336,8 @@ def _hue_source(hue: HueSource, offset: float, reverse: bool) -> Callable[[float
     """Hue in degrees at position t in [0, 1], with the first color offset degrees around the source."""
     if _is_oklch(hue):
         direction = 1 if reverse else -1
-        return lambda t: (offset + direction * 360 * t) % 360
+        # The same steps as JS, where % keeps the sign, so hues just below 0 wrap to 0, not 360
+        return lambda t: math.fmod(math.fmod(offset + direction * 360 * t, 360) + 360, 360)
     scheme = get_scheme(hue)
 
     def hue_at(t: float) -> float:

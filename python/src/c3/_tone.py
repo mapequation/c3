@@ -184,8 +184,9 @@ def _mix(a: float, b: float, t: float) -> float:
 
 
 def _mix_angle(a: float, b: float, t: float) -> float:
-    d = (b - a + 180) % 360 - 180  # shortest way around
-    return (a + d * t) % 360
+    # The same steps as JS, where % keeps the sign
+    d = math.fmod(math.fmod(b - a, 360) + 540, 360) - 180  # shortest way around
+    return math.fmod(a + d * t + 360, 360)
 
 
 def mix_tone(a: Tone, b: Tone, t: float) -> Tone:
