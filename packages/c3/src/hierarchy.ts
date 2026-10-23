@@ -6,7 +6,7 @@ import { positiveWeights } from "./stops.js";
 export type Module = {
   /** Path from the top module, like [1, 4, 3] for the third child of the fourth child of module 1 */
   path: readonly number[];
-  /** Flow or another size, summed over repeated paths. Modules without flow get the sum of their children's, or 1. */
+  /** Finite flow or another size, summed over repeated paths. Modules without flow get the sum of their children's, or 1. */
   flow?: number;
 };
 
@@ -43,12 +43,20 @@ type TreeNode = {
 
 const key = (path: readonly number[]) => path.join(":");
 
+// Only +, - and *, which round the same in every language, unlike Math.hypot
+const squaredDistance = (p: Lab, q: Lab) => {
+  const d0 = p[0] - q[0];
+  const d1 = p[1] - q[1];
+  const d2 = p[2] - q[2];
+  return d0 * d0 + d1 * d1 + d2 * d2;
+};
+
 // Halton points in the unit ball, the candidates for child colors
 const BALL_POINTS = 512;
 const ball: Lab[] = [];
 for (let i = 1; ball.length < BALL_POINTS; ++i) {
   const p: Lab = [2 * vanDerCorput(i, 2) - 1, 2 * vanDerCorput(i, 3) - 1, 2 * vanDerCorput(i, 5) - 1];
-  if (Math.hypot(...p) <= 1) ball.push(p);
+  if (squaredDistance(p, [0, 0, 0]) <= 1) ball.push(p);
 }
 
 /**
@@ -125,6 +133,10 @@ function buildTree(modules: readonly Module[]) {
   const given = new Map<string, number>();
 
   for (const { path, flow } of modules) {
+    if (path.some(Number.isNaN)) throw new RangeError(`Invalid path: [${path.join(", ")}]`);
+    if (flow !== undefined && !Number.isFinite(flow)) {
+      throw new RangeError(`Flow must be finite, got ${flow} for module [${path.join(", ")}]`);
+    }
     for (let n = 1; n <= path.length; ++n) {
       const k = key(path.slice(0, n));
       if (nodes.has(k)) continue;
@@ -161,21 +173,27 @@ function share(i: number, level: TreeNode[], sizes: number[]) {
   return Number.isFinite(radius) ? radius : 0.05;
 }
 
-/** Farthest point sampling of Halton candidates in the ball around the parent */
+/**
+ * Farthest point sampling of Halton candidates in the ball around the parent. The distances
+ * are between the unit ball points, the same for every parent and in every language, so
+ * near-ties between candidates break the same way in the Python port.
+ */
 function placeChildren(parent: TreeNode, radius: number, allowed: (lab: Lab) => boolean) {
   const [L, a, b] = parent.lab!;
-  const candidates = ball.map((p): Lab => [L + radius * p[0], a + radius * p[1], b + radius * p[2]]).filter(allowed);
-  if (candidates.length === 0) {
+  const at = (p: Lab): Lab => [L + radius * p[0], a + radius * p[1], b + radius * p[2]];
+  const points = ball.filter((p) => allowed(at(p)));
+  if (points.length === 0) {
     for (const child of parent.children) child.lab = parent.lab;
     return;
   }
-  const minDist = new Float64Array(candidates.length).fill(Infinity);
+  const minDist = new Float64Array(points.length).fill(Infinity);
   for (const child of parent.children) {
     let best = 0;
-    for (let i = 1; i < candidates.length; ++i) if (minDist[i] > minDist[best]) best = i;
-    child.lab = candidates[best];
-    for (let i = 0; i < candidates.length; ++i) {
-      const d = labDistance(candidates[i], child.lab);
+    for (let i = 1; i < points.length; ++i) if (minDist[i] > minDist[best]) best = i;
+    const point = points[best];
+    child.lab = at(point);
+    for (let i = 0; i < points.length; ++i) {
+      const d = squaredDistance(points[i], point);
       if (d < minDist[i]) minDist[i] = d;
     }
   }

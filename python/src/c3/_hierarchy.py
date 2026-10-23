@@ -27,7 +27,7 @@ class Module(TypedDict, total=False):
     """A module by its path from the top, like [1, 4, 3] for the third child of the fourth child of module 1."""
 
     path: Required[Sequence[int]]
-    #: Flow or another size, summed over repeated paths. Modules without flow get the sum of their children's, or 1.
+    #: Finite flow or another size, summed over repeated paths. Modules without flow get the sum of their children's, or 1.
     flow: NotRequired[float]
 
 
@@ -57,6 +57,14 @@ class _TreeNode:
         self.radius: float | None = None
 
 
+def _squared_distance(p: Lab, q: Lab) -> float:
+    """Only +, - and *, which round the same in every language, unlike math.hypot."""
+    d0 = p[0] - q[0]
+    d1 = p[1] - q[1]
+    d2 = p[2] - q[2]
+    return d0 * d0 + d1 * d1 + d2 * d2
+
+
 # Halton points in the unit ball, the candidates for child colors
 _BALL_POINTS = 512
 
@@ -66,7 +74,7 @@ def _make_ball() -> list[Lab]:
     i = 1
     while len(ball) < _BALL_POINTS:
         p = (2 * van_der_corput(i, 2) - 1, 2 * van_der_corput(i, 3) - 1, 2 * van_der_corput(i, 5) - 1)
-        if math.hypot(*p) <= 1:
+        if _squared_distance(p, (0, 0, 0)) <= 1:
             ball.append(p)
         i += 1
     return ball
@@ -211,6 +219,10 @@ def _build_tree(modules: Sequence[Module]) -> dict[tuple, _TreeNode]:
 
     for module in modules:
         path, flow = _module_fields(module)
+        if any(part != part for part in path):  # NaN
+            raise ValueError(f"Invalid path: {list(path)}")
+        if flow is not None and not math.isfinite(flow):
+            raise ValueError(f"Flow must be finite, got {flow} for module {list(path)}")
         for n in range(1, len(path) + 1):
             key = tuple(path[:n])
             if key in nodes:
@@ -259,21 +271,30 @@ def _share(i: int, level: list[_TreeNode], sizes: list[float]) -> float:
 
 
 def _place_children(parent: _TreeNode, radius: float, allowed) -> None:
-    """Farthest point sampling of Halton candidates in the ball around the parent."""
+    """
+    Farthest point sampling of Halton candidates in the ball around the parent. The distances
+    are between the unit ball points, the same for every parent and in every language, so
+    near-ties between candidates break the same way as in JS.
+    """
     L, a, b = parent.lab  # type: ignore[misc]
-    candidates = [c for c in ((L + radius * p[0], a + radius * p[1], b + radius * p[2]) for p in _BALL) if allowed(c)]
-    if len(candidates) == 0:
+
+    def at(p: Lab) -> Lab:
+        return (L + radius * p[0], a + radius * p[1], b + radius * p[2])
+
+    points = [p for p in _BALL if allowed(at(p))]
+    if len(points) == 0:
         for child in parent.children:
             child.lab = parent.lab
         return
-    min_dist = [math.inf] * len(candidates)
+    min_dist = [math.inf] * len(points)
     for child in parent.children:
         best = 0
-        for i in range(1, len(candidates)):
+        for i in range(1, len(points)):
             if min_dist[i] > min_dist[best]:
                 best = i
-        child.lab = candidates[best]
-        for i, c in enumerate(candidates):
-            d = lab_distance(c, child.lab)
+        point = points[best]
+        child.lab = at(point)
+        for i, p in enumerate(points):
+            d = _squared_distance(p, point)
             if d < min_dist[i]:
                 min_dist[i] = d

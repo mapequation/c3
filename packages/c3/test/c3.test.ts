@@ -96,6 +96,10 @@ describe("stops()", () => {
       expect(new Set(starts).size).toBe(weights.length);
     }
   });
+
+  it("throws on weights that aren't finite", () => {
+    for (const w of [Infinity, -Infinity, NaN]) expect(() => stops([1, w])).toThrow(/Weights must be finite/);
+  });
 });
 
 describe("palette() without zones", () => {
@@ -484,6 +488,15 @@ describe("hierarchy()", () => {
     const smallest = withZero.map(({ path, flow }) => ({ path, flow: flow || [0.1, 0.2][path.length - 1] }));
     const colors = (modules: Module[]) => hierarchy(modules).modules.map((m) => m.color);
     expect(colors(withZero)).toEqual(colors(smallest));
+  });
+
+  it("throws on flows that aren't finite and on NaN in paths", () => {
+    for (const flow of [Infinity, -Infinity, NaN]) {
+      expect(() => hierarchy([{ path: [1, 1], flow }, { path: [2], flow: 1 }])).toThrow(
+        `Flow must be finite, got ${flow} for module [1, 1]`,
+      );
+    }
+    expect(() => hierarchy([{ path: [1, NaN] }])).toThrow("Invalid path: [1, NaN]");
   });
 
   it("keeps children inside the tone's chroma range, or as colorful as their parent", () => {

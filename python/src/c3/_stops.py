@@ -80,8 +80,13 @@ def positive_weights(weights: Iterable[float]) -> list[float]:
     """
     Weights with each zero raised to the smallest positive weight, or all ones if none is
     positive, so zero weights get the smallest share instead of none.
+
+    :raises ValueError: for a weight that isn't finite
     """
     weights = list(weights)
+    for w in weights:
+        if not math.isfinite(w):
+            raise ValueError(f"Weights must be finite, got {w}")
     smallest = min((w for w in weights if w > 0), default=1)
     return [w if w > 0 else smallest for w in weights]
 

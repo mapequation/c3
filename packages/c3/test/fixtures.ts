@@ -126,6 +126,8 @@ const trees: Record<string, Module[]> = {
   ],
   "zero-flow top modules": [1, 0.5, 0.3, 0.2, 0.1, 0, 0, 0].map((flow, i) => ({ path: [i + 1], flow })),
   "all zero flows": [[1, 1], [1, 2], [2, 1], [2, 2], [3]].map((path) => ({ path, flow: 0 })),
+  // Near-ties between candidates for the children, which once broke differently in Python
+  "many children": [...Array.from({ length: 119 }, (_, j) => ({ path: [1, j + 1], flow: 1 / (j + 1) })), { path: [2], flow: 1 }],
 };
 
 export function fixtureCases(): FixtureCase[] {

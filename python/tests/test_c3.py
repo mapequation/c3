@@ -1,11 +1,13 @@
 """Python-specific behavior: options, callable hue sources and errors. Parity with the npm package is in test_fixtures.py."""
 
+import math
 import re
 
 import pytest
 
 import c3
 from c3._color import parse_rgb
+from c3._palette import _hue_source
 from c3._schemes import turbo
 
 HEX = re.compile(r"^#[0-9a-f]{6}$")
@@ -67,6 +69,12 @@ def test_unknown_scheme_names_the_supported_ones():
         lambda: c3.distance("red", "rgba(0, 0, 0, 0)"),
         lambda: c3.palette(5, method="farthest", candidates=0),
         lambda: c3.palette(5, method="lookahead", lookahead=0),
+        lambda: c3.palette([1, math.inf]),
+        lambda: c3.palette([1, math.nan]),
+        lambda: c3.hierarchy([{"path": [1], "flow": math.inf}]),
+        lambda: c3.hierarchy([{"path": [1], "flow": -math.inf}]),
+        lambda: c3.hierarchy([{"path": [1], "flow": math.nan}]),
+        lambda: c3.hierarchy([{"path": [1, math.nan]}]),
     ],
 )
 def test_invalid_input_raises_value_error(call):
@@ -81,6 +89,15 @@ def test_hierarchy_lookup():
     assert colors([1, 2, 7]) == colors([1, 2]) == colors.modules[2]["color"]
     assert colors([3]) is None and colors([]) is None
     assert c3.hierarchy([]).modules == []
+
+
+def test_hierarchy_names_the_module_with_a_flow_that_is_not_finite():
+    with pytest.raises(ValueError, match=r"Flow must be finite, got inf for module \[1, 1\]"):
+        c3.hierarchy([{"path": [1, 1], "flow": math.inf}, {"path": [2], "flow": 1}])
+
+
+def test_oklch_hues_just_below_zero_wrap_to_zero_like_js():
+    assert _hue_source("Oklch", math.nextafter(90, 0) - 90, False)(0) == 0
 
 
 def test_infer_tone_takes_a_sequence():

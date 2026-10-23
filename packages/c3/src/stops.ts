@@ -41,8 +41,11 @@ export function stops(n: number | number[] = 10): Interval[] {
 /**
  * Weights with each zero raised to the smallest positive weight, or all ones if none is
  * positive, so zero weights get the smallest share instead of none.
+ * @throws RangeError for a weight that isn't finite
  */
 export function positiveWeights(weights: readonly number[]): number[] {
+  const invalid = weights.find((w) => !Number.isFinite(w));
+  if (invalid !== undefined) throw new RangeError(`Weights must be finite, got ${invalid}`);
   const smallest = weights.reduce((min, w) => (w > 0 && w < min ? w : min), Infinity);
   const zero = Number.isFinite(smallest) ? smallest : 1;
   return weights.map((w) => (w > 0 ? w : zero));
