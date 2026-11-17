@@ -797,6 +797,25 @@ figcaption {
   stroke-width: 2.5;
 }
 
+.examples {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.scale-plot {
+  display: block;
+  width: 100%;
+  max-width: 760px;
+}
+
+.scale-line {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
 .colorbar {
   display: flex;
   height: 36px;

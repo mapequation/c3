@@ -113,6 +113,19 @@ function pyCode(fn: string, args: unknown[]) {
   return `${head}\n${[...comments, ...lines].join("\n")}`;
 }
 
+/** sequential() in JS and Python: the scale, then n colors from it */
+export function sequentialCode(colors: string[], options: object, n: number): ByLang {
+  const { js, py } = callCode("sequential", colors.length === 1 ? colors[0] : colors, options);
+  // The call is the code after the imports; it never holds an empty line
+  const split = (code: string) => [code.slice(0, code.lastIndexOf("\n\n")), code.slice(code.lastIndexOf("\n\n") + 2)];
+  const [jsHead, jsCall] = split(js);
+  const [pyHead, pyCall] = split(py);
+  return {
+    js: `${jsHead}\n\nconst scale = ${jsCall}\nscale.colors(${n});`,
+    py: `${pyHead}\n\nscale = ${pyCall}\ncolors = scale.colors(${n})`,
+  };
+}
+
 /** Source code for a library call in JS and Python, leaving out an empty options object */
 export function callCode(fn: string, ...args: unknown[]): ByLang {
   return { js: jsCode(fn, args), py: pyCode(fn, args) };

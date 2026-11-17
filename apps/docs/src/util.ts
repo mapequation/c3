@@ -22,6 +22,23 @@ export function toHex(color: string) {
     .join("")}`;
 }
 
+/** Split on new lines and on commas outside parentheses, so rgb(1, 2, 3) stays whole; invalid colors apart */
+export function parseColors(text: string) {
+  const valid: string[] = [];
+  const invalid: string[] = [];
+  for (const item of text.split(/\n|,(?![^(]*\))/)) {
+    const color = item.trim();
+    if (!color) continue;
+    try {
+      oklch(color);
+      valid.push(color);
+    } catch {
+      invalid.push(color);
+    }
+  }
+  return { valid, invalid };
+}
+
 /** Text color that reads on top of the given background */
 export const inkOn = (color: string) => (oklch(color)[0] > 0.66 ? "#14181b" : "#ffffff");
 
