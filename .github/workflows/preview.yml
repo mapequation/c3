@@ -1,0 +1,45 @@
+name: PR preview
+
+# Each pull request from this repo gets a preview of the docs on surge.sh, rebuilt on every push, and a
+# comment with its link: https://mapequation-c3-preview-pr-<number>.surge.sh (the job name is part of it).
+# The preview is torn down when the pull request closes. Pull requests from forks don't get one:
+# their runs can't read the SURGE_TOKEN secret.
+#
+# The docs link with import.meta.env.BASE_URL, so the preview is built for the root of its surge domain
+# instead of GitHub Pages' /c3/.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# A newer push replaces a deploy still running; a close tears down after it.
+concurrency:
+  group: preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: afc163/surge-preview@v1.13.0
+        with:
+          surge_token: ${{ secrets.SURGE_TOKEN }}
+          dist: apps/docs/dist
+          teardown: "true"
+          failOnError: "true"
+          # Each line runs as one command without a shell: no redirects or pipes.
+          build: |
+            pnpm install --frozen-lockfile
+            pnpm --filter @mapequation/c3 build
+            pnpm --filter docs build --base /
