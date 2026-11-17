@@ -1,4 +1,4 @@
-import { defaultEndZone, defaultHierarchyOptions, defaultPaletteOptions, defaultTone } from "@mapequation/c3/internal";
+import { defaultEndZone, defaultHierarchyOptions, defaultPaletteOptions, defaultSequentialOptions, defaultTone } from "@mapequation/c3/internal";
 import { snake } from "./code";
 import type { ByLang } from "./lang";
 
@@ -215,6 +215,29 @@ export const API: ApiEntry[] = [
     example: {
       js: `const color = hierarchy([\n  { path: [1, 1], flow: 0.3 },\n  { path: [1, 2], flow: 0.2 },\n  { path: [2, 1], flow: 0.1 },\n]);\ncolor([1, 2]); // a color near module 1's\ncolor([1, 2, 7]); // node 7 in module 1:2, the same color`,
       py: `color = c3.hierarchy([\n    {"path": [1, 1], "flow": 0.3},\n    {"path": [1, 2], "flow": 0.2},\n    {"path": [2, 1], "flow": 0.1},\n])\ncolor([1, 2])  # a color near module 1's\ncolor([1, 2, 7])  # node 7 in module 1:2, the same color\n[m["color"] for m in color.modules]  # all module colors, depth first`,
+    },
+  },
+  {
+    name: "sequential",
+    signature: { js: "sequential(colors, options?): (t) => string", py: "sequential(colors, **options) -> Sequential" },
+    description: [
+      "A sequential scale for ordered data, through one or more anchor colors and extended to darker and lighter shades. The anchors are sorted by lightness. Lightness changes linearly with `t`, from the light end to the dark end, so equal steps in the data look about equally different. Chroma and hue follow smooth curves through the anchors that never overshoot them: chroma peaks at the anchors and tapers off toward both ends, and hue takes the shorter way around between two anchors.",
+      "`colors(n)` gives n colors with every anchor among them, evenly spaced in lightness between two anchors. The ends are included unless an anchor is within half a step of them.",
+    ],
+    params: [["colors", "string | string[]", "", "One or more anchor colors with different lightness, any CSS colors."]],
+    options: [
+      ["lightness", "[min, max]", fmt(defaultSequentialOptions.lightness), "OKLCH lightness of the dark and light ends, widened to include every anchor."],
+      ["endChroma", "[dark, light]", fmt(defaultSequentialOptions.endChroma), "Chroma at the dark and light ends, as a fraction of the chroma of the nearest anchor."],
+      ["reverse", "boolean", fmt(defaultSequentialOptions.reverse), "Go from dark at 0 to light at 1."],
+    ],
+    returns: {
+      js: "A function from `t` in [0, 1] to a hex color, light at 0 and dark at 1, like a d3 interpolator. Its `colors(n)` method returns n hex colors in the same order, for n at least the number of anchors. Throws if two anchors have the same lightness.",
+      py: "A `Sequential`, callable from `t` in [0, 1] to a hex color, light at 0 and dark at 1. Its `colors(n)` method returns n hex colors in the same order, for n at least the number of anchors. Raises `ValueError` if two anchors have the same lightness.",
+    },
+    python: "The result is a `Sequential` object rather than a function. Anchors can also be (r, g, b) floats in [0, 1].",
+    example: {
+      js: `const blues = sequential("#3b82f6");\nblues(0.5); // "#377ef1"\nblues.colors(7); // 7 steps, "#3b82f6" among them\nsequential(["#2a9d8f", "#e9c46a"]).colors(9);`,
+      py: `blues = c3.sequential("#3b82f6")\nblues(0.5)  # '#377ef1'\nblues.colors(7)  # 7 steps, '#3b82f6' among them\nc3.sequential(["#2a9d8f", "#e9c46a"]).colors(9)`,
     },
   },
   {

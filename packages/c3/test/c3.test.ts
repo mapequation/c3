@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { distance, hierarchy, inferTone, palette, swatches, tones, type Module, type ModuleColor } from "../src/index.js";
+import { distance, hierarchy, inferTone, palette, sequential, swatches, tones, type Module, type ModuleColor } from "../src/index.js";
 import { defaultTone, endLightness, getScheme, stops, vanDerCorput } from "../src/internal.js";
 import { labDistance, parseOklab, parseOklch } from "../src/oklab.js";
 
@@ -510,5 +510,117 @@ describe("hierarchy()", () => {
         expect(parseOklch(m.color)[1]).toBeGreaterThan(floor - 0.005); // hex rounding
       }
     }
+  });
+});
+
+describe("sequential()", () => {
+  const lightness = (hex: string) => parseOklch(hex)[0];
+  const chroma = (hex: string) => parseOklch(hex)[1];
+
+  it("goes from light to dark through the anchor, linearly in lightness", () => {
+    const blue = sequential("#3b82f6");
+    for (let i = 0; i <= 20; ++i) {
+      const t = i / 20;
+      expect(lightness(blue(t))).toBeCloseTo(0.97 - 0.72 * t, 2);
+    }
+    expect(blue(-1)).toBe(blue(0));
+    expect(blue(2)).toBe(blue(1));
+  });
+
+  it("includes every anchor and both ends in colors(n)", () => {
+    const anchors = ["#2a9d8f", "#e9c46a"];
+    for (const n of [5, 7, 9, 12]) {
+      const colors = sequential(anchors).colors(n);
+      expect(colors).toHaveLength(n);
+      expect(colors).toEqual(expect.arrayContaining(anchors));
+      const Ls = colors.map(lightness);
+      expect(Ls[0]).toBeCloseTo(0.97, 2);
+      expect(Ls[n - 1]).toBeCloseTo(0.25, 2);
+      for (let i = 1; i < n; ++i) expect(Ls[i]).toBeLessThan(Ls[i - 1]!);
+    }
+  });
+
+  it("spaces colors(n) as evenly as the anchors allow", () => {
+    const colors = sequential("#3b82f6").colors(11);
+    expect(colors[5]).toBe("#3b82f6");
+    const Ls = colors.map(lightness);
+    const gaps = Ls.slice(1).map((L, i) => Ls[i]! - L);
+    expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThan(0.01);
+  });
+
+  it("gives the anchors alone, then the ends where the gap is largest", () => {
+    const blue = sequential("#3b82f6");
+    expect(blue.colors(0)).toEqual([]);
+    expect(blue.colors(1)).toEqual(["#3b82f6"]);
+    expect(blue.colors(2)).toEqual(["#3b82f6", blue(1)]);
+    expect(blue.colors(3)).toEqual([blue(0), "#3b82f6", blue(1)]);
+    expect(() => sequential(["red", "blue"]).colors(1)).toThrow("n must be at least 2");
+    expect(() => blue.colors(2.5)).toThrow(RangeError);
+  });
+
+  it("leaves out an end within half a step of an anchor", () => {
+    const yellow = sequential("#ffff33");
+    expect(yellow.colors(5)[0]).toBe("#ffff33");
+    expect(lightness(yellow(0))).toBeGreaterThan(0.965);
+  });
+
+  it("sorts the anchors by lightness", () => {
+    const a = sequential(["#0c2c84", "#41b6c4", "#ffffcc"]);
+    const b = sequential(["#ffffcc", "#0c2c84", "#41b6c4"]);
+    expect(b.colors(9)).toEqual(a.colors(9));
+    expect(a.colors(9).slice(0, 1)).toEqual(["#ffffcc"]);
+  });
+
+  it("widens the lightness range to the anchors", () => {
+    expect(sequential("#ffffff").colors(3)[0]).toBe("#ffffff");
+    expect(sequential("#000000").colors(3)[2]).toBe("#000000");
+    expect(lightness(sequential("steelblue", { lightness: [0.6, 0.9] })(1))).toBeCloseTo(parseOklch("steelblue")[0], 2);
+  });
+
+  it("reverses", () => {
+    const red = sequential("#ef4444");
+    const reversed = sequential("#ef4444", { reverse: true });
+    expect(reversed.colors(7)).toEqual(red.colors(7).reverse());
+    expect(reversed(0.3)).toBe(red(0.7));
+  });
+
+  it("tapers chroma toward the ends without exceeding the anchors", () => {
+    const red = sequential("#ef4444");
+    const peak = chroma("#ef4444");
+    const samples = Array.from({ length: 101 }, (_, i) => chroma(red(i / 100)));
+    for (const C of samples) expect(C).toBeLessThan(peak + 0.005);
+    expect(samples[0]).toBeLessThan(0.1 * peak + 0.005);
+    expect(chroma(sequential("#ef4444", { endChroma: [0, 0] })(1))).toBeLessThan(0.005);
+  });
+
+  it("keeps greys grey and gives grey anchors the hue of a colorful one", () => {
+    for (const color of sequential("#808080").colors(9)) expect(chroma(color)).toBeLessThan(0.005);
+    const hue = parseOklch("steelblue")[2];
+    const colors = sequential(["#333", "steelblue"]).colors(9);
+    for (const color of colors.filter((c) => chroma(c) > 0.02)) expect(parseOklch(color)[2]).toBeCloseTo(hue, -1);
+  });
+
+  it("takes the shorter way around the hue circle", () => {
+    const magenta = parseOklch("#ff00ff")[2];
+    const orange = parseOklch("#ff8000")[2];
+    expect(magenta).toBeGreaterThan(300);
+    expect(orange).toBeLessThan(90);
+    const between = sequential(["#ff00ff", "#ff8000"]).colors(7).map((c) => parseOklch(c)[2]);
+    for (const H of between) expect(H > magenta - 1 || H < orange + 1).toBe(true);
+  });
+
+  it("works as a hue source", () => {
+    const colors = palette(6, { hue: sequential(["#2a9d8f", "#e9c46a"]) });
+    expect(colors).toHaveLength(6);
+    for (const c of colors) expect(c).toMatch(HEX);
+  });
+
+  it("throws on invalid input", () => {
+    expect(() => sequential([])).toThrow("at least one color");
+    expect(() => sequential(["#ff0000", "#ff0000"])).toThrow("different lightness");
+    expect(() => sequential("red", { lightness: [0.8, 0.2] })).toThrow(RangeError);
+    expect(() => sequential("red", { endChroma: [-1, 0] })).toThrow(RangeError);
+    expect(() => sequential("red")(NaN)).toThrow(RangeError);
+    expect(() => sequential("not a color")).toThrow("Invalid color");
   });
 });

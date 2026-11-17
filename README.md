@@ -12,6 +12,7 @@ A library to generate distinct categorical colors, written in TypeScript.
 * **Unlimited colors**: Generate as many colors you want
 * **Any color scheme**: Hues come from the OKLCH hue circle or any [d3](https://github.com/d3/d3-scale-chromatic) color scheme.
 * **Tones**: Vivid, bright, strong, deep, dark, soft, pastel or muted colors, or your own lightness and chroma ranges.
+* **Sequential scales**: Extend one or more colors to darker and lighter shades, for ordered data.
 * **Deterministic**: You always get the same colors for the same requested number of colors.
 * **Consistent**: If you increase the number of colors, it doesn't change the list of colors you already have.
 * **Fast**: `n` colors take time proportional to `n log(n)`. Choosing colors by distance, as with seeds, takes longer but stays within milliseconds for hundreds of colors.
@@ -60,7 +61,7 @@ A large module gets a large ball, with room for many distinct children.
 ### Usage
 
 ```js
-import { palette, hierarchy, tones, swatches } from "@mapequation/c3";
+import { palette, hierarchy, sequential, tones, swatches } from "@mapequation/c3";
 
 // The first 20 colors of the sequence, in the default strong tone
 palette(20);
@@ -83,6 +84,12 @@ const color = hierarchy([
   { path: [2, 1], flow: 0.1 },
 ]);
 color([1, 2]);
+
+// A sequential scale through a color, extended to darker and lighter shades
+const blues = sequential("#3b82f6");
+blues(0.5); // "#377ef1", from light at 0 to dark at 1
+blues.colors(7); // 7 steps, "#3b82f6" among them
+sequential(["#2a9d8f", "#e9c46a"]).colors(9);
 ```
 
 #### `palette(n, options)`
@@ -202,6 +209,29 @@ Its `modules` property lists every module depth first with `path`, `flow`, `colo
 Adding a module never changes its earlier siblings or the modules above its level.
 With module flows given, other modules only change if the new module is now closest to them, and then only their children change.
 
+#### `sequential(colors, options)`
+
+A sequential scale for ordered data, through one or more anchor colors and extended to darker and lighter shades.
+The anchors are sorted by lightness.
+Lightness changes linearly from the light end to the dark end, so equal steps in the data look about equally different.
+Chroma and hue follow smooth curves through the anchors that never overshoot them:
+chroma peaks at the anchors and tapers off toward both ends,
+and hue takes the shorter way around the hue circle between two anchors and keeps the nearest anchor's hue toward the ends.
+Greys take the hue of the nearest colorful anchor.
+
+It returns a function from `t` in [0, 1] to a hex color, light at 0 and dark at 1, like a d3 interpolator,
+so it works with d3's `scaleSequential` and as `palette()`'s `hue`.
+Its `colors(n)` method gives `n` colors in the same order, and every anchor is among them.
+Between two anchors they are evenly spaced in lightness, and each one goes where the colors are farthest apart,
+so the ends are included unless an anchor is within half a step of them.
+`n` must be at least the number of anchors.
+
+| Option | Default | |
+|---|---|---|
+| `lightness` | `[0.25, 0.97]` | OKLCH lightness of the dark and light ends, widened to include every anchor |
+| `endChroma` | `[0.5, 0.1]` | Chroma at the dark and light ends, as a fraction of the chroma of the nearest anchor |
+| `reverse` | `false` | Go from dark at 0 to light at 1 |
+
 #### Measuring distinctness
 
 `distance(a, b)` is the distance between two colors in OKLab, from 0 for equal colors to about 1 between black and white.
@@ -217,6 +247,7 @@ For many colors, widen the tone's `lightness` and `chroma`, or add an end zone.
 A pure Python port is in [`python/`](python): `pip install c3-colors`, imported as `c3`.
 It gives the same colors as the npm package, checked against shared fixtures (within rounding).
 The API is the same with options as snake_case keyword arguments, like `c3.palette(10, tone="pastel", lightness_offset=3)`.
+`c3.sequential()` returns a `Sequential` object, callable with `t` and with a `colors(n)` method.
 The hue source is `"Oklch"`, the d3 schemes `"Turbo"`, `"Sinebow"` or `"Rainbow"`, or any callable such as a matplotlib colormap.
 Its version numbers follow the npm package, and the shared fixtures are in `fixtures/c3.json`.
 The [tutorial notebook](python/examples/tutorial.ipynb) shows it with matplotlib, geopandas, networkx and Infomap.

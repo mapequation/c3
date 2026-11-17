@@ -3,12 +3,12 @@
  * public API that the Python port (python/) checks against, so both give the same colors.
  * Regenerate with `pnpm --filter @mapequation/c3 fixtures`.
  */
-import { distance, hierarchy, inferTone, oklab, oklch, palette, swatches, tones } from "../src/index.js";
-import type { HierarchyOptions, Module, PaletteOptions } from "../src/index.js";
+import { distance, hierarchy, inferTone, oklab, oklch, palette, sequential, swatches, tones } from "../src/index.js";
+import type { HierarchyOptions, Module, PaletteOptions, SequentialOptions } from "../src/index.js";
 
 export type FixtureCase = {
   name: string;
-  fn: "palette" | "hierarchy" | "inferTone" | "oklab" | "oklch" | "distance" | "tones" | "swatches";
+  fn: "palette" | "hierarchy" | "sequential" | "inferTone" | "oklab" | "oklch" | "distance" | "tones" | "swatches";
   args: unknown[];
   options: Record<string, unknown>;
   expected: unknown;
@@ -63,6 +63,21 @@ function hierarchyCase(tree: string, modules: Module[], options: HierarchyOption
     expected: {
       modules: colors.modules,
       lookup: paths.map((path) => ({ path, color: colors(path) ?? null })),
+    },
+  };
+}
+
+function sequentialCase(colors: string | string[], options: SequentialOptions = {}): FixtureCase {
+  const scale = sequential(colors, options);
+  const anchors = typeof colors === "string" ? 1 : colors.length;
+  return {
+    name: `sequential ${JSON.stringify(colors)}${describeOptions(options)}`,
+    fn: "sequential",
+    args: [colors],
+    options,
+    expected: {
+      samples: Array.from({ length: 11 }, (_, i) => scale(i / 10)),
+      steps: [anchors, anchors + 1, anchors + 2, 7, 11, 24].map((n) => ({ n, colors: scale.colors(n) })),
     },
   };
 }
@@ -237,6 +252,23 @@ export function fixtureCases(): FixtureCase[] {
     hierarchyCase("three levels", trees["three levels"]!, { padding: 0, tone: "deep", offset: 30 }),
     hierarchyCase("three levels", trees["three levels"]!, { method: "lookahead", end: { midpoint: 3 } }),
     hierarchyCase("zero flows", trees["zero flows"]!, { method: "farthest" }),
+  );
+
+  // Sequential scales
+  add(
+    sequentialCase("#3b82f6"),
+    sequentialCase("steelblue", { lightness: [0.3, 0.9] }),
+    sequentialCase(["#2a9d8f", "#e9c46a"]),
+    sequentialCase(["#ffffcc", "#41b6c4", "#0c2c84"]),
+    sequentialCase(["#333", "steelblue"]),
+    sequentialCase("#808080"),
+    sequentialCase("#ffffff"),
+    sequentialCase("#000000"),
+    sequentialCase(["#e41a1c", "#ffff33"]),
+    sequentialCase(["#ff00ff", "#ff8000"]),
+    sequentialCase("#ef4444", { endChroma: [1, 0], reverse: true }),
+    sequentialCase(["#7b3294", "#c2a5cf", "#f7f7f7"], { lightness: [0.2, 0.99] }),
+    sequentialCase(SET1),
   );
 
   // Tones from colors

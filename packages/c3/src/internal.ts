@@ -3,6 +3,7 @@
  */
 export { defaultPaletteOptions, defaultOffset, defaultEndZone, endZone, paletteTones, schemeTone } from "./palette.js";
 export { defaultHierarchyOptions } from "./hierarchy.js";
+export { defaultSequentialOptions } from "./sequential.js";
 export { defaultTone, endLightness, toneColor } from "./tone.js";
 export { getScheme } from "./schemes.js";
 export { stops, type Interval } from "./stops.js";

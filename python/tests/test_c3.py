@@ -132,3 +132,33 @@ def test_zero_flows_count_as_the_smallest_positive_flow_on_their_level():
     colors = c3.hierarchy(with_zero)
     assert [m["color"] for m in colors.modules] == [m["color"] for m in c3.hierarchy(smallest).modules]
     assert len({colors([2]), colors([2, 1]), colors([2, 2])}) == 3
+
+
+def test_sequential_accepts_lists_tuples_and_rgb_floats():
+    scale = c3.sequential(["#2a9d8f", "#e9c46a"], lightness=[0.25, 0.97], end_chroma=[0.5, 0.1])
+    assert scale.colors(9) == c3.sequential(("#2a9d8f", "#e9c46a")).colors(9)
+    r, g, b = parse_rgb("steelblue")
+    assert c3.sequential([(r / 255, g / 255, b / 255)]).colors(7) == c3.sequential("steelblue").colors(7)
+    assert repr(c3.sequential(["#e9c46a", "#2a9d8f"])) == "Sequential(#2a9d8f, #e9c46a)"
+
+
+def test_sequential_works_as_a_hue_source():
+    colors = c3.palette(6, hue=c3.sequential(["#2a9d8f", "#e9c46a"]))
+    assert len(colors) == 6 and all(HEX.match(c) for c in colors)
+
+
+@pytest.mark.parametrize(
+    "call, message",
+    [
+        (lambda: c3.sequential([]), "at least one color"),
+        (lambda: c3.sequential(["red", "#ff0000"]), "different lightness"),
+        (lambda: c3.sequential("red", lightness=(0.8, 0.2)), "lightness must be"),
+        (lambda: c3.sequential("red", end_chroma=(math.inf, 0)), "end_chroma must be"),
+        (lambda: c3.sequential("red")(math.nan), "t must be"),
+        (lambda: c3.sequential("red").colors(True), "n must be"),
+        (lambda: c3.sequential(["red", "blue"]).colors(1), "n must be at least 2"),
+    ],
+)
+def test_sequential_raises_value_errors(call, message):
+    with pytest.raises(ValueError, match=message):
+        call()

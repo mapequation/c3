@@ -38,6 +38,11 @@ colors = c3.hierarchy([
 colors([1, 2])  # color of module 1:2
 colors.modules  # all modules with path, flow, color and radius, depth first
 
+blues = c3.sequential("#3b82f6")  # through a color, extended to darker and lighter shades
+blues(0.5)  # '#377ef1', from light at 0 to dark at 1
+blues.colors(7)  # 7 steps, '#3b82f6' among them
+c3.sequential(["#2a9d8f", "#e9c46a"], end_chroma=(0.4, 0.1)).colors(9)
+
 c3.tones["vivid"]  # {'lightness': (0.55, 0.7), 'chroma': (0.15, 0.21), 'warm_hue': 285, 'tilt': 0}
 c3.infer_tone(["#e41a1c", "#377eb8", "#4daf4a"])
 c3.oklab("steelblue"), c3.oklch("#2b9bea")
@@ -45,6 +50,7 @@ c3.distance("#2b9bea", "#2b9beb")  # about 0.02 is just noticeable
 ```
 
 Tone and end zone fields are snake_case too: `warm_hue` for `warmHue`, `min_gap` for `minGap`.
+A `Sequential` scale also works as a `hue` source, and `matplotlib.colors.ListedColormap(scale.colors(256))` turns it into a colormap.
 
 ### Hue sources
 
