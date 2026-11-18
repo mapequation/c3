@@ -23,6 +23,7 @@ export function SequentialMode({ n, setN }: { n: number; setN: (n: number) => vo
   const [text, setText] = useState(EXAMPLES[0][1].join("\n"));
   const [lightness, setLightness] = useState<Range>(defaultSequentialOptions.lightness);
   const [endChroma, setEndChroma] = useState(defaultSequentialOptions.endChroma);
+  const [endHue, setEndHue] = useState(defaultSequentialOptions.endHue);
   const [reverse, setReverse] = useState(defaultSequentialOptions.reverse);
   const errorId = useId();
   // Highlighted colors by index, linked across the plot and the swatches
@@ -35,9 +36,10 @@ export function SequentialMode({ n, setN }: { n: number; setN: (n: number) => vo
     () => ({
       lightness: sameRange(lightness, defaultSequentialOptions.lightness) ? undefined : lightness,
       endChroma: sameRange(endChroma, defaultSequentialOptions.endChroma) ? undefined : endChroma,
+      endHue: sameRange(endHue, defaultSequentialOptions.endHue) ? undefined : endHue,
       reverse: unlessDefault(reverse, defaultSequentialOptions.reverse),
     }),
-    [lightness, endChroma, reverse],
+    [lightness, endChroma, endHue, reverse],
   );
 
   const deferred = useDeferredValue(useMemo(() => ({ n, anchors, options }), [n, anchors, options]));
@@ -119,7 +121,7 @@ export function SequentialMode({ n, setN }: { n: number; setN: (n: number) => vo
           value={endChroma[0]}
           onChange={(v) => setEndChroma([v, endChroma[1]])}
           min={0}
-          max={1.5}
+          max={2}
           step={0.05}
         />
         <Slider
@@ -127,9 +129,11 @@ export function SequentialMode({ n, setN }: { n: number; setN: (n: number) => vo
           value={endChroma[1]}
           onChange={(v) => setEndChroma([endChroma[0], v])}
           min={0}
-          max={1.5}
+          max={2}
           step={0.05}
         />
+        <Slider label="Dark end hue" value={endHue[0]} onChange={(v) => setEndHue([v, endHue[1]])} min={-90} max={90} />
+        <Slider label="Light end hue" value={endHue[1]} onChange={(v) => setEndHue([endHue[0], v])} min={-90} max={90} />
         <Check label="Reverse, dark to light" checked={reverse} onChange={setReverse} />
       </Group>
     </>
@@ -150,8 +154,9 @@ export function SequentialMode({ n, setN }: { n: number; setN: (n: number) => vo
             <figcaption>
               The scale from <code>t</code> = 0 to 1, and below it the chroma (how colorful a color is) along it. Lightness
               changes evenly along the scale. The dots are the colors of <code>colors(n)</code>; anchors have a heavier
-              outline. Chroma is at its highest at the anchors and fades toward both ends, as set by the end chroma, a
-              fraction of the nearest anchor's.
+              outline. Each color is as colorful as the anchors, relative to the most sRGB has at its lightness and hue, so
+              chroma rises where sRGB allows more and fades toward black and white. End chroma scales that toward the
+              ends, and end hue turns the hue, in degrees from the nearest anchor.
             </figcaption>
           </figure>
           <Swatches colors={result.steps} {...hover} />

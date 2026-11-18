@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { distance, hierarchy, inferTone, palette, sequential, swatches, tones, type Module, type ModuleColor } from "../src/index.js";
 import { defaultTone, endLightness, getScheme, stops, vanDerCorput } from "../src/internal.js";
-import { labDistance, parseOklab, parseOklch } from "../src/oklab.js";
+import { gamutMap, labDistance, parseOklab, parseOklch } from "../src/oklab.js";
 
 const beforeZones: Record<string, string[]> = JSON.parse(
   readFileSync(new URL("./palette-before-zones.json", import.meta.url), "utf8"),
@@ -584,13 +584,31 @@ describe("sequential()", () => {
     expect(reversed(0.3)).toBe(red(0.7));
   });
 
-  it("tapers chroma toward the ends without exceeding the anchors", () => {
-    const red = sequential("#ef4444");
-    const peak = chroma("#ef4444");
-    const samples = Array.from({ length: 101 }, (_, i) => chroma(red(i / 100)));
-    for (const C of samples) expect(C).toBeLessThan(peak + 0.005);
-    expect(samples[0]).toBeLessThan(0.1 * peak + 0.005);
-    expect(chroma(sequential("#ef4444", { endChroma: [0, 0] })(1))).toBeLessThan(0.005);
+  it("keeps chroma relative to the most sRGB allows, fading toward black and white", () => {
+    const relative = (hex: string) => {
+      const [L, C, H] = parseOklch(hex);
+      return C / gamutMap([L, 0.5, H])[1];
+    };
+    const orange = sequential("#d26202");
+    const anchor = relative("#d26202");
+    for (let i = 1; i < 10; ++i) expect(relative(orange(i / 10))).toBeCloseTo(anchor, 1);
+    expect(chroma(orange(0))).toBeLessThan(0.03);
+    expect(chroma(orange(1))).toBeLessThan(0.08);
+    expect(chroma(sequential("#d26202", { endChroma: [0, 0] })(1))).toBeLessThan(0.005);
+  });
+
+  it("goes through more colorful colors between anchors than they have", () => {
+    // Light yellow to dark brown passes through vivid orange
+    const between = sequential(["#ffda7d", "#743100"]).colors(9).slice(2, 5);
+    for (const color of between) expect(chroma(color)).toBeGreaterThan(Math.max(chroma("#ffda7d"), chroma("#743100")));
+  });
+
+  it("turns the hue toward the ends by endHue", () => {
+    const [, , H] = parseOklch("#d26202");
+    const scale = sequential("#d26202", { endHue: [-15, 40] });
+    expect(parseOklch(scale(0))[2]).toBeCloseTo(H + 40, -1);
+    expect(parseOklch(scale(1))[2]).toBeCloseTo(H - 15, -1);
+    expect(scale.colors(9)).toContain("#d26202");
   });
 
   it("keeps greys grey and gives grey anchors the hue of a colorful one", () => {
@@ -620,6 +638,7 @@ describe("sequential()", () => {
     expect(() => sequential(["#ff0000", "#ff0000"])).toThrow("different lightness");
     expect(() => sequential("red", { lightness: [0.8, 0.2] })).toThrow(RangeError);
     expect(() => sequential("red", { endChroma: [-1, 0] })).toThrow(RangeError);
+    expect(() => sequential("red", { endHue: [0, NaN] })).toThrow(RangeError);
     expect(() => sequential("red")(NaN)).toThrow(RangeError);
     expect(() => sequential("not a color")).toThrow("Invalid color");
   });

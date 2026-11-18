@@ -6,14 +6,18 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from ._oklab import Lab, color_to_oklab, lab_to_hex, lab_to_lch, lch_to_hex
+from ._oklab import Lab, color_to_oklab, gamut_map, lab_to_hex, lab_to_lch, lch_to_hex
 from ._tone import Range
 
 DEFAULT_LIGHTNESS: Range = (0.25, 0.97)
-DEFAULT_END_CHROMA: tuple[float, float] = (0.5, 0.1)
+DEFAULT_END_CHROMA: tuple[float, float] = (1.0, 1.0)
+DEFAULT_END_HUE: tuple[float, float] = (0.0, 0.0)
 
 # Below this chroma an anchor's hue barely shows, so it takes the hue of a colorful anchor
 _ACHROMATIC = 0.01
+
+# More than any sRGB color's OKLCH chroma, for finding the most a lightness and hue can have
+_MAX_CHROMA = 0.5
 
 # Relative tolerance for comparing step sizes, so near-ties break the same in every language
 _TIE = 1e-9
@@ -22,9 +26,15 @@ _TIE = 1e-9
 @dataclass
 class _Knot:
     L: float
-    C: float
+    S: float  # chroma relative to the most colorful color sRGB has at this lightness and hue
     H: float
     anchor: Lab | None = None
+    C: float = 0.0
+
+
+def _max_chroma(L: float, H: float) -> float:
+    """The most chroma a color can have in sRGB at lightness L and hue H."""
+    return gamut_map((L, _MAX_CHROMA, H))[1]
 
 
 class Sequential:
@@ -33,12 +43,12 @@ class Sequential:
     from light to dark, or dark to light with reverse.
     """
 
-    __slots__ = ("_knots", "_chroma", "_hue", "_range", "_gaps", "_reverse")
+    __slots__ = ("_knots", "_relative", "_hue", "_range", "_gaps", "_reverse")
 
     def __init__(self, knots: list[_Knot], L_range: Range, gaps: tuple[float, float], reverse: bool):
         self._knots = knots
         Ls = [k.L for k in knots]
-        self._chroma = _pchip(Ls, [k.C for k in knots])
+        self._relative = _pchip(Ls, [k.S for k in knots])
         self._hue = _pchip(Ls, [k.H for k in knots])
         self._range = L_range
         self._gaps = gaps
@@ -50,7 +60,8 @@ class Sequential:
                 if knot.anchor is not None:
                     return lab_to_hex(knot.anchor)
                 break
-        return lch_to_hex((L, self._chroma(L), self._hue(L)))
+        H = self._hue(L)
+        return lch_to_hex((L, self._relative(L) * _max_chroma(L, H), H))
 
     def __call__(self, t: float) -> str:
         if math.isnan(t):
@@ -85,19 +96,24 @@ def sequential(
     *,
     lightness: Sequence[float] = DEFAULT_LIGHTNESS,
     end_chroma: Sequence[float] = DEFAULT_END_CHROMA,
+    end_hue: Sequence[float] = DEFAULT_END_HUE,
     reverse: bool = False,
 ) -> Sequential:
     """
     A sequential scale through one or more anchor colors, extended to darker and lighter shades.
 
     The anchors are sorted by lightness. Lightness changes linearly with t, from the light end
-    to the dark end, and chroma and hue follow smooth curves through the anchors,
-    with chroma tapering off toward both ends.
+    to the dark end, and hue and chroma follow smooth curves through the anchors. Chroma is
+    relative to the most colorful color sRGB has at each lightness and hue, so the scale stays
+    as colorful as the anchors where sRGB allows it, and fades toward black and white.
 
     Args:
         colors: One or more anchor colors with different lightness: CSS colors, or (r, g, b) floats in [0, 1].
         lightness: OKLCH lightness of the dark and light ends, (min, max). Widened to include every anchor.
-        end_chroma: Chroma at the dark and light ends, as a fraction of the chroma of the nearest anchor.
+        end_chroma: Chroma at the dark and light ends, as a fraction of the nearest anchor's, both relative
+            to the most colorful color sRGB has at that lightness and hue. At 1 the ends are as colorful
+            as the anchor for their lightness, which fades toward black and white.
+        end_hue: Degrees the hue turns from the nearest anchor to the dark and light ends.
         reverse: Go from dark (t = 0) to light (t = 1) instead of from light to dark.
 
     Returns:
@@ -109,6 +125,9 @@ def sequential(
     dark_chroma, light_chroma = (float(x) for x in end_chroma)
     if not all(c >= 0 and math.isfinite(c) for c in (dark_chroma, light_chroma)):
         raise ValueError(f"end_chroma must be finite and at least 0, got [{dark_chroma}, {light_chroma}]")
+    dark_hue, light_hue = (float(x) for x in end_hue)
+    if not (math.isfinite(dark_hue) and math.isfinite(light_hue)):
+        raise ValueError(f"end_hue must be finite, got [{dark_hue}, {light_hue}]")
 
     knots = _anchor_knots([colors] if isinstance(colors, str) else list(colors))
     darkest, lightest = knots[0], knots[-1]
@@ -118,9 +137,9 @@ def sequential(
     dark_gap = darkest.L - L_min
     light_gap = L_max - lightest.L
     if dark_gap > 0:
-        knots.insert(0, _Knot(L_min, dark_chroma * darkest.C, darkest.H))
+        knots.insert(0, _Knot(L_min, dark_chroma * darkest.S, darkest.H + dark_hue))
     if light_gap > 0:
-        knots.append(_Knot(L_max, light_chroma * lightest.C, lightest.H))
+        knots.append(_Knot(L_max, light_chroma * lightest.S, lightest.H + light_hue))
     return Sequential(knots, (L_min, L_max), (dark_gap, light_gap), bool(reverse))
 
 
@@ -132,7 +151,8 @@ def _anchor_knots(colors: list) -> list[_Knot]:
     for color in colors:
         anchor = color_to_oklab(color)
         L, C, H = lab_to_lch(anchor)
-        knots.append(_Knot(L, C, H, anchor))
+        max_chroma = _max_chroma(L, H)
+        knots.append(_Knot(L, min(1.0, C / max_chroma) if max_chroma > 0 else 0.0, H, anchor, C))
     knots.sort(key=lambda k: k.L)
     for a, b in zip(knots, knots[1:]):
         if a.L == b.L:

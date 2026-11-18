@@ -1,4 +1,4 @@
-import { labToHex, labToLch, lchToHex, parseOklab, type Lab } from "./oklab.js";
+import { gamutMap, labToHex, labToLch, lchToHex, parseOklab, type Lab } from "./oklab.js";
 import type { Range } from "./tone.js";
 
 export type SequentialOptions = {
@@ -7,8 +7,14 @@ export type SequentialOptions = {
    * Widened to include every anchor.
    */
   lightness?: Range;
-  /** Chroma at the dark and light ends, as a fraction of the chroma of the nearest anchor */
+  /**
+   * Chroma at the dark and light ends, as a fraction of the nearest anchor's, both relative to
+   * the most colorful color sRGB has at that lightness and hue. At 1 the ends are as colorful
+   * as the anchor for their lightness, which fades toward black and white.
+   */
   endChroma?: [dark: number, light: number];
+  /** Degrees the hue turns from the nearest anchor to the dark and light ends */
+  endHue?: [dark: number, light: number];
   /** Go from dark (t = 0) to light (t = 1) instead of from light to dark */
   reverse?: boolean;
 };
@@ -26,31 +32,38 @@ export type Sequential = {
 
 export const defaultSequentialOptions = {
   lightness: [0.25, 0.97] as Range,
-  endChroma: [0.5, 0.1] as [dark: number, light: number],
+  endChroma: [1, 1] as [dark: number, light: number],
+  endHue: [0, 0] as [dark: number, light: number],
   reverse: false,
 };
 
 // Below this chroma an anchor's hue barely shows, so it takes the hue of a colorful anchor
 const ACHROMATIC = 0.01;
 
+// More than any sRGB color's OKLCH chroma, for finding the most a lightness and hue can have
+const MAX_CHROMA = 0.5;
+
 // Relative tolerance for comparing step sizes, so near-ties break the same in every language
 const TIE = 1e-9;
 
-type Knot = { L: number; C: number; H: number; anchor?: Lab };
+// S is chroma relative to the most colorful color sRGB has at the knot's lightness and hue
+type Knot = { L: number; S: number; H: number; anchor?: Lab };
 
 /**
  * A sequential scale through one or more anchor colors, extended to darker and lighter shades.
  * The anchors are sorted by lightness. Lightness changes linearly with t, from the light end
- * to the dark end, and chroma and hue follow smooth curves through the anchors,
- * with chroma tapering off toward both ends.
+ * to the dark end, and hue and chroma follow smooth curves through the anchors. Chroma is
+ * relative to the most colorful color sRGB has at each lightness and hue, so the scale stays
+ * as colorful as the anchors where sRGB allows it, and fades toward black and white.
  * @param colors One or more anchor colors, any CSS colors, with different lightness
- * @param options Lightness range, chroma at the ends and direction
+ * @param options Lightness range, chroma and hue at the ends, and direction
  * @returns a function from t in [0, 1] to a hex color, with colors(n) for n steps
  */
 export function sequential(colors: string | readonly string[], options: SequentialOptions = {}): Sequential {
   const {
     lightness = defaultSequentialOptions.lightness,
     endChroma = defaultSequentialOptions.endChroma,
+    endHue = defaultSequentialOptions.endHue,
     reverse = defaultSequentialOptions.reverse,
   } = options;
   const [lo, hi] = lightness;
@@ -59,6 +72,9 @@ export function sequential(colors: string | readonly string[], options: Sequenti
   }
   if (!endChroma.every((c) => c >= 0 && Number.isFinite(c))) {
     throw new RangeError(`endChroma must be finite and at least 0, got [${endChroma.join(", ")}]`);
+  }
+  if (!endHue.every(Number.isFinite)) {
+    throw new RangeError(`endHue must be finite, got [${endHue.join(", ")}]`);
   }
 
   const knots = anchorKnots(typeof colors === "string" ? [colors] : colors);
@@ -69,12 +85,13 @@ export function sequential(colors: string | readonly string[], options: Sequenti
   // Gaps from the outermost anchors to the ends; an anchor at or beyond an end is the end
   const darkGap = darkest.L - Lmin;
   const lightGap = Lmax - lightest.L;
-  if (darkGap > 0) knots.unshift({ L: Lmin, C: endChroma[0] * darkest.C, H: darkest.H });
-  if (lightGap > 0) knots.push({ L: Lmax, C: endChroma[1] * lightest.C, H: lightest.H });
+  if (darkGap > 0) knots.unshift({ L: Lmin, S: endChroma[0] * darkest.S, H: darkest.H + endHue[0] });
+  if (lightGap > 0) knots.push({ L: Lmax, S: endChroma[1] * lightest.S, H: lightest.H + endHue[1] });
 
   const Ls = knots.map((k) => k.L);
-  const chroma = pchip(Ls, knots.map((k) => k.C));
+  const relative = pchip(Ls, knots.map((k) => k.S));
   const hue = pchip(Ls, knots.map((k) => k.H));
+  const chroma = (L: number) => relative(L) * maxChroma(L, hue(L));
 
   const colorAt = (L: number) => {
     const knot = knots.find((k) => k.L === L);
@@ -110,11 +127,12 @@ export function sequential(colors: string | readonly string[], options: Sequenti
 /** The anchors sorted by lightness, with greys taking the hue of the nearest colorful anchor below or above */
 function anchorKnots(colors: readonly string[]): Knot[] {
   if (colors.length === 0) throw new RangeError("sequential() needs at least one color");
-  const knots: Knot[] = colors
+  const knots: (Knot & { C: number })[] = colors
     .map((color) => {
       const anchor = parseOklab(color);
       const [L, C, H] = labToLch(anchor);
-      return { L, C, H, anchor };
+      const max = maxChroma(L, H);
+      return { L, C, S: max > 0 ? Math.min(1, C / max) : 0, H, anchor };
     })
     .sort((a, b) => a.L - b.L);
   for (let i = 1; i < knots.length; ++i) {
@@ -138,6 +156,9 @@ function anchorKnots(colors: readonly string[]): Knot[] {
   }
   return knots;
 }
+
+/** The most chroma a color can have in sRGB at lightness L and hue H */
+const maxChroma = (L: number, H: number) => gamutMap([L, MAX_CHROMA, H])[1];
 
 /**
  * Lightness of n steps from dark to light that include every anchor. Each gap between

@@ -135,7 +135,7 @@ def test_zero_flows_count_as_the_smallest_positive_flow_on_their_level():
 
 
 def test_sequential_accepts_lists_tuples_and_rgb_floats():
-    scale = c3.sequential(["#2a9d8f", "#e9c46a"], lightness=[0.25, 0.97], end_chroma=[0.5, 0.1])
+    scale = c3.sequential(["#2a9d8f", "#e9c46a"], lightness=[0.25, 0.97], end_chroma=[1, 1], end_hue=[0, 0])
     assert scale.colors(9) == c3.sequential(("#2a9d8f", "#e9c46a")).colors(9)
     r, g, b = parse_rgb("steelblue")
     assert c3.sequential([(r / 255, g / 255, b / 255)]).colors(7) == c3.sequential("steelblue").colors(7)
@@ -154,6 +154,7 @@ def test_sequential_works_as_a_hue_source():
         (lambda: c3.sequential(["red", "#ff0000"]), "different lightness"),
         (lambda: c3.sequential("red", lightness=(0.8, 0.2)), "lightness must be"),
         (lambda: c3.sequential("red", end_chroma=(math.inf, 0)), "end_chroma must be"),
+        (lambda: c3.sequential("red", end_hue=(0, math.nan)), "end_hue must be"),
         (lambda: c3.sequential("red")(math.nan), "t must be"),
         (lambda: c3.sequential("red").colors(True), "n must be"),
         (lambda: c3.sequential(["red", "blue"]).colors(1), "n must be at least 2"),

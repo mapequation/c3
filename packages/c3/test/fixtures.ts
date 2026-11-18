@@ -267,6 +267,10 @@ export function fixtureCases(): FixtureCase[] {
     sequentialCase(["#e41a1c", "#ffff33"]),
     sequentialCase(["#ff00ff", "#ff8000"]),
     sequentialCase("#ef4444", { endChroma: [1, 0], reverse: true }),
+    sequentialCase("#ef4444", { endChroma: [0.5, 0.1] }),
+    sequentialCase("#d26202", { endHue: [-15, 40] }),
+    sequentialCase(["#ffda7d", "#743100"]),
+    sequentialCase(["#2b9bea", "#0c2c84"], { endHue: [20, -30], endChroma: [1.5, 0.5] }),
     sequentialCase(["#7b3294", "#c2a5cf", "#f7f7f7"], { lightness: [0.2, 0.99] }),
     sequentialCase(SET1),
   );

@@ -87,9 +87,10 @@ color([1, 2]);
 
 // A sequential scale through a color, extended to darker and lighter shades
 const blues = sequential("#3b82f6");
-blues(0.5); // "#377ef1", from light at 0 to dark at 1
+blues(0.5); // "#337df6", from light at 0 to dark at 1
 blues.colors(7); // 7 steps, "#3b82f6" among them
 sequential(["#2a9d8f", "#e9c46a"]).colors(9);
+sequential("#d26202", { endHue: [-15, 40] }).colors(9); // lighter shades turn yellow, darker red
 ```
 
 #### `palette(n, options)`
@@ -214,9 +215,12 @@ With module flows given, other modules only change if the new module is now clos
 A sequential scale for ordered data, through one or more anchor colors and extended to darker and lighter shades.
 The anchors are sorted by lightness.
 Lightness changes linearly from the light end to the dark end, so equal steps in the data look about equally different.
-Chroma and hue follow smooth curves through the anchors that never overshoot them:
-chroma peaks at the anchors and tapers off toward both ends,
-and hue takes the shorter way around the hue circle between two anchors and keeps the nearest anchor's hue toward the ends.
+Hue and chroma follow smooth curves through the anchors that never overshoot them.
+Chroma is relative to the most colorful color sRGB has at each lightness and hue,
+so between and beyond the anchors the scale is as colorful as they are where sRGB allows it,
+and it fades toward black and white on its own.
+Hue takes the shorter way around the hue circle between two anchors,
+and toward the ends it keeps the nearest anchor's hue, unless `endHue` turns it.
 Greys take the hue of the nearest colorful anchor.
 
 It returns a function from `t` in [0, 1] to a hex color, light at 0 and dark at 1, like a d3 interpolator,
@@ -229,7 +233,8 @@ so the ends are included unless an anchor is within half a step of them.
 | Option | Default | |
 |---|---|---|
 | `lightness` | `[0.25, 0.97]` | OKLCH lightness of the dark and light ends, widened to include every anchor |
-| `endChroma` | `[0.5, 0.1]` | Chroma at the dark and light ends, as a fraction of the chroma of the nearest anchor |
+| `endChroma` | `[1, 1]` | Chroma at the dark and light ends, as a fraction of the nearest anchor's, both relative to the most sRGB allows at that lightness and hue |
+| `endHue` | `[0, 0]` | Degrees the hue turns from the nearest anchor to the dark and light ends |
 | `reverse` | `false` | Go from dark at 0 to light at 1 |
 
 #### Measuring distinctness
