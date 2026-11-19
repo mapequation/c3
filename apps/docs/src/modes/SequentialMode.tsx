@@ -1,7 +1,7 @@
 import { Fragment, useDeferredValue, useId, useMemo, useState } from "react";
 import { oklch, sequential, type Range, type SequentialOptions } from "@mapequation/c3";
 import { defaultSequentialOptions } from "@mapequation/c3/internal";
-import { Check, EndSliders, Group, ModeLayout, RangeSliders } from "../components/Controls";
+import { Check, EndSliders, Group, ModeLayout } from "../components/Controls";
 import { ScalePlot } from "../components/ScalePlot";
 import { Swatches } from "../components/Swatches";
 import { CodeSnippet } from "../components/CodeSnippet";
@@ -119,7 +119,15 @@ export function SequentialMode({ n, setN }: { n: number; setN: (n: number) => vo
       </Group>
 
       <Group legend="Ends">
-        <RangeSliders label="Lightness" value={lightness} onChange={setLightness} min={0} max={1} step={0.01} />
+        <EndSliders
+          label="Lightness"
+          value={[lightness[1], lightness[0]]}
+          onChange={([light, dark]) => setLightness([dark, light])}
+          ordered
+          min={0}
+          max={1}
+          step={0.01}
+        />
         <EndSliders
           label="Chroma"
           value={[lightChroma, darkChroma]}

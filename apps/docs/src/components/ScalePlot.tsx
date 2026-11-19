@@ -3,7 +3,7 @@ import { oklch } from "@mapequation/c3";
 import { delegatedHover, NONE, type Hover } from "./Hover";
 
 const W = 640;
-const LEFT = 40; // room for the chroma labels
+const LEFT = 56; // room for the chroma axis title and labels
 const RIGHT = 12;
 const BAR = 32;
 const GAP = 16;
@@ -63,6 +63,14 @@ export function ScalePlot({
             </text>
           </g>
         ))}
+        <text
+          className="polar-label"
+          transform={`translate(12 ${BAR + GAP + PLOT / 2}) rotate(-90)`}
+          textAnchor="middle"
+          dominantBaseline="middle"
+        >
+          OKLCH chroma
+        </text>
         <text className="polar-label" x={x(0)} y={H - 6} textAnchor="start">
           t = 0
         </text>

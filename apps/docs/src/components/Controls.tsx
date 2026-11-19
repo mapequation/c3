@@ -95,10 +95,12 @@ type EndProps = Omit<SliderProps, "value" | "onChange" | "label" | "ariaLabel"> 
   label: string;
   value: [light: number, dark: number];
   onChange: (value: [light: number, dark: number]) => void;
+  /** Whether the light end's value is at least the dark end's, as for lightness: moving one pushes the other */
+  ordered?: boolean;
 };
 
 /** Sliders for the light and dark ends of a scale under one label, light first like the scale */
-export function EndSliders({ label, value: [light, dark], onChange, ...props }: EndProps) {
+export function EndSliders({ label, value: [light, dark], onChange, ordered = false, ...props }: EndProps) {
   const id = useId();
   const name = label.toLowerCase();
   return (
@@ -107,8 +109,8 @@ export function EndSliders({ label, value: [light, dark], onChange, ...props }: 
         {label}
       </div>
       <div className="slider-pair">
-        <Slider label="Light" ariaLabel={`Light ${name}`} value={light} onChange={(v) => onChange([v, dark])} {...props} />
-        <Slider label="Dark" ariaLabel={`Dark ${name}`} value={dark} onChange={(v) => onChange([light, v])} {...props} />
+        <Slider label="Light" ariaLabel={`Light ${name}`} value={light} onChange={(v) => onChange([v, ordered ? Math.min(dark, v) : dark])} {...props} />
+        <Slider label="Dark" ariaLabel={`Dark ${name}`} value={dark} onChange={(v) => onChange([ordered ? Math.max(light, v) : light, v])} {...props} />
       </div>
     </div>
   );
