@@ -19,7 +19,12 @@ const SAMPLES = 200;
 
 const sameRange = (a: readonly number[], b: readonly number[]) => a[0] === b[0] && a[1] === b[1];
 
-export function SequentialMode({ n, setN }: { n: number; setN: (n: number) => void }) {
+// Few colors, so the steps are easy to tell apart; for a smooth scale call it with t instead
+const DEFAULT_N = 8;
+
+// Its own number of colors, like the hierarchy, rather than the one the palette tabs share
+export function SequentialMode(_props: { n: number; setN: (n: number) => void }) {
+  const [n, setN] = useState(DEFAULT_N);
   const [text, setText] = useState(EXAMPLES[0][1].join("\n"));
   const [lightness, setLightness] = useState<Range>(defaultSequentialOptions.lightness);
   const [lightChroma, setLightChroma] = useState(defaultSequentialOptions.lightChroma);
@@ -120,34 +125,38 @@ export function SequentialMode({ n, setN }: { n: number; setN: (n: number) => vo
 
       <Group legend="Ends">
         <EndSliders
-          label="Lightness"
-          value={[lightness[1], lightness[0]]}
-          onChange={([light, dark]) => setLightness([dark, light])}
-          ordered
-          min={0}
-          max={1}
-          step={0.01}
-        />
-        <EndSliders
-          label="Chroma"
-          value={[lightChroma, darkChroma]}
-          onChange={([light, dark]) => {
-            setLightChroma(light);
-            setDarkChroma(dark);
-          }}
-          min={0}
-          max={2}
-          step={0.05}
-        />
-        <EndSliders
-          label="Hue"
-          value={[lightHue, darkHue]}
-          onChange={([light, dark]) => {
-            setLightHue(light);
-            setDarkHue(dark);
-          }}
-          min={-90}
-          max={90}
+          rows={[
+            {
+              label: "Lightness",
+              value: [lightness[1], lightness[0]],
+              onChange: ([light, dark]) => setLightness([dark, light]),
+              ordered: true,
+              min: 0,
+              max: 1,
+              step: 0.01,
+            },
+            {
+              label: "Chroma",
+              value: [lightChroma, darkChroma],
+              onChange: ([light, dark]) => {
+                setLightChroma(light);
+                setDarkChroma(dark);
+              },
+              min: 0,
+              max: 2,
+              step: 0.05,
+            },
+            {
+              label: "Hue",
+              value: [lightHue, darkHue],
+              onChange: ([light, dark]) => {
+                setLightHue(light);
+                setDarkHue(dark);
+              },
+              min: -90,
+              max: 90,
+            },
+          ]}
         />
         <Check label="Reverse, dark to light" checked={reverse} onChange={setReverse} />
       </Group>

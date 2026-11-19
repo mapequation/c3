@@ -562,14 +562,40 @@ h2 {
   column-gap: 14px;
 }
 
-.pair-label {
-  font-size: 14px;
-  color: var(--ink-2);
-  margin-bottom: 2px;
+/* A row for each property and a column for each end */
+.end-sliders {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto 1fr 1fr;
+  column-gap: 12px;
+  margin-bottom: 6px;
 }
 
-.pair-label + .slider-pair label {
+.end-head {
+  font-size: 13px;
   color: var(--ink-3);
+}
+
+.end-label {
+  font-size: 14px;
+  color: var(--ink-2);
+  padding-top: 2px;
+}
+
+.end-cell {
+  display: grid;
+  margin-bottom: 4px;
+}
+
+.end-cell .num {
+  justify-self: end;
+  width: 6ch;
+}
+
+.end-cell input[type="range"] {
+  width: 100%;
+  margin: 2px 0;
+  accent-color: var(--ink-2);
 }
 
 .slider-pair .num {

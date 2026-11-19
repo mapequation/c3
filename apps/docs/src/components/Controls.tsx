@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { Fragment, useId, useState, type ReactNode } from "react";
 import { tones, type Range, type Tone, type ToneName } from "@mapequation/c3";
 import { SCHEMES, toneName } from "../util";
 
@@ -17,23 +17,41 @@ type SliderProps = {
 const decimals = (step: number) => (String(step).split(".")[1] ?? "").length;
 
 /** Range input with an editable number next to the label */
-export function Slider({ label, value, onChange, min, max, step = 1, disabled, ariaLabel }: SliderProps) {
+export function Slider({ label, ariaLabel, ...props }: SliderProps) {
   const id = useId();
+  return (
+    <div className="slider" data-disabled={props.disabled || undefined}>
+      <label htmlFor={id}>{label}</label>
+      <SliderInputs id={id} ariaLabel={ariaLabel ?? label} {...props} />
+    </div>
+  );
+}
+
+/** A number box and a range slider for one value, kept within [min, max] */
+function SliderInputs({
+  id,
+  ariaLabel,
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  disabled,
+}: Omit<SliderProps, "label"> & { id?: string }) {
   const set = (v: number) => Number.isFinite(v) && onChange(Math.min(max, Math.max(min, v)));
   const shared = { min, max, step, disabled };
   return (
-    <div className="slider" data-disabled={disabled || undefined}>
-      <label htmlFor={id}>{label}</label>
+    <>
       <input
         className="num"
         type="number"
-        aria-label={ariaLabel ?? label}
+        aria-label={ariaLabel}
         value={+value.toFixed(decimals(step))}
         onChange={(e) => e.target.value !== "" && set(e.target.valueAsNumber)}
         {...shared}
       />
       <input id={id} type="range" aria-label={ariaLabel} value={value} onChange={(e) => set(e.target.valueAsNumber)} {...shared} />
-    </div>
+    </>
   );
 }
 
@@ -91,7 +109,7 @@ export function RangeSliders({ label, value: [lo, hi], onChange, ...props }: Ran
   );
 }
 
-type EndProps = Omit<SliderProps, "value" | "onChange" | "label" | "ariaLabel"> & {
+type EndRow = Omit<SliderProps, "value" | "onChange" | "label" | "ariaLabel"> & {
   label: string;
   value: [light: number, dark: number];
   onChange: (value: [light: number, dark: number]) => void;
@@ -99,19 +117,40 @@ type EndProps = Omit<SliderProps, "value" | "onChange" | "label" | "ariaLabel"> 
   ordered?: boolean;
 };
 
-/** Sliders for the light and dark ends of a scale under one label, light first like the scale */
-export function EndSliders({ label, value: [light, dark], onChange, ordered = false, ...props }: EndProps) {
-  const id = useId();
-  const name = label.toLowerCase();
+/**
+ * Sliders for the light and dark ends of a scale as a table: a row for each property, and
+ * a column for each end, light first like the scale
+ */
+export function EndSliders({ rows }: { rows: EndRow[] }) {
   return (
-    <div role="group" aria-labelledby={id}>
-      <div id={id} className="pair-label">
-        {label}
-      </div>
-      <div className="slider-pair">
-        <Slider label="Light" ariaLabel={`Light ${name}`} value={light} onChange={(v) => onChange([v, ordered ? Math.min(dark, v) : dark])} {...props} />
-        <Slider label="Dark" ariaLabel={`Dark ${name}`} value={dark} onChange={(v) => onChange([ordered ? Math.max(light, v) : light, v])} {...props} />
-      </div>
+    <div className="end-sliders">
+      <span />
+      <span className="end-head">Light</span>
+      <span className="end-head">Dark</span>
+      {rows.map(({ label, value: [light, dark], onChange, ordered = false, ...props }) => {
+        const name = label.toLowerCase();
+        return (
+          <Fragment key={label}>
+            <span className="end-label">{label}</span>
+            <div className="end-cell">
+              <SliderInputs
+                ariaLabel={`Light ${name}`}
+                value={light}
+                onChange={(v) => onChange([v, ordered ? Math.min(dark, v) : dark])}
+                {...props}
+              />
+            </div>
+            <div className="end-cell">
+              <SliderInputs
+                ariaLabel={`Dark ${name}`}
+                value={dark}
+                onChange={(v) => onChange([ordered ? Math.max(light, v) : light, v])}
+                {...props}
+              />
+            </div>
+          </Fragment>
+        );
+      })}
     </div>
   );
 }
