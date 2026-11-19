@@ -134,31 +134,38 @@ def test_zero_flows_count_as_the_smallest_positive_flow_on_their_level():
     assert len({colors([2]), colors([2, 1]), colors([2, 2])}) == 3
 
 
+def test_sequential_goes_through_the_first_palette_color_without_seeds():
+    assert c3.palette(1)[0] in c3.sequential().colors(8)
+    assert c3.sequential(seeds=[]).colors(8) == c3.sequential().colors(8)
+    assert c3.palette(1, hue="Turbo", offset=90)[0] in c3.sequential(hue="Turbo", offset=90).colors(8)
+    with pytest.raises(TypeError, match="not a single color"):
+        c3.sequential(seeds="red")
+
+
 def test_sequential_accepts_lists_tuples_and_rgb_floats():
-    scale = c3.sequential(["#2a9d8f", "#e9c46a"], lightness=[0.3, 0.95])
-    assert scale.colors(9) == c3.sequential(("#2a9d8f", "#e9c46a")).colors(9)
+    scale = c3.sequential(seeds=["#2a9d8f", "#e9c46a"], lightness=[0.3, 0.95])
+    assert scale.colors(9) == c3.sequential(seeds=("#2a9d8f", "#e9c46a")).colors(9)
     r, g, b = parse_rgb("steelblue")
-    assert c3.sequential([(r / 255, g / 255, b / 255)]).colors(7) == c3.sequential("steelblue").colors(7)
-    assert repr(c3.sequential(["#e9c46a", "#2a9d8f"])) == "Sequential(#2a9d8f, #e9c46a)"
+    assert c3.sequential(seeds=[(r / 255, g / 255, b / 255)]).colors(7) == c3.sequential(seeds=["steelblue"]).colors(7)
+    assert repr(c3.sequential(seeds=["#e9c46a", "#2a9d8f"])) == "Sequential(#2a9d8f, #e9c46a)"
 
 
 def test_sequential_works_as_a_hue_source():
-    colors = c3.palette(6, hue=c3.sequential(["#2a9d8f", "#e9c46a"]))
+    colors = c3.palette(6, hue=c3.sequential(seeds=["#2a9d8f", "#e9c46a"]))
     assert len(colors) == 6 and all(HEX.match(c) for c in colors)
 
 
 @pytest.mark.parametrize(
     "call, message",
     [
-        (lambda: c3.sequential([]), "at least one color"),
-        (lambda: c3.sequential(["red", "#ff0000"]), "different lightness"),
-        (lambda: c3.sequential("red", lightness=(0.8, 0.2)), "lightness must be"),
-        (lambda: c3.sequential("red", dark_chroma=-1), "dark_chroma must be"),
-        (lambda: c3.sequential("red", light_chroma=math.inf), "light_chroma must be"),
-        (lambda: c3.sequential("red", light_hue=math.nan), "light_hue must be"),
-        (lambda: c3.sequential("red")(math.nan), "t must be"),
-        (lambda: c3.sequential("red").colors(True), "n must be"),
-        (lambda: c3.sequential(["red", "blue"]).colors(1), "n must be at least 2"),
+        (lambda: c3.sequential(seeds=["red", "#ff0000"]), "different lightness"),
+        (lambda: c3.sequential(seeds=["red"], lightness=(0.8, 0.2)), "lightness must be"),
+        (lambda: c3.sequential(seeds=["red"], dark_chroma=-1), "dark_chroma must be"),
+        (lambda: c3.sequential(seeds=["red"], light_chroma=math.inf), "light_chroma must be"),
+        (lambda: c3.sequential(seeds=["red"], light_hue=math.nan), "light_hue must be"),
+        (lambda: c3.sequential(seeds=["red"])(math.nan), "t must be"),
+        (lambda: c3.sequential(seeds=["red"]).colors(True), "n must be"),
+        (lambda: c3.sequential(seeds=["red", "blue"]).colors(1), "n must be at least 2"),
     ],
 )
 def test_sequential_raises_value_errors(call, message):

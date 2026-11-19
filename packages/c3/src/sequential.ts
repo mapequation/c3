@@ -1,23 +1,35 @@
 import { gamutMap, labToHex, labToLch, lchToHex, parseOklab, type Lab } from "./oklab.js";
-import type { Range } from "./tone.js";
+import { palette, type HueSource } from "./palette.js";
+import type { Range, ToneOption } from "./tone.js";
 
 export type SequentialOptions = {
   /**
+   * Colors the scale goes through, any CSS colors with different lightness, sorted by lightness.
+   * Without seeds, the scale goes through the first color of palette() with the same tone, hue and offset.
+   */
+  seeds?: readonly string[];
+  /** Lightness and chroma of the color the scale goes through without seeds, as in palette() */
+  tone?: ToneOption;
+  /** Where the hue comes from without seeds, as in palette(): "Oklch" (default), or a d3 color scheme name or interpolator */
+  hue?: HueSource;
+  /** Where on the hue source the color sits without seeds, as in palette(). Default 245 (blue) on "Oklch" and 0 on a scheme */
+  offset?: number;
+  /**
    * OKLCH lightness of the dark and light ends, [min, max], where 0 is black and 1 is white.
-   * Widened to include every anchor.
+   * Widened to include every seed.
    */
   lightness?: Range;
   /**
-   * Chroma at the light end, as a fraction of the lightest anchor's, both relative to the most
+   * Chroma at the light end, as a fraction of the lightest seed's, both relative to the most
    * colorful color sRGB has at that lightness and hue. At 1 the end is as colorful as the
-   * anchor for its lightness, which fades toward white.
+   * seed for its lightness, which fades toward white.
    */
   lightChroma?: number;
-  /** Chroma at the dark end, as a fraction of the darkest anchor's, like lightChroma */
+  /** Chroma at the dark end, as a fraction of the darkest seed's, like lightChroma */
   darkChroma?: number;
-  /** Degrees the hue turns from the lightest anchor to the light end */
+  /** Degrees the hue turns from the lightest seed to the light end */
   lightHue?: number;
-  /** Degrees the hue turns from the darkest anchor to the dark end */
+  /** Degrees the hue turns from the darkest seed to the dark end */
   darkHue?: number;
   /** Go from dark (t = 0) to light (t = 1) instead of from light to dark */
   reverse?: boolean;
@@ -27,9 +39,9 @@ export type SequentialOptions = {
 export type Sequential = {
   (t: number): string;
   /**
-   * n colors in the order of t, evenly spaced in lightness between the anchors and
-   * toward the ends. Every anchor is among them, so n must be at least the number of anchors.
-   * The ends are included unless the nearest anchor is within half a step of them.
+   * n colors in the order of t, evenly spaced in lightness between the seeds and
+   * toward the ends. Every seed is among them, so n must be at least the number of seeds.
+   * The ends are included unless the nearest seed is within half a step of them.
    */
   colors(n: number): string[];
 };
@@ -56,17 +68,21 @@ const TIE = 1e-9;
 type Knot = { L: number; S: number; H: number; anchor?: Lab };
 
 /**
- * A sequential scale through one or more anchor colors, extended to darker and lighter shades.
- * The anchors are sorted by lightness. Lightness changes linearly with t, from the light end
- * to the dark end, and hue and chroma follow smooth curves through the anchors. Chroma is
- * relative to the most colorful color sRGB has at each lightness and hue, so the scale stays
- * as colorful as the anchors where sRGB allows it, and fades toward black and white.
- * @param colors One or more anchor colors, any CSS colors, with different lightness
- * @param options Lightness range, chroma and hue at the ends, and direction
+ * A sequential scale through one or more seed colors, extended to darker and lighter shades.
+ * The seeds, called anchors below, are sorted by lightness. Lightness changes linearly with t,
+ * from the light end to the dark end, and hue and chroma follow smooth curves through the
+ * anchors. Chroma is relative to the most colorful color sRGB has at each lightness and hue, so
+ * the scale stays as colorful as the anchors where sRGB allows it, and fades toward black and white.
+ * @param options Seed colors (or the tone, hue and offset of one), lightness range, chroma and
+ * hue at the ends, and direction
  * @returns a function from t in [0, 1] to a hex color, with colors(n) for n steps
  */
-export function sequential(colors: string | readonly string[], options: SequentialOptions = {}): Sequential {
+export function sequential(options: SequentialOptions = {}): Sequential {
   const {
+    seeds = [],
+    tone,
+    hue,
+    offset,
     lightness = defaultSequentialOptions.lightness,
     lightChroma = defaultSequentialOptions.lightChroma,
     darkChroma = defaultSequentialOptions.darkChroma,
@@ -87,7 +103,9 @@ export function sequential(colors: string | readonly string[], options: Sequenti
     if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite, got ${value}`);
   }
 
-  const knots = anchorKnots(typeof colors === "string" ? [colors] : colors);
+  if (typeof seeds === "string") throw new TypeError("seeds takes an array of colors, not a single color");
+  // Without seeds, the first color palette() would give
+  const knots = anchorKnots(seeds.length > 0 ? seeds : palette(1, { tone, hue, offset }));
   const darkest = knots[0]!;
   const lightest = knots[knots.length - 1]!;
   const Lmin = Math.min(lo, darkest.L);
@@ -100,13 +118,13 @@ export function sequential(colors: string | readonly string[], options: Sequenti
 
   const Ls = knots.map((k) => k.L);
   const relative = pchip(Ls, knots.map((k) => k.S));
-  const hue = pchip(Ls, knots.map((k) => k.H));
-  const chroma = (L: number) => relative(L) * maxChroma(L, hue(L));
+  const hueAt = pchip(Ls, knots.map((k) => k.H));
+  const chroma = (L: number) => relative(L) * maxChroma(L, hueAt(L));
 
   const colorAt = (L: number) => {
     const knot = knots.find((k) => k.L === L);
     if (knot?.anchor) return labToHex(knot.anchor);
-    return lchToHex([L, chroma(L), hue(L)]);
+    return lchToHex([L, chroma(L), hueAt(L)]);
   };
 
   const scale = (t: number) => {
@@ -120,7 +138,7 @@ export function sequential(colors: string | readonly string[], options: Sequenti
     if (!Number.isInteger(n) || n < 0) throw new RangeError(`n must be a whole number of at least 0, got ${n}`);
     if (n === 0) return [];
     if (n < anchors.length) {
-      throw new RangeError(`colors(n) includes every anchor, so n must be at least ${anchors.length}, got ${n}`);
+      throw new RangeError(`colors(n) includes every seed, so n must be at least ${anchors.length}, got ${n}`);
     }
     const hex = steps(
       anchors.map((k) => k.L),

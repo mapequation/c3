@@ -67,13 +67,14 @@ function hierarchyCase(tree: string, modules: Module[], options: HierarchyOption
   };
 }
 
-function sequentialCase(colors: string | string[], options: SequentialOptions = {}): FixtureCase {
-  const scale = sequential(colors, options);
-  const anchors = typeof colors === "string" ? 1 : colors.length;
+function sequentialCase(options: SequentialOptions = {}): FixtureCase {
+  const scale = sequential(options);
+  // Without seeds, the scale goes through one palette color
+  const anchors = Math.max(1, options.seeds?.length ?? 0);
   return {
-    name: `sequential ${JSON.stringify(colors)}${describeOptions(options)}`,
+    name: `sequential${describeOptions(options)}`,
     fn: "sequential",
-    args: [colors],
+    args: [],
     options,
     expected: {
       samples: Array.from({ length: 11 }, (_, i) => scale(i / 10)),
@@ -256,23 +257,27 @@ export function fixtureCases(): FixtureCase[] {
 
   // Sequential scales
   add(
-    sequentialCase("#3b82f6"),
-    sequentialCase("steelblue", { lightness: [0.3, 0.9] }),
-    sequentialCase(["#2a9d8f", "#e9c46a"]),
-    sequentialCase(["#ffffcc", "#41b6c4", "#0c2c84"]),
-    sequentialCase(["#333", "steelblue"]),
-    sequentialCase("#808080"),
-    sequentialCase("#ffffff"),
-    sequentialCase("#000000"),
-    sequentialCase(["#e41a1c", "#ffff33"]),
-    sequentialCase(["#ff00ff", "#ff8000"]),
-    sequentialCase("#ef4444", { lightChroma: 0, reverse: true }),
-    sequentialCase("#ef4444", { lightChroma: 0.1, darkChroma: 0.5 }),
-    sequentialCase("#d26202", { lightHue: 40, darkHue: -15 }),
-    sequentialCase(["#ffda7d", "#743100"]),
-    sequentialCase(["#2b9bea", "#0c2c84"], { lightHue: -30, darkHue: 20, lightChroma: 0.5, darkChroma: 1.5 }),
-    sequentialCase(["#7b3294", "#c2a5cf", "#f7f7f7"], { lightness: [0.2, 0.99] }),
-    sequentialCase(SET1),
+    sequentialCase({ seeds: ["#3b82f6"] }),
+    sequentialCase(),
+    sequentialCase({ offset: 30 }),
+    sequentialCase({ tone: "pastel" }),
+    sequentialCase({ hue: "Turbo", offset: 90 }),
+    sequentialCase({ seeds: ["steelblue"], lightness: [0.3, 0.9] }),
+    sequentialCase({ seeds: ["#2a9d8f", "#e9c46a"] }),
+    sequentialCase({ seeds: ["#ffffcc", "#41b6c4", "#0c2c84"] }),
+    sequentialCase({ seeds: ["#333", "steelblue"] }),
+    sequentialCase({ seeds: ["#808080"] }),
+    sequentialCase({ seeds: ["#ffffff"] }),
+    sequentialCase({ seeds: ["#000000"] }),
+    sequentialCase({ seeds: ["#e41a1c", "#ffff33"] }),
+    sequentialCase({ seeds: ["#ff00ff", "#ff8000"] }),
+    sequentialCase({ seeds: ["#ef4444"], lightChroma: 0, reverse: true }),
+    sequentialCase({ seeds: ["#ef4444"], lightChroma: 0.1, darkChroma: 0.5 }),
+    sequentialCase({ seeds: ["#d26202"], lightHue: 40, darkHue: -15 }),
+    sequentialCase({ seeds: ["#ffda7d", "#743100"] }),
+    sequentialCase({ seeds: ["#2b9bea", "#0c2c84"], lightHue: -30, darkHue: 20, lightChroma: 0.5, darkChroma: 1.5 }),
+    sequentialCase({ seeds: ["#7b3294", "#c2a5cf", "#f7f7f7"], lightness: [0.2, 0.99] }),
+    sequentialCase({ seeds: SET1 }),
   );
 
   // Tones from colors

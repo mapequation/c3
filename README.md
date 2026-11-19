@@ -86,11 +86,12 @@ const color = hierarchy([
 color([1, 2]);
 
 // A sequential scale through a color, extended to darker and lighter shades
-const blues = sequential("#3b82f6");
+const blues = sequential({ seeds: ["#3b82f6"] });
 blues(0.5); // "#3c83f6", from light at 0 to dark at 1
 blues.colors(7); // 7 steps, "#3b82f6" among them
-sequential(["#2a9d8f", "#e9c46a"]).colors(9);
-sequential("#d26202", { lightHue: 40, darkHue: -15 }).colors(9); // lighter shades turn yellow, darker red
+sequential({ seeds: ["#2a9d8f", "#e9c46a"] }).colors(9);
+sequential({ seeds: ["#d26202"], lightHue: 40, darkHue: -15 }).colors(9); // lighter shades turn yellow, darker red
+sequential({ offset: 30 }).colors(9); // through palette({ offset: 30 })'s first color
 ```
 
 #### `palette(n, options)`
@@ -210,10 +211,12 @@ Its `modules` property lists every module depth first with `path`, `flow`, `colo
 Adding a module never changes its earlier siblings or the modules above its level.
 With module flows given, other modules only change if the new module is now closest to them, and then only their children change.
 
-#### `sequential(colors, options)`
+#### `sequential(options)`
 
-A sequential scale for ordered data, through one or more anchor colors and extended to darker and lighter shades.
-The anchors are sorted by lightness.
+A sequential scale for ordered data, through one or more seed colors and extended to darker and lighter shades.
+The seeds are sorted by lightness, and the scale goes through each of them as an anchor.
+Without seeds, it goes through the first color `palette()` gives with the same `tone`, `hue` and `offset`,
+blue by default.
 Lightness changes linearly from the light end to the dark end, so equal steps in the data look about equally different.
 Hue and chroma follow smooth curves through the anchors that never overshoot them.
 Chroma is relative to the most colorful color sRGB has at each lightness and hue,
@@ -232,11 +235,15 @@ so the ends are included unless an anchor is within half a step of them.
 
 | Option | Default | |
 |---|---|---|
-| `lightness` | `[0.3, 0.95]` | OKLCH lightness of the dark and light ends, widened to include every anchor |
-| `lightChroma` | `1` | Chroma at the light end, as a fraction of the lightest anchor's, both relative to the most sRGB allows at that lightness and hue |
-| `darkChroma` | `1` | Chroma at the dark end, as a fraction of the darkest anchor's, like `lightChroma` |
-| `lightHue` | `0` | Degrees the hue turns from the lightest anchor to the light end |
-| `darkHue` | `0` | Degrees the hue turns from the darkest anchor to the dark end |
+| `seeds` | | Colors the scale goes through, any CSS colors with different lightness |
+| `tone` | `"strong"` | Without seeds: lightness and chroma of the color the scale goes through, as in `palette()` |
+| `hue` | `"Oklch"` | Without seeds: where its hue comes from, as in `palette()` |
+| `offset` | `245` on `"Oklch"`, `0` on a scheme | Without seeds: where on the hue source it sits, as in `palette()` |
+| `lightness` | `[0.3, 0.95]` | OKLCH lightness of the dark and light ends, widened to include every seed |
+| `lightChroma` | `1` | Chroma at the light end, as a fraction of the lightest seed's, both relative to the most sRGB allows at that lightness and hue |
+| `darkChroma` | `1` | Chroma at the dark end, as a fraction of the darkest seed's, like `lightChroma` |
+| `lightHue` | `0` | Degrees the hue turns from the lightest seed to the light end |
+| `darkHue` | `0` | Degrees the hue turns from the darkest seed to the dark end |
 | `reverse` | `false` | Go from dark at 0 to light at 1 |
 
 #### Measuring distinctness

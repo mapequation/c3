@@ -1,4 +1,4 @@
-"""Sequential scales through anchor colors, extended to darker and lighter shades."""
+"""Sequential scales through seed colors, extended to darker and lighter shades."""
 
 from __future__ import annotations
 
@@ -7,7 +7,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from ._oklab import Lab, color_to_oklab, gamut_map, lab_to_hex, lab_to_lch, lch_to_hex
-from ._tone import Range
+from ._palette import HueSource, palette
+from ._tone import Range, ToneOption
 
 DEFAULT_LIGHTNESS: Range = (0.3, 0.95)
 DEFAULT_END_CHROMA = 1.0
@@ -72,9 +73,9 @@ class Sequential:
 
     def colors(self, n: int) -> list[str]:
         """
-        n colors in the order of t, evenly spaced in lightness between the anchors and
-        toward the ends. Every anchor is among them, so n must be at least the number of anchors.
-        The ends are included unless the nearest anchor is within half a step of them.
+        n colors in the order of t, evenly spaced in lightness between the seeds and
+        toward the ends. Every seed is among them, so n must be at least the number of seeds.
+        The ends are included unless the nearest seed is within half a step of them.
         """
         anchors = [k.L for k in self._knots if k.anchor is not None]
         if isinstance(n, bool) or not isinstance(n, int) or n < 0:
@@ -82,7 +83,7 @@ class Sequential:
         if n == 0:
             return []
         if n < len(anchors):
-            raise ValueError(f"colors(n) includes every anchor, so n must be at least {len(anchors)}, got {n}")
+            raise ValueError(f"colors(n) includes every seed, so n must be at least {len(anchors)}, got {n}")
         hex_colors = [self._color_at(L) for L in _steps(anchors, *self._gaps, n)]
         return hex_colors if self._reverse else hex_colors[::-1]
 
@@ -92,8 +93,11 @@ class Sequential:
 
 
 def sequential(
-    colors: str | Sequence[str | Sequence[float]],
     *,
+    seeds: Sequence[str | Sequence[float]] = (),
+    tone: ToneOption | None = None,
+    hue: HueSource = "Oklch",
+    offset: float | None = None,
     lightness: Sequence[float] = DEFAULT_LIGHTNESS,
     light_chroma: float = DEFAULT_END_CHROMA,
     dark_chroma: float = DEFAULT_END_CHROMA,
@@ -102,22 +106,29 @@ def sequential(
     reverse: bool = False,
 ) -> Sequential:
     """
-    A sequential scale through one or more anchor colors, extended to darker and lighter shades.
+    A sequential scale through one or more seed colors, extended to darker and lighter shades.
 
-    The anchors are sorted by lightness. Lightness changes linearly with t, from the light end
+    The seeds, called anchors below, are sorted by lightness. Lightness changes linearly with t, from the light end
     to the dark end, and hue and chroma follow smooth curves through the anchors. Chroma is
     relative to the most colorful color sRGB has at each lightness and hue, so the scale stays
     as colorful as the anchors where sRGB allows it, and fades toward black and white.
 
     Args:
-        colors: One or more anchor colors with different lightness: CSS colors, or (r, g, b) floats in [0, 1].
-        lightness: OKLCH lightness of the dark and light ends, (min, max). Widened to include every anchor.
-        light_chroma: Chroma at the light end, as a fraction of the lightest anchor's, both relative to the
+        seeds: Colors the scale goes through, with different lightness: CSS colors, or (r, g, b) floats
+            in [0, 1]. Without seeds, the scale goes through the first color of palette() with the same
+            tone, hue and offset.
+        tone: Lightness and chroma of the color the scale goes through without seeds, as in palette().
+        hue: Where the hue comes from without seeds, as in palette(): "Oklch", or a d3 color scheme name
+            or interpolator.
+        offset: Where on the hue source the color sits without seeds, as in palette(). Default 245 (blue)
+            on "Oklch" and 0 on a scheme.
+        lightness: OKLCH lightness of the dark and light ends, (min, max). Widened to include every seed.
+        light_chroma: Chroma at the light end, as a fraction of the lightest seed's, both relative to the
             most colorful color sRGB has at that lightness and hue. At 1 the end is as colorful as the
-            anchor for its lightness, which fades toward white.
-        dark_chroma: Chroma at the dark end, as a fraction of the darkest anchor's, like light_chroma.
-        light_hue: Degrees the hue turns from the lightest anchor to the light end.
-        dark_hue: Degrees the hue turns from the darkest anchor to the dark end.
+            seed for its lightness, which fades toward white.
+        dark_chroma: Chroma at the dark end, as a fraction of the darkest seed's, like light_chroma.
+        light_hue: Degrees the hue turns from the lightest seed to the light end.
+        dark_hue: Degrees the hue turns from the darkest seed to the dark end.
         reverse: Go from dark (t = 0) to light (t = 1) instead of from light to dark.
 
     Returns:
@@ -133,7 +144,10 @@ def sequential(
         if not math.isfinite(value):
             raise ValueError(f"{name} must be finite, got {value}")
 
-    knots = _anchor_knots([colors] if isinstance(colors, str) else list(colors))
+    if isinstance(seeds, str):
+        raise TypeError("seeds takes a sequence of colors, not a single color")
+    # Without seeds, the first color palette() would give
+    knots = _anchor_knots(list(seeds) if len(seeds) > 0 else palette(1, tone=tone, hue=hue, offset=offset))
     darkest, lightest = knots[0], knots[-1]
     L_min = min(lo, darkest.L)
     L_max = max(hi, lightest.L)
