@@ -72,7 +72,7 @@ export function PolarPlot({
     const marked = (i: number) => (anchors ? anchors[i] : i < seeds);
     const radius = (i: number) => (marked(i) ? dot + 1.5 : dot);
     const dotClass = (i: number) => (marked(i) ? "polar-dot seed" : "polar-dot");
-    const mark = anchors ? " (anchor)" : " (seed)";
+    const mark = " (seed)";
     const line = path?.map((c) => {
       const [, C, H] = oklch(c);
       return point(H, scale(C)).join(",");

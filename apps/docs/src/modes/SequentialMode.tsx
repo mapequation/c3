@@ -1,7 +1,7 @@
 import { Fragment, useDeferredValue, useId, useMemo, useState } from "react";
-import { oklch, sequential, type Range, type SequentialOptions } from "@mapequation/c3";
-import { defaultSequentialOptions } from "@mapequation/c3/internal";
-import { Check, EndSliders, Group, ModeLayout } from "../components/Controls";
+import { oklch, palette, sequential, tones, type Range, type SchemeName, type SequentialOptions, type ToneName } from "@mapequation/c3";
+import { defaultOffset, defaultPaletteOptions, defaultSequentialOptions } from "@mapequation/c3/internal";
+import { Check, EndSliders, Group, ModeLayout, SchemeOptions, Slider } from "../components/Controls";
 import { PolarPlot } from "../components/PolarPlot";
 import { ScalePlot } from "../components/ScalePlot";
 import { Swatches } from "../components/Swatches";
@@ -11,10 +11,13 @@ import { sequentialCode } from "../code";
 import { parseColors, unlessDefault } from "../util";
 
 const EXAMPLES: [label: string, colors: string[]][] = [
-  ["one", ["#2b9bea"]],
-  ["two", ["#2a9d8f", "#e9c46a"]],
-  ["three", ["#0c2c84", "#41b6c4", "#ffffcc"]],
+  ["none", []],
+  ["one color", ["#2b9bea"]],
+  ["two colors", ["#2a9d8f", "#e9c46a"]],
+  ["three colors", ["#0c2c84", "#41b6c4", "#ffffcc"]],
 ];
+
+const TONES = Object.keys(tones) as ToneName[];
 
 const SAMPLES = 200;
 
@@ -26,7 +29,11 @@ const DEFAULT_N = 8;
 // Its own number of colors, like the hierarchy, rather than the one the palette tabs share
 export function SequentialMode(_props: { n: number; setN: (n: number) => void }) {
   const [n, setN] = useState(DEFAULT_N);
-  const [text, setText] = useState(EXAMPLES[0][1].join("\n"));
+  const [text, setText] = useState(EXAMPLES[1][1].join("\n"));
+  // The palette color the scale goes through without seeds
+  const [source, setSource] = useState<"Oklch" | SchemeName>(defaultPaletteOptions.hue);
+  const [offset, setOffset] = useState(defaultOffset(defaultPaletteOptions.hue));
+  const [tone, setTone] = useState<ToneName | "auto">("auto");
   const [lightness, setLightness] = useState<Range>(defaultSequentialOptions.lightness);
   const [lightChroma, setLightChroma] = useState(defaultSequentialOptions.lightChroma);
   const [darkChroma, setDarkChroma] = useState(defaultSequentialOptions.darkChroma);
@@ -38,10 +45,16 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
   const [hovered, onHover] = useHover();
   const hover = { hovered, onHover };
 
-  const { valid: anchors, invalid } = useMemo(() => parseColors(text), [text]);
+  const { valid: seeds, invalid } = useMemo(() => parseColors(text), [text]);
+  const noSeeds = seeds.length === 0;
 
   const options = useMemo<SequentialOptions>(
     () => ({
+      seeds: noSeeds ? undefined : seeds,
+      // The hue source only matters without seeds
+      hue: noSeeds ? unlessDefault(source, defaultPaletteOptions.hue) : undefined,
+      offset: noSeeds ? unlessDefault(offset, defaultOffset(source)) : undefined,
+      tone: noSeeds && tone !== "auto" ? tone : undefined,
       lightness: sameRange(lightness, defaultSequentialOptions.lightness) ? undefined : lightness,
       lightChroma: unlessDefault(lightChroma, defaultSequentialOptions.lightChroma),
       darkChroma: unlessDefault(darkChroma, defaultSequentialOptions.darkChroma),
@@ -49,15 +62,16 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
       darkHue: unlessDefault(darkHue, defaultSequentialOptions.darkHue),
       reverse: unlessDefault(reverse, defaultSequentialOptions.reverse),
     }),
-    [lightness, lightChroma, darkChroma, lightHue, darkHue, reverse],
+    [noSeeds, seeds, source, offset, tone, lightness, lightChroma, darkChroma, lightHue, darkHue, reverse],
   );
 
-  const deferred = useDeferredValue(useMemo(() => ({ n, anchors, options }), [n, anchors, options]));
+  const deferred = useDeferredValue(useMemo(() => ({ n, options }), [n, options]));
   const result = useMemo(() => {
-    const { n, anchors, options } = deferred;
-    if (anchors.length === 0) return { error: "Add at least one color." };
+    const { n, options } = deferred;
     try {
-      const scale = sequential(anchors, options);
+      const scale = sequential(options);
+      // The colors the scale goes through: the seeds, or the palette color without them
+      const anchors = options.seeds ?? palette(1, { hue: options.hue, offset: options.offset, tone: options.tone });
       // colors(n) holds every anchor, so never fewer colors than anchors
       const count = Math.max(n, anchors.length);
       const steps = scale.colors(count);
@@ -77,7 +91,7 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
         positions,
         anchors: steps.map((c) => anchorHex.has(c)),
         samples: Array.from({ length: SAMPLES }, (_, i) => scale(i / (SAMPLES - 1))),
-        code: sequentialCode(anchors, options, count, scale(0.5)),
+        code: sequentialCode(options, count, scale(0.5)),
       };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
@@ -91,13 +105,13 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
 
   const controls = (
     <>
-      <Group legend="Anchor colors">
+      <Group legend="Seed colors">
         <div className="field">
           <div className="field-head">
-            <label htmlFor={`${errorId}-anchors`}>One per line or comma separated, any CSS color</label>
+            <label htmlFor={`${errorId}-seeds`}>One per line or comma separated, any CSS color</label>
           </div>
           <textarea
-            id={`${errorId}-anchors`}
+            id={`${errorId}-seeds`}
             rows={4}
             spellCheck={false}
             value={text}
@@ -111,7 +125,7 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
               <Fragment key={label}>
                 {i > 0 && ", "}
                 <button type="button" className="text-btn" onClick={() => setText(colors.join("\n"))}>
-                  {label} {i === 0 ? "color" : "colors"}
+                  {label}
                 </button>
               </Fragment>
             ))}
@@ -122,6 +136,40 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
             {problems.join(" ")}
           </p>
         )}
+      </Group>
+
+      <Group legend="Without seeds">
+        <p className="hint">
+          {noSeeds
+            ? "The scale goes through the first color of palette() with this hue source, offset and tone."
+            : "Used only without seeds: the scale then goes through the first color of palette() with these."}
+        </p>
+        <fieldset className="plain" disabled={!noSeeds}>
+          <label className="field">
+            <span>Hue source</span>
+            <select
+              value={source}
+              onChange={(e) => {
+                const next = e.target.value as typeof source;
+                setSource(next);
+                setOffset(defaultOffset(next));
+              }}
+            >
+              <option value="Oklch">Oklch (OKLCH hue circle)</option>
+              <SchemeOptions />
+            </select>
+          </label>
+          <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={360} />
+          <label className="field">
+            <span>Tone</span>
+            <select value={tone} onChange={(e) => setTone(e.target.value as typeof tone)}>
+              <option value="auto">{source === "Oklch" ? "Auto (strong)" : "Auto (from the scheme)"}</option>
+              {TONES.map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
+          </label>
+        </fieldset>
       </Group>
 
       <Group legend="Ends">
@@ -182,10 +230,10 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
               <figcaption>
                 The chroma (how colorful a color is) along the scale, and below it the scale from <code>t</code> = 0 to 1
                 and the colors of <code>colors(n)</code>. Lightness changes evenly along the scale. The dots are the
-                colors of <code>colors(n)</code>; anchors have a heavier outline. The dashed line is the most chroma sRGB
-                has at each lightness and hue along the scale. Each color keeps the anchors' share of that, so chroma
+                colors of <code>colors(n)</code>; seeds have a heavier outline. The dashed line is the most chroma sRGB
+                has at each lightness and hue along the scale. Each color keeps the seeds' share of that, so chroma
                 rises where sRGB allows more and fades toward black and white. Chroma at the ends scales that share toward
-                each end, and hue at the ends turns the hue there, in degrees from the nearest anchor.
+                each end, and hue at the ends turns the hue there, in degrees from the nearest seed.
               </figcaption>
             </figure>
             <figure className="scale-circle">

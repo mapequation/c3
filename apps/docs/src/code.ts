@@ -117,8 +117,8 @@ function pyCode(fn: string, args: unknown[]) {
  * sequential() in JS and Python: the scale, its color halfway along, then n colors from it
  * @param middle the scale's color at t = 0.5
  */
-export function sequentialCode(colors: string[], options: object, n: number, middle: string): ByLang {
-  const { js, py } = callCode("sequential", colors.length === 1 ? colors[0] : colors, options);
+export function sequentialCode(options: object, n: number, middle: string): ByLang {
+  const { js, py } = callCode("sequential", options);
   // The call is the code after the imports; it never holds an empty line
   const split = (code: string) => [code.slice(0, code.lastIndexOf("\n\n")), code.slice(code.lastIndexOf("\n\n") + 2)];
   const [jsHead, jsCall] = split(js);

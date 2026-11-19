@@ -533,7 +533,19 @@ h2 {
   transform: rotate(90deg);
 }
 
-.controls .hint {
+.controls /* A fieldset that only groups controls, to disable them together */
+fieldset.plain {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+fieldset.plain:disabled {
+  opacity: 0.5;
+}
+
+.hint {
   margin-bottom: 8px;
   font-size: 12px;
   line-height: 1.4;

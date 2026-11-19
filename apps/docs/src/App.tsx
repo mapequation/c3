@@ -71,7 +71,7 @@ const MODES = [
     label: "Sequential",
     fn: "sequential()",
     about:
-      "A sequential scale for ordered data through one or more anchor colors, extended to darker and lighter shades. Lightness changes evenly from light to dark, the colors stay as colorful as the anchors where sRGB allows it, and colors(n) gives n steps with every anchor among them.",
+      "A sequential scale for ordered data through one or more seed colors, or without seeds through the first palette() color, extended to darker and lighter shades. Lightness changes evenly from light to dark, the colors stay as colorful as the seeds where sRGB allows it, and colors(n) gives n steps with every seed among them.",
     Mode: SequentialMode,
   },
   {

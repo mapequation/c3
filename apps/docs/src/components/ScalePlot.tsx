@@ -88,7 +88,7 @@ export function ScalePlot({
         <path className="scale-line" d={`M${path(curve)}`} />
         {steps.map((c, i) => (
           <circle key={i} data-i={i} cx={xy[i][0]} cy={xy[i][1]} r={radius(i)} fill={c} className={dotClass(i)}>
-            <title>{`${i + 1}${anchors[i] ? " (anchor)" : ""} ${c}`}</title>
+            <title>{`${i + 1}${anchors[i] ? " (seed)" : ""} ${c}`}</title>
           </circle>
         ))}
       </>
