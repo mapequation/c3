@@ -150,6 +150,23 @@ def test_sequential_accepts_lists_tuples_and_rgb_floats():
     assert repr(c3.sequential(seeds=["#e9c46a", "#2a9d8f"])) == "Sequential(#2a9d8f, #e9c46a)"
 
 
+def test_sequential_goes_in_a_straight_line_through_oklab_with_a_straight_path():
+    seeds = ["#0b7baa", "#f68758"]
+    blue, orange = (c3.oklab(c) for c in seeds)
+    straight = c3.sequential(seeds=seeds, path="straight")
+    curved = c3.sequential(seeds=seeds)
+    for i in range(41):
+        t = i / 40
+        lab = c3.oklab(straight(t))
+        if blue[0] < lab[0] < orange[0]:
+            s = (lab[0] - blue[0]) / (orange[0] - blue[0])
+            line = [x + s * (y - x) for x, y in zip(blue, orange)]
+            assert math.dist(lab, line) < 0.005
+        else:
+            assert straight(t) == curved(t)
+    assert c3.sequential(seeds=["#3b82f6"], path="straight").colors(9) == c3.sequential(seeds=["#3b82f6"]).colors(9)
+
+
 def test_sequential_works_as_a_hue_source():
     colors = c3.palette(6, hue=c3.sequential(seeds=["#2a9d8f", "#e9c46a"]))
     assert len(colors) == 6 and all(HEX.match(c) for c in colors)
@@ -163,6 +180,7 @@ def test_sequential_works_as_a_hue_source():
         (lambda: c3.sequential(seeds=["red"], dark_chroma=-1), "dark_chroma must be"),
         (lambda: c3.sequential(seeds=["red"], light_chroma=math.inf), "light_chroma must be"),
         (lambda: c3.sequential(seeds=["red"], light_hue=math.nan), "light_hue must be"),
+        (lambda: c3.sequential(seeds=["red"], path="lab"), "Unknown path"),
         (lambda: c3.sequential(seeds=["red"])(math.nan), "t must be"),
         (lambda: c3.sequential(seeds=["red"]).colors(True), "n must be"),
         (lambda: c3.sequential(seeds=["red", "blue"]).colors(1), "n must be at least 2"),

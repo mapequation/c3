@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { distance, hierarchy, inferTone, palette, sequential, swatches, tones, type Module, type ModuleColor } from "../src/index.js";
 import { defaultTone, endLightness, getScheme, stops, vanDerCorput } from "../src/internal.js";
-import { gamutMap, labDistance, parseOklab, parseOklch } from "../src/oklab.js";
+import { gamutMap, labDistance, parseOklab, parseOklch, type Lab } from "../src/oklab.js";
 
 const beforeZones: Record<string, string[]> = JSON.parse(
   readFileSync(new URL("./palette-before-zones.json", import.meta.url), "utf8"),
@@ -638,6 +638,35 @@ describe("sequential()", () => {
     for (const H of between) expect(H > magenta - 1 || H < orange + 1).toBe(true);
   });
 
+  it("goes in a straight line through OKLab between seeds with a straight path", () => {
+    const seeds = ["#0b7baa", "#f68758"];
+    const [blue, orange] = seeds.map(parseOklab) as [Lab, Lab];
+    const straight = sequential({ seeds, path: "straight" });
+    const curved = sequential({ seeds });
+    for (let i = 0; i <= 40; ++i) {
+      const t = i / 40;
+      const [L] = parseOklab(straight(t));
+      if (L > blue[0] && L < orange[0]) {
+        const s = (L - blue[0]) / (orange[0] - blue[0]);
+        const line = blue.map((x, k) => x + s * (orange[k]! - x)) as Lab;
+        expect(labDistance(parseOklab(straight(t)), line)).toBeLessThan(0.005);
+      } else {
+        // The ends follow the outermost seeds as on the hue path
+        expect(straight(t)).toBe(curved(t));
+      }
+    }
+    // No color between the seeds is more colorful than they are, unlike the turn through magenta
+    const middle = straight.colors(8)[3]!;
+    expect(chroma(middle)).toBeLessThan(Math.min(chroma(seeds[0]!), chroma(seeds[1]!)));
+    expect(chroma(curved.colors(8)[3]!)).toBeGreaterThan(Math.max(chroma(seeds[0]!), chroma(seeds[1]!)));
+  });
+
+  it("makes no difference with a straight path and a single seed", () => {
+    for (const options of [{ seeds: ["#3b82f6"] }, { seeds: ["#d26202"], lightHue: 40, darkHue: -15 }, {}]) {
+      expect(sequential({ ...options, path: "straight" }).colors(9)).toEqual(sequential(options).colors(9));
+    }
+  });
+
   it("works as a hue source", () => {
     const colors = palette(6, { hue: sequential({ seeds: ["#2a9d8f", "#e9c46a"] }) });
     expect(colors).toHaveLength(6);
@@ -651,6 +680,7 @@ describe("sequential()", () => {
     expect(() => sequential({ seeds: ["red"], darkChroma: -1 })).toThrow("darkChroma must be");
     expect(() => sequential({ seeds: ["red"], lightChroma: Infinity })).toThrow("lightChroma must be");
     expect(() => sequential({ seeds: ["red"], lightHue: NaN })).toThrow("lightHue must be");
+    expect(() => sequential({ seeds: ["red"], path: "lab" as never })).toThrow("Unknown path");
     expect(() => sequential({ seeds: ["red"] })(NaN)).toThrow(RangeError);
     expect(() => sequential({ seeds: ["not a color"] })).toThrow("Invalid color");
   });

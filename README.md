@@ -92,6 +92,7 @@ blues.colors(7); // 7 steps, "#3b82f6" among them
 sequential({ seeds: ["#2a9d8f", "#e9c46a"] }).colors(9);
 sequential({ seeds: ["#d26202"], lightHue: 40, darkHue: -15 }).colors(9); // lighter shades turn yellow, darker red
 sequential({ offset: 30 }).colors(9); // through palette({ offset: 30 })'s first color
+sequential({ seeds: ["#0b7baa", "#f68758"], path: "straight" }).colors(9); // blue to orange through grey, not magenta
 ```
 
 #### `palette(n, options)`
@@ -225,6 +226,11 @@ and it fades toward black and white on its own.
 Hue takes the shorter way around the hue circle between two anchors,
 and toward the ends it keeps the nearest anchor's hue, unless `lightHue` or `darkHue` turns it.
 Greys take the hue of the nearest colorful anchor.
+Between anchors of very different hue, such as blue and orange, that way passes through the hues between them,
+and where sRGB allows more chroma, as at magenta, a vivid color neither anchor has shows up in a short stretch.
+With `path: "straight"` the scale instead goes in a straight line through OKLab from one anchor to the next,
+so the colors between such anchors turn greyish, as in cividis, and no new hue shows up.
+The ends follow the outermost anchors either way.
 
 It returns a function from `t` in [0, 1] to a hex color, light at 0 and dark at 1, like a d3 interpolator,
 so it works with d3's `scaleSequential` and as `palette()`'s `hue`.
@@ -245,6 +251,7 @@ so the ends are included unless an anchor is within half a step of them.
 | `lightHue` | `0` | Degrees the hue turns from the lightest seed to the light end |
 | `darkHue` | `0` | Degrees the hue turns from the darkest seed to the dark end |
 | `reverse` | `false` | Go from dark at 0 to light at 1 |
+| `path` | `"hue"` | How the scale goes from one seed to the next: `"hue"` around the hue circle, or `"straight"` in a straight line through OKLab |
 
 #### Measuring distinctness
 

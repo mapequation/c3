@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Callable, Literal
 
 from ._oklab import Lab, color_to_oklab, gamut_map, lab_to_hex, lab_to_lch, lch_to_hex
 from ._palette import HueSource, palette
@@ -13,6 +14,9 @@ from ._tone import Range, ToneOption
 DEFAULT_LIGHTNESS: Range = (0.3, 0.95)
 DEFAULT_END_CHROMA = 1.0
 DEFAULT_END_HUE = 0.0
+
+#: How a sequential scale goes from one seed to the next
+SequentialPath = Literal["hue", "straight"]
 
 # Below this chroma an anchor's hue barely shows, so it takes the hue of a colorful anchor
 _ACHROMATIC = 0.01
@@ -33,6 +37,33 @@ class _Knot:
     C: float = 0.0
 
 
+def _polar(knots: list[_Knot]) -> Callable[[float], str]:
+    """
+    Colors through the knots by lightness, with hue and chroma relative to the most sRGB has
+    on smooth curves through them.
+    """
+    Ls = [k.L for k in knots]
+    relative = _pchip(Ls, [k.S for k in knots])
+    hue = _pchip(Ls, [k.H for k in knots])
+
+    def color(L: float) -> str:
+        H = hue(L)
+        return lch_to_hex((L, relative(L) * _max_chroma(L, H), H))
+
+    return color
+
+
+def _between(anchors: list[_Knot], L: float) -> Lab:
+    """The point at lightness L on the straight line in OKLab between the anchors on either side of it."""
+    k = 0
+    while k < len(anchors) - 2 and L > anchors[k + 1].L:
+        k += 1
+    L0, a0, b0 = anchors[k].anchor  # type: ignore[misc]
+    L1, a1, b1 = anchors[k + 1].anchor  # type: ignore[misc]
+    s = (L - L0) / (L1 - L0)
+    return (L, a0 + s * (a1 - a0), b0 + s * (b1 - b0))
+
+
 def _max_chroma(L: float, H: float) -> float:
     """The most chroma a color can have in sRGB at lightness L and hue H."""
     return gamut_map((L, _MAX_CHROMA, H))[1]
@@ -44,13 +75,19 @@ class Sequential:
     from light to dark, or dark to light with reverse.
     """
 
-    __slots__ = ("_knots", "_relative", "_hue", "_range", "_gaps", "_reverse")
+    __slots__ = ("_knots", "_anchors", "_curved", "_dark", "_light", "_straight", "_range", "_gaps", "_reverse")
 
-    def __init__(self, knots: list[_Knot], L_range: Range, gaps: tuple[float, float], reverse: bool):
+    def __init__(
+        self, knots: list[_Knot], L_range: Range, gaps: tuple[float, float], reverse: bool, path: SequentialPath
+    ):
         self._knots = knots
-        Ls = [k.L for k in knots]
-        self._relative = _pchip(Ls, [k.S for k in knots])
-        self._hue = _pchip(Ls, [k.H for k in knots])
+        self._anchors = [k for k in knots if k.anchor is not None]
+        self._curved = _polar(knots)
+        # A straight path goes from seed to seed in straight lines through OKLab, and each end follows
+        # only its outermost seed, not the turn between the seeds
+        self._straight = path == "straight" and len(self._anchors) > 1
+        self._dark = _polar(knots[:2]) if self._straight and gaps[0] > 0 else self._curved
+        self._light = _polar(knots[-2:]) if self._straight and gaps[1] > 0 else self._curved
         self._range = L_range
         self._gaps = gaps
         self._reverse = reverse
@@ -61,8 +98,13 @@ class Sequential:
                 if knot.anchor is not None:
                     return lab_to_hex(knot.anchor)
                 break
-        H = self._hue(L)
-        return lch_to_hex((L, self._relative(L) * _max_chroma(L, H), H))
+        if not self._straight:
+            return self._curved(L)
+        if L < self._anchors[0].L:
+            return self._dark(L)
+        if L > self._anchors[-1].L:
+            return self._light(L)
+        return lch_to_hex(lab_to_lch(_between(self._anchors, L)))
 
     def __call__(self, t: float) -> str:
         if math.isnan(t):
@@ -77,7 +119,7 @@ class Sequential:
         toward the ends. Every seed is among them, so n must be at least the number of seeds.
         The ends are included unless the nearest seed is within half a step of them.
         """
-        anchors = [k.L for k in self._knots if k.anchor is not None]
+        anchors = [k.L for k in self._anchors]
         if isinstance(n, bool) or not isinstance(n, int) or n < 0:
             raise ValueError(f"n must be a whole number of at least 0, got {n}")
         if n == 0:
@@ -104,12 +146,14 @@ def sequential(
     light_hue: float = DEFAULT_END_HUE,
     dark_hue: float = DEFAULT_END_HUE,
     reverse: bool = False,
+    path: SequentialPath = "hue",
 ) -> Sequential:
     """
     A sequential scale through one or more seed colors, extended to darker and lighter shades.
 
     The seeds, called anchors below, are sorted by lightness. Lightness changes linearly with t, from the light end
-    to the dark end, and hue and chroma follow smooth curves through the anchors. Chroma is
+    to the dark end, and hue and chroma follow smooth curves through the anchors, or a straight line through
+    OKLab between them with path="straight". Chroma is
     relative to the most colorful color sRGB has at each lightness and hue, so the scale stays
     as colorful as the anchors where sRGB allows it, and fades toward black and white.
 
@@ -130,6 +174,10 @@ def sequential(
         light_hue: Degrees the hue turns from the lightest seed to the light end.
         dark_hue: Degrees the hue turns from the darkest seed to the dark end.
         reverse: Go from dark (t = 0) to light (t = 1) instead of from light to dark.
+        path: How the scale goes from one seed to the next. "hue" turns the hue the short way around and
+            keeps the seeds' share of the most chroma sRGB has, so seeds of very different hue pass through
+            the hues between them. "straight" goes in a straight line through OKLab, so the colors between
+            such seeds turn greyish instead. The ends follow the outermost seeds either way.
 
     Returns:
         A callable from t in [0, 1] to a hex color, with colors(n) for n steps.
@@ -143,6 +191,8 @@ def sequential(
     for name, value in {"light_hue": light_hue, "dark_hue": dark_hue}.items():
         if not math.isfinite(value):
             raise ValueError(f"{name} must be finite, got {value}")
+    if path not in ("hue", "straight"):
+        raise ValueError(f'Unknown path: {path!r}, use "hue" or "straight"')
 
     if isinstance(seeds, str):
         raise TypeError("seeds takes a sequence of colors, not a single color")
@@ -158,7 +208,7 @@ def sequential(
         knots.insert(0, _Knot(L_min, float(dark_chroma) * darkest.S, darkest.H + float(dark_hue)))
     if light_gap > 0:
         knots.append(_Knot(L_max, float(light_chroma) * lightest.S, lightest.H + float(light_hue)))
-    return Sequential(knots, (L_min, L_max), (dark_gap, light_gap), bool(reverse))
+    return Sequential(knots, (L_min, L_max), (dark_gap, light_gap), bool(reverse), path)
 
 
 def _anchor_knots(colors: list) -> list[_Knot]:

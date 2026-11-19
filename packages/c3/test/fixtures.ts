@@ -278,6 +278,10 @@ export function fixtureCases(): FixtureCase[] {
     sequentialCase({ seeds: ["#2b9bea", "#0c2c84"], lightHue: -30, darkHue: 20, lightChroma: 0.5, darkChroma: 1.5 }),
     sequentialCase({ seeds: ["#7b3294", "#c2a5cf", "#f7f7f7"], lightness: [0.2, 0.99] }),
     sequentialCase({ seeds: SET1 }),
+    sequentialCase({ seeds: ["#0b7baa", "#f68758"], path: "straight" }),
+    sequentialCase({ seeds: ["#ffffcc", "#41b6c4", "#0c2c84"], path: "straight" }),
+    sequentialCase({ seeds: ["#2b9bea", "#0c2c84"], path: "straight", lightHue: -30, darkHue: 20, lightChroma: 0.5, darkChroma: 1.5 }),
+    sequentialCase({ seeds: ["#333", "steelblue"], path: "straight", reverse: true }),
   );
 
   // Tones from colors
