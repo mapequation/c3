@@ -35,7 +35,7 @@ export type Sequential = {
 };
 
 export const defaultSequentialOptions = {
-  lightness: [0.25, 0.97] as Range,
+  lightness: [0.3, 0.95] as Range,
   lightChroma: 1,
   darkChroma: 1,
   lightHue: 0,

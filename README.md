@@ -87,7 +87,7 @@ color([1, 2]);
 
 // A sequential scale through a color, extended to darker and lighter shades
 const blues = sequential("#3b82f6");
-blues(0.5); // "#337df6", from light at 0 to dark at 1
+blues(0.5); // "#3c83f6", from light at 0 to dark at 1
 blues.colors(7); // 7 steps, "#3b82f6" among them
 sequential(["#2a9d8f", "#e9c46a"]).colors(9);
 sequential("#d26202", { lightHue: 40, darkHue: -15 }).colors(9); // lighter shades turn yellow, darker red
@@ -232,7 +232,7 @@ so the ends are included unless an anchor is within half a step of them.
 
 | Option | Default | |
 |---|---|---|
-| `lightness` | `[0.25, 0.97]` | OKLCH lightness of the dark and light ends, widened to include every anchor |
+| `lightness` | `[0.3, 0.95]` | OKLCH lightness of the dark and light ends, widened to include every anchor |
 | `lightChroma` | `1` | Chroma at the light end, as a fraction of the lightest anchor's, both relative to the most sRGB allows at that lightness and hue |
 | `darkChroma` | `1` | Chroma at the dark end, as a fraction of the darkest anchor's, like `lightChroma` |
 | `lightHue` | `0` | Degrees the hue turns from the lightest anchor to the light end |

@@ -239,8 +239,8 @@ export const API: ApiEntry[] = [
     },
     python: "The result is a `Sequential` object rather than a function. Anchors can also be (r, g, b) floats in [0, 1].",
     example: {
-      js: `const blues = sequential("#3b82f6");\nblues(0.5); // "#337df6"\nblues.colors(7); // 7 steps, "#3b82f6" among them\nsequential(["#2a9d8f", "#e9c46a"]).colors(9);`,
-      py: `blues = c3.sequential("#3b82f6")\nblues(0.5)  # '#337df6'\nblues.colors(7)  # 7 steps, '#3b82f6' among them\nc3.sequential(["#2a9d8f", "#e9c46a"]).colors(9)`,
+      js: `const blues = sequential("#3b82f6");\nblues(0.5); // "#3c83f6"\nblues.colors(7); // 7 steps, "#3b82f6" among them\nsequential(["#2a9d8f", "#e9c46a"]).colors(9);`,
+      py: `blues = c3.sequential("#3b82f6")\nblues(0.5)  # '#3c83f6'\nblues.colors(7)  # 7 steps, '#3b82f6' among them\nc3.sequential(["#2a9d8f", "#e9c46a"]).colors(9)`,
     },
   },
   {

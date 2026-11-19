@@ -521,7 +521,7 @@ describe("sequential()", () => {
     const blue = sequential("#3b82f6");
     for (let i = 0; i <= 20; ++i) {
       const t = i / 20;
-      expect(lightness(blue(t))).toBeCloseTo(0.97 - 0.72 * t, 2);
+      expect(lightness(blue(t))).toBeCloseTo(0.95 - 0.65 * t, 2);
     }
     expect(blue(-1)).toBe(blue(0));
     expect(blue(2)).toBe(blue(1));
@@ -534,8 +534,8 @@ describe("sequential()", () => {
       expect(colors).toHaveLength(n);
       expect(colors).toEqual(expect.arrayContaining(anchors));
       const Ls = colors.map(lightness);
-      expect(Ls[0]).toBeCloseTo(0.97, 2);
-      expect(Ls[n - 1]).toBeCloseTo(0.25, 2);
+      expect(Ls[0]).toBeCloseTo(0.95, 2);
+      expect(Ls[n - 1]).toBeCloseTo(0.3, 2);
       for (let i = 1; i < n; ++i) expect(Ls[i]).toBeLessThan(Ls[i - 1]!);
     }
   });
@@ -549,11 +549,12 @@ describe("sequential()", () => {
   });
 
   it("gives the anchors alone, then the ends where the gap is largest", () => {
-    const blue = sequential("#3b82f6");
+    // Light enough that the gap to the dark end is the largest
+    const blue = sequential("#60a5fa");
     expect(blue.colors(0)).toEqual([]);
-    expect(blue.colors(1)).toEqual(["#3b82f6"]);
-    expect(blue.colors(2)).toEqual(["#3b82f6", blue(1)]);
-    expect(blue.colors(3)).toEqual([blue(0), "#3b82f6", blue(1)]);
+    expect(blue.colors(1)).toEqual(["#60a5fa"]);
+    expect(blue.colors(2)).toEqual(["#60a5fa", blue(1)]);
+    expect(blue.colors(3)).toEqual([blue(0), "#60a5fa", blue(1)]);
     expect(() => sequential(["red", "blue"]).colors(1)).toThrow("n must be at least 2");
     expect(() => blue.colors(2.5)).toThrow(RangeError);
   });

@@ -135,7 +135,7 @@ def test_zero_flows_count_as_the_smallest_positive_flow_on_their_level():
 
 
 def test_sequential_accepts_lists_tuples_and_rgb_floats():
-    scale = c3.sequential(["#2a9d8f", "#e9c46a"], lightness=[0.25, 0.97])
+    scale = c3.sequential(["#2a9d8f", "#e9c46a"], lightness=[0.3, 0.95])
     assert scale.colors(9) == c3.sequential(("#2a9d8f", "#e9c46a")).colors(9)
     r, g, b = parse_rgb("steelblue")
     assert c3.sequential([(r / 255, g / 255, b / 255)]).colors(7) == c3.sequential("steelblue").colors(7)

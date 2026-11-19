@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from ._oklab import Lab, color_to_oklab, gamut_map, lab_to_hex, lab_to_lch, lch_to_hex
 from ._tone import Range
 
-DEFAULT_LIGHTNESS: Range = (0.25, 0.97)
+DEFAULT_LIGHTNESS: Range = (0.3, 0.95)
 DEFAULT_END_CHROMA = 1.0
 DEFAULT_END_HUE = 0.0
 
