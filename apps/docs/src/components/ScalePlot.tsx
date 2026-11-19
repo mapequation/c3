@@ -1,6 +1,7 @@
 import { useId, useMemo } from "react";
 import { oklch } from "@mapequation/c3";
 import { delegatedHover, NONE, type Hover } from "./Hover";
+import { chromaLimits } from "../util";
 
 const W = 640;
 const LEFT = 56; // room for the chroma axis title and labels
@@ -17,6 +18,7 @@ const x = (t: number) => LEFT + t * (W - LEFT - RIGHT);
 /**
  * A sequential scale along t: its colors as a bar, and below it their OKLCH chroma, with
  * the steps as dots at their place on the scale. Anchors get a heavier outline.
+ * A dashed line shows the most chroma sRGB has at each lightness and hue along the scale.
  * Hovering a dot highlights its color in the other views; hovered colors get a ring.
  * @param samples colors at evenly spaced t from 0 to 1
  * @param positions t of each step
@@ -34,12 +36,15 @@ export function ScalePlot({
 
   // Everything but the highlight, so hovering does not redraw the plot
   const plot = useMemo(() => {
-    const curve = samples.map((c) => oklch(c)[1]);
+    const lch = samples.map(oklch);
+    const curve = lch.map(([, C]) => C);
+    const limit = chromaLimits(lch);
     const chroma = steps.map((c) => oklch(c)[1]);
-    const max = Math.ceil(Math.max(0.1, ...curve, ...chroma) / STEP) * STEP;
+    const max = Math.ceil(Math.max(0.1, ...curve, ...chroma, ...(limit ?? [])) / STEP) * STEP;
     const y = (c: number) => BAR + GAP + PLOT * (1 - c / max);
     const grid = Array.from({ length: Math.round(max / STEP) + 1 }, (_, i) => i * STEP);
-    const line = curve.map((c, i) => `${x(i / (curve.length - 1)).toFixed(1)},${y(c).toFixed(1)}`).join("L");
+    const path = (values: number[]) =>
+      values.map((c, i) => `${x(i / (values.length - 1)).toFixed(1)},${y(c).toFixed(1)}`).join("L");
     const dot = Math.max(3.5, Math.min(7, 32 / Math.sqrt(steps.length)));
     const radius = (i: number) => (anchors[i] ? dot + 1.5 : dot);
     const dotClass = (i: number) => (anchors[i] ? "polar-dot seed" : "polar-dot");
@@ -77,7 +82,8 @@ export function ScalePlot({
         <text className="polar-label" x={x(1)} y={H - 6} textAnchor="end">
           1
         </text>
-        <path className="scale-line" d={`M${line}`} />
+        {limit && <path className="gamut-line" d={`M${path(limit)}`} />}
+        <path className="scale-line" d={`M${path(curve)}`} />
         {steps.map((c, i) => (
           <circle key={i} data-i={i} cx={xy[i][0]} cy={xy[i][1]} r={radius(i)} fill={c} className={dotClass(i)}>
             <title>{`${i + 1}${anchors[i] ? " (anchor)" : ""} ${c}`}</title>

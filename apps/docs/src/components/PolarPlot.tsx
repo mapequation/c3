@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { oklch, type Tone } from "@mapequation/c3";
 import { delegatedHover, NONE, type Hover } from "./Hover";
+import { chromaLimits } from "../util";
 
 const SIZE = 320;
 const R = SIZE / 2 - 16;
@@ -19,6 +20,8 @@ const point = (hue: number, r: number) => {
   return [r * Math.cos(a), -r * Math.sin(a)] as const;
 };
 
+const xy2 = ([x2, y2]: readonly [number, number]) => ({ x2, y2 });
+
 /** Outline of the chroma range the tone allows at each hue */
 function tonePath({ chroma: [lo, hi], warmHue, tilt }: Tone, scale: (c: number) => number) {
   const hues = Array.from({ length: HUE_STEPS + 1 }, (_, i) => (360 * i) / HUE_STEPS);
@@ -33,26 +36,47 @@ function tonePath({ chroma: [lo, hi], warmHue, tilt }: Tone, scale: (c: number) 
 /**
  * Colors placed by OKLCH hue (angle) and chroma (distance from the center).
  * Hovering a dot highlights its color in the other views; hovered colors get a ring.
+ * @param tone shades the chroma range the tone allows at each hue
  * @param seeds number of leading colors to mark as seeds
+ * @param anchors which colors to mark as anchors, instead of seeds
+ * @param path colors drawn as a line, like a sequential scale sampled along t
+ * @param limits whether to draw a dashed line from each color out to the most chroma sRGB has at its lightness and hue
  */
 export function PolarPlot({
   colors,
   tone,
   seeds = 0,
+  anchors,
+  path,
+  limits = false,
   hovered = NONE,
   onHover,
-}: { colors: string[]; tone: Tone; seeds?: number } & Partial<Hover>) {
+}: {
+  colors: string[];
+  tone?: Tone;
+  seeds?: number;
+  anchors?: readonly boolean[];
+  path?: string[];
+  limits?: boolean;
+} & Partial<Hover>) {
   // Everything but the highlight, so hovering does not redraw the plot
   const plot = useMemo(() => {
     const lch = colors.map(oklch);
-    const top = Math.max(0.1, tone.chroma[1], ...lch.map(([, C]) => C));
+    const limit = limits ? chromaLimits(lch) : null;
+    const top = Math.max(0.1, tone?.chroma[1] ?? 0, ...lch.map(([, C]) => C), ...(limit ?? []));
     const max = Math.ceil(top / 0.05) * 0.05;
     const scale = (c: number) => (c / max) * R;
     const rings = Array.from({ length: Math.round(max / 0.05) }, (_, i) => (i + 1) * 0.05);
     const dot = Math.max(3.5, Math.min(8, 32 / Math.sqrt(colors.length)));
     const xy = lch.map(([, C, H]) => point(H, scale(C)));
-    const radius = (i: number) => (i < seeds ? dot + 1.5 : dot);
-    const dotClass = (i: number) => (i < seeds ? "polar-dot seed" : "polar-dot");
+    const marked = (i: number) => (anchors ? anchors[i] : i < seeds);
+    const radius = (i: number) => (marked(i) ? dot + 1.5 : dot);
+    const dotClass = (i: number) => (marked(i) ? "polar-dot seed" : "polar-dot");
+    const mark = anchors ? " (anchor)" : " (seed)";
+    const line = path?.map((c) => {
+      const [, C, H] = oklch(c);
+      return point(H, scale(C)).join(",");
+    });
     const order = colors.map((_, i) => i).reverse(); // draw the first colors on top
 
     const content = (
@@ -82,16 +106,22 @@ export function PolarPlot({
             {+c.toFixed(2)}
           </text>
         ))}
-        <path className="polar-region" d={tonePath(tone, scale)} fillRule="evenodd" />
+        {tone && <path className="polar-region" d={tonePath(tone, scale)} fillRule="evenodd" />}
+        {line && <path className="polar-path" d={`M${line.join("L")}`} />}
+        {limit?.map((max, i) =>
+          lch[i][1] < 0.01 ? null : (
+            <line key={i} className="gamut-line" x1={xy[i][0]} y1={xy[i][1]} {...xy2(point(lch[i][2], scale(max)))} />
+          ),
+        )}
         {order.map((i) => (
           <circle key={i} data-i={i} cx={xy[i][0]} cy={xy[i][1]} r={radius(i)} fill={colors[i]} className={dotClass(i)}>
-            <title>{`${i + 1}${i < seeds ? " (seed)" : ""} ${colors[i]}`}</title>
+            <title>{`${i + 1}${marked(i) ? mark : ""} ${colors[i]}`}</title>
           </circle>
         ))}
       </>
     );
     return { content, xy, radius, dotClass };
-  }, [colors, tone, seeds]);
+  }, [colors, tone, seeds, anchors, path, limits]);
 
   return (
     <svg

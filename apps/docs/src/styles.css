@@ -588,8 +588,8 @@ h2 {
   grid-row: 2;
   display: flex;
   align-items: center;
-  /* The same margins as the sliders, so the label is centered on them */
-  margin: 2px 0 6px;
+  /* The sliders' bottom margin, so the label is centered on them */
+  margin-bottom: 6px;
   font-size: 14px;
   color: var(--ink-2);
 }
@@ -850,6 +850,21 @@ figcaption {
   display: block;
   width: 100%;
   max-width: 760px;
+}
+
+/* The most chroma sRGB has at a lightness and hue */
+.gamut-line {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 3;
+}
+
+.polar-path {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
 }
 
 .scale-line {

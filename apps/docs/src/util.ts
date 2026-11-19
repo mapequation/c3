@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { oklch, swatches, tones, type Tone, type ToneName, type ToneOption, type SchemeName } from "@mapequation/c3";
+import { gamutMap } from "@mapequation/c3/internal";
 
 /** The d3 schemes the explorer offers, by kind */
 export const SCHEMES: Record<string, SchemeName[]> = {
@@ -100,4 +101,21 @@ export function useCopy() {
     status?.key !== key ? idle : status.ok ? "Copied" : "Copy failed";
 
   return { copy, label, status };
+}
+
+/** The most OKLCH chroma sRGB has at a lightness and hue */
+export const maxChroma = (L: number, H: number) => gamutMap([L, 0.5, H])[1];
+
+/**
+ * The most chroma sRGB has at each color's lightness and hue. A grey has no hue of its own,
+ * so it takes the hue of the nearest colorful color; null when every color is grey.
+ */
+export function chromaLimits(lch: readonly (readonly [number, number, number])[]): number[] | null {
+  const colorful = lch.flatMap(([, C], i) => (C >= 0.01 ? [i] : []));
+  if (colorful.length === 0) return null;
+  return lch.map(([L, C, H], i) => {
+    if (C >= 0.01) return maxChroma(L, H);
+    const nearest = colorful.reduce((a, b) => (Math.abs(b - i) < Math.abs(a - i) ? b : a));
+    return maxChroma(L, lch[nearest][2]);
+  });
 }
