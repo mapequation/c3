@@ -1,5 +1,15 @@
 import { Fragment, useDeferredValue, useId, useMemo, useState } from "react";
-import { oklch, palette, sequential, tones, type Range, type SchemeName, type SequentialOptions, type ToneName } from "@mapequation/c3";
+import {
+  oklch,
+  palette,
+  sequential,
+  tones,
+  type Range,
+  type SchemeName,
+  type SequentialOptions,
+  type SequentialPath,
+  type ToneName,
+} from "@mapequation/c3";
 import { defaultOffset, defaultPaletteOptions, defaultSequentialOptions } from "@mapequation/c3/internal";
 import { Check, EndSliders, Group, ModeLayout, SchemeOptions, Slider } from "../components/Controls";
 import { PolarPlot } from "../components/PolarPlot";
@@ -15,6 +25,7 @@ const EXAMPLES: [label: string, colors: string[]][] = [
   ["one color", ["#2b9bea"]],
   ["two colors", ["#2a9d8f", "#e9c46a"]],
   ["three colors", ["#0c2c84", "#41b6c4", "#ffffcc"]],
+  ["blue to orange", ["#0b7baa", "#f68758"]],
 ];
 
 const TONES = Object.keys(tones) as ToneName[];
@@ -40,6 +51,7 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
   const [lightHue, setLightHue] = useState(defaultSequentialOptions.lightHue);
   const [darkHue, setDarkHue] = useState(defaultSequentialOptions.darkHue);
   const [reverse, setReverse] = useState(defaultSequentialOptions.reverse);
+  const [path, setPath] = useState<SequentialPath>(defaultSequentialOptions.path);
   const errorId = useId();
   // Highlighted colors by index, linked across the plot and the swatches
   const [hovered, onHover] = useHover();
@@ -47,6 +59,8 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
 
   const { valid: seeds, invalid } = useMemo(() => parseColors(text), [text]);
   const noSeeds = seeds.length === 0;
+  // The path only matters between seeds
+  const between = seeds.length > 1;
 
   const options = useMemo<SequentialOptions>(
     () => ({
@@ -61,8 +75,9 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
       lightHue: unlessDefault(lightHue, defaultSequentialOptions.lightHue),
       darkHue: unlessDefault(darkHue, defaultSequentialOptions.darkHue),
       reverse: unlessDefault(reverse, defaultSequentialOptions.reverse),
+      path: between ? unlessDefault(path, defaultSequentialOptions.path) : undefined,
     }),
-    [noSeeds, seeds, source, offset, tone, lightness, lightChroma, darkChroma, lightHue, darkHue, reverse],
+    [noSeeds, between, seeds, source, offset, tone, lightness, lightChroma, darkChroma, lightHue, darkHue, reverse, path],
   );
 
   const deferred = useDeferredValue(useMemo(() => ({ n, options }), [n, options]));
@@ -136,6 +151,15 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
             {problems.join(" ")}
           </p>
         )}
+        <fieldset className="plain" disabled={!between}>
+          <label className="field">
+            <span>Path between seeds</span>
+            <select value={path} onChange={(e) => setPath(e.target.value as SequentialPath)}>
+              <option value="hue">Around the hue circle (hue)</option>
+              <option value="straight">Straight through OKLab (straight)</option>
+            </select>
+          </label>
+        </fieldset>
       </Group>
 
       <Group legend="Without seeds">
@@ -233,7 +257,9 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
                 colors of <code>colors(n)</code>; seeds have a heavier outline. The dashed line is the most chroma sRGB
                 has at each lightness and hue along the scale. Each color keeps the seeds' share of that, so chroma
                 rises where sRGB allows more and fades toward black and white. Chroma at the ends scales that share toward
-                each end, and hue at the ends turns the hue there, in degrees from the nearest seed.
+                each end, and hue at the ends turns the hue there, in degrees from the nearest seed. A straight path
+                goes from seed to seed in a straight line through OKLab instead, so seeds of very different hue meet
+                in a greyish color rather than in the hues between them.
               </figcaption>
             </figure>
             <figure className="scale-circle">
