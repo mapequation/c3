@@ -168,25 +168,27 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
     <ModeLayout n={n} setN={setN} controls={controls}>
       {"error" in result ? null : (
         <>
-          <figure className="wide">
-            <ScalePlot
-              samples={result.samples}
-              steps={result.steps}
-              positions={result.positions}
-              anchors={result.anchors}
-              {...hover}
-            />
-            <figcaption>
-              The scale from <code>t</code> = 0 to 1, and below it the chroma (how colorful a color is) along it. Lightness
-              changes evenly along the scale. The dots are the colors of <code>colors(n)</code>; anchors have a heavier
-              outline. The dashed line is the most chroma sRGB has at each lightness and hue along the scale. Each color
-              keeps the anchors' share of that, so chroma rises where sRGB allows more and fades toward black and white.
-              Chroma at the ends scales that share toward each end, and hue at the ends turns the hue there, in degrees
-              from the nearest anchor.
-            </figcaption>
-          </figure>
-          <div className="figures">
-            <figure>
+          {/* The circle beside the scale, so the swatches stay right under its gradient */}
+          <div className="scale-views">
+            <figure className="scale-figure">
+              <ScalePlot
+                samples={result.samples}
+                steps={result.steps}
+                positions={result.positions}
+                anchors={result.anchors}
+                {...hover}
+              />
+              <Swatches colors={result.steps} {...hover} />
+              <figcaption>
+                The chroma (how colorful a color is) along the scale, and below it the scale from <code>t</code> = 0 to 1
+                and the colors of <code>colors(n)</code>. Lightness changes evenly along the scale. The dots are the
+                colors of <code>colors(n)</code>; anchors have a heavier outline. The dashed line is the most chroma sRGB
+                has at each lightness and hue along the scale. Each color keeps the anchors' share of that, so chroma
+                rises where sRGB allows more and fades toward black and white. Chroma at the ends scales that share toward
+                each end, and hue at the ends turns the hue there, in degrees from the nearest anchor.
+              </figcaption>
+            </figure>
+            <figure className="scale-circle">
               <PolarPlot colors={result.steps} anchors={result.anchors} path={result.samples} limits {...hover} />
               <figcaption>
                 The steps by hue (angle) and chroma (distance from the center), with the scale as a line through them.
@@ -194,7 +196,6 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
               </figcaption>
             </figure>
           </div>
-          <Swatches colors={result.steps} {...hover} />
           <CodeSnippet code={result.code} colors={result.steps} {...hover} />
         </>
       )}

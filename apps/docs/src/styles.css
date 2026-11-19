@@ -849,7 +849,43 @@ figcaption {
 .scale-plot {
   display: block;
   width: 100%;
-  max-width: 760px;
+}
+
+/* The sequential scale with its swatches, and the color circle beside it when there is room */
+.scale-views {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.scale-figure {
+  flex: 1 1 440px;
+  max-width: 600px;
+}
+
+/* Under the gradient bar, as wide as it: the plot's left and right margins over its width */
+.scale-figure .swatch-panel {
+  margin: 8px calc(100% * 12 / 520) 0 calc(100% * 56 / 520);
+}
+
+/* Keep 8 swatches a row beside the circle, a little narrower than elsewhere */
+@container (min-width: 360px) {
+  .scale-figure .swatches {
+    --lg: 8;
+    --md: 16;
+    --sm: 32;
+  }
+}
+
+/* Narrower swatches, so the hex label fits */
+.scale-figure .swatch span {
+  left: 4px;
+  font-size: 10px;
+}
+
+.scale-circle {
+  flex: 0 1 280px;
 }
 
 /* The most chroma sRGB has at a lightness and hue */

@@ -3,21 +3,23 @@ import { oklch } from "@mapequation/c3";
 import { delegatedHover, NONE, type Hover } from "./Hover";
 import { chromaLimits } from "../util";
 
-const W = 640;
+const W = 520;
 const LEFT = 56; // room for the chroma axis title and labels
 const RIGHT = 12;
-const BAR = 32;
-const GAP = 16;
+const TOP = 12; // room for a hovered dot at the top
 const PLOT = 150;
+const GAP = 12; // room for grey dots on the zero line
+const BAR = 32;
 const BOTTOM = 22; // room for the t labels
-const H = BAR + GAP + PLOT + BOTTOM;
+const BAR_Y = TOP + PLOT + GAP;
+const H = BAR_Y + BAR + BOTTOM;
 const STEP = 0.05; // chroma between grid lines
 
 const x = (t: number) => LEFT + t * (W - LEFT - RIGHT);
 
 /**
- * A sequential scale along t: its colors as a bar, and below it their OKLCH chroma, with
- * the steps as dots at their place on the scale. Anchors get a heavier outline.
+ * A sequential scale along t: its OKLCH chroma, with the steps as dots at their place on the
+ * scale, and below it the scale's colors as a bar, so swatches can follow right under it. Anchors get a heavier outline.
  * A dashed line shows the most chroma sRGB has at each lightness and hue along the scale.
  * Hovering a dot highlights its color in the other views; hovered colors get a ring.
  * @param samples colors at evenly spaced t from 0 to 1
@@ -41,7 +43,7 @@ export function ScalePlot({
     const limit = chromaLimits(lch);
     const chroma = steps.map((c) => oklch(c)[1]);
     const max = Math.ceil(Math.max(0.1, ...curve, ...chroma, ...(limit ?? [])) / STEP) * STEP;
-    const y = (c: number) => BAR + GAP + PLOT * (1 - c / max);
+    const y = (c: number) => TOP + PLOT * (1 - c / max);
     const grid = Array.from({ length: Math.round(max / STEP) + 1 }, (_, i) => i * STEP);
     const path = (values: number[]) =>
       values.map((c, i) => `${x(i / (values.length - 1)).toFixed(1)},${y(c).toFixed(1)}`).join("L");
@@ -59,7 +61,7 @@ export function ScalePlot({
             ))}
           </linearGradient>
         </defs>
-        <rect x={x(0)} y={0} width={x(1) - x(0)} height={BAR} rx={3} fill={`url(#${gradient})`} />
+        <rect x={x(0)} y={BAR_Y} width={x(1) - x(0)} height={BAR} rx={3} fill={`url(#${gradient})`} />
         {grid.map((c) => (
           <g key={c}>
             <line className="polar-grid" x1={x(0)} x2={x(1)} y1={y(c)} y2={y(c)} />
@@ -70,7 +72,7 @@ export function ScalePlot({
         ))}
         <text
           className="polar-label"
-          transform={`translate(12 ${BAR + GAP + PLOT / 2}) rotate(-90)`}
+          transform={`translate(12 ${TOP + PLOT / 2}) rotate(-90)`}
           textAnchor="middle"
           dominantBaseline="middle"
         >
