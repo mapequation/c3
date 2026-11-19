@@ -131,7 +131,9 @@ export function EndSliders({ rows }: { rows: EndRow[] }) {
         const name = label.toLowerCase();
         return (
           <Fragment key={label}>
-            <span className="end-label">{label}</span>
+            <div className="end-label">
+              <span>{label}</span>
+            </div>
             <div className="end-cell">
               <SliderInputs
                 ariaLabel={`Light ${name}`}

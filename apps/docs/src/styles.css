@@ -562,7 +562,8 @@ h2 {
   column-gap: 14px;
 }
 
-/* A row for each property and a column for each end */
+/* A row for each property and a column for each end. Each row is two grid rows,
+   the numbers above the sliders, so the labels line up with the sliders */
 .end-sliders {
   display: grid;
   width: 100%;
@@ -571,20 +572,26 @@ h2 {
   margin-bottom: 6px;
 }
 
+.end-label,
+.end-cell {
+  grid-row: span 2;
+  display: grid;
+  grid-template-rows: subgrid;
+}
+
 .end-head {
   font-size: 13px;
   color: var(--ink-3);
 }
 
-.end-label {
+.end-label > span {
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  /* The same margins as the sliders, so the label is centered on them */
+  margin: 2px 0 6px;
   font-size: 14px;
   color: var(--ink-2);
-  padding-top: 2px;
-}
-
-.end-cell {
-  display: grid;
-  margin-bottom: 4px;
 }
 
 .end-cell .num {
@@ -594,7 +601,7 @@ h2 {
 
 .end-cell input[type="range"] {
   width: 100%;
-  margin: 2px 0;
+  margin: 2px 0 6px;
   accent-color: var(--ink-2);
 }
 
