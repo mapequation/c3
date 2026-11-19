@@ -594,7 +594,7 @@ describe("sequential()", () => {
     for (let i = 1; i < 10; ++i) expect(relative(orange(i / 10))).toBeCloseTo(anchor, 1);
     expect(chroma(orange(0))).toBeLessThan(0.03);
     expect(chroma(orange(1))).toBeLessThan(0.08);
-    expect(chroma(sequential("#d26202", { endChroma: [0, 0] })(1))).toBeLessThan(0.005);
+    expect(chroma(sequential("#d26202", { lightChroma: 0, darkChroma: 0 })(1))).toBeLessThan(0.005);
   });
 
   it("goes through more colorful colors between anchors than they have", () => {
@@ -603,9 +603,9 @@ describe("sequential()", () => {
     for (const color of between) expect(chroma(color)).toBeGreaterThan(Math.max(chroma("#ffda7d"), chroma("#743100")));
   });
 
-  it("turns the hue toward the ends by endHue", () => {
+  it("turns the hue toward the ends by lightHue and darkHue", () => {
     const [, , H] = parseOklch("#d26202");
-    const scale = sequential("#d26202", { endHue: [-15, 40] });
+    const scale = sequential("#d26202", { lightHue: 40, darkHue: -15 });
     expect(parseOklch(scale(0))[2]).toBeCloseTo(H + 40, -1);
     expect(parseOklch(scale(1))[2]).toBeCloseTo(H - 15, -1);
     expect(scale.colors(9)).toContain("#d26202");
@@ -637,8 +637,9 @@ describe("sequential()", () => {
     expect(() => sequential([])).toThrow("at least one color");
     expect(() => sequential(["#ff0000", "#ff0000"])).toThrow("different lightness");
     expect(() => sequential("red", { lightness: [0.8, 0.2] })).toThrow(RangeError);
-    expect(() => sequential("red", { endChroma: [-1, 0] })).toThrow(RangeError);
-    expect(() => sequential("red", { endHue: [0, NaN] })).toThrow(RangeError);
+    expect(() => sequential("red", { darkChroma: -1 })).toThrow("darkChroma must be");
+    expect(() => sequential("red", { lightChroma: Infinity })).toThrow("lightChroma must be");
+    expect(() => sequential("red", { lightHue: NaN })).toThrow("lightHue must be");
     expect(() => sequential("red")(NaN)).toThrow(RangeError);
     expect(() => sequential("not a color")).toThrow("Invalid color");
   });

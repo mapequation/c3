@@ -91,6 +91,29 @@ export function RangeSliders({ label, value: [lo, hi], onChange, ...props }: Ran
   );
 }
 
+type EndProps = Omit<SliderProps, "value" | "onChange" | "label" | "ariaLabel"> & {
+  label: string;
+  value: [light: number, dark: number];
+  onChange: (value: [light: number, dark: number]) => void;
+};
+
+/** Sliders for the light and dark ends of a scale under one label, light first like the scale */
+export function EndSliders({ label, value: [light, dark], onChange, ...props }: EndProps) {
+  const id = useId();
+  const name = label.toLowerCase();
+  return (
+    <div role="group" aria-labelledby={id}>
+      <div id={id} className="pair-label">
+        {label}
+      </div>
+      <div className="slider-pair">
+        <Slider label="Light" ariaLabel={`Light ${name}`} value={light} onChange={(v) => onChange([v, dark])} {...props} />
+        <Slider label="Dark" ariaLabel={`Dark ${name}`} value={dark} onChange={(v) => onChange([light, v])} {...props} />
+      </div>
+    </div>
+  );
+}
+
 /** Tone select, with a "custom" entry while the sliders have moved off every named tone */
 export function ToneControls({
   tone,

@@ -42,7 +42,7 @@ blues = c3.sequential("#3b82f6")  # through a color, extended to darker and ligh
 blues(0.5)  # '#337df6', from light at 0 to dark at 1
 blues.colors(7)  # 7 steps, '#3b82f6' among them
 c3.sequential(["#2a9d8f", "#e9c46a"]).colors(9)
-c3.sequential("#d26202", end_hue=(-15, 40)).colors(9)  # lighter shades turn yellow, darker red
+c3.sequential("#d26202", light_hue=40, dark_hue=-15).colors(9)  # lighter shades turn yellow, darker red
 
 c3.tones["vivid"]  # {'lightness': (0.55, 0.7), 'chroma': (0.15, 0.21), 'warm_hue': 285, 'tilt': 0}
 c3.infer_tone(["#e41a1c", "#377eb8", "#4daf4a"])

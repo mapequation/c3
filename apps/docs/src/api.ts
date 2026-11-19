@@ -221,14 +221,16 @@ export const API: ApiEntry[] = [
     name: "sequential",
     signature: { js: "sequential(colors, options?): (t) => string", py: "sequential(colors, **options) -> Sequential" },
     description: [
-      "A sequential scale for ordered data, through one or more anchor colors and extended to darker and lighter shades. The anchors are sorted by lightness. Lightness changes linearly with `t`, from the light end to the dark end, so equal steps in the data look about equally different. Hue and chroma follow smooth curves through the anchors that never overshoot them. Chroma is relative to the most colorful color sRGB has at each lightness and hue, so between and beyond the anchors the scale is as colorful as they are where sRGB allows it, and it fades toward black and white on its own. Hue takes the shorter way around between two anchors, and toward the ends it keeps the nearest anchor's hue, unless `endHue` turns it.",
+      "A sequential scale for ordered data, through one or more anchor colors and extended to darker and lighter shades. The anchors are sorted by lightness. Lightness changes linearly with `t`, from the light end to the dark end, so equal steps in the data look about equally different. Hue and chroma follow smooth curves through the anchors that never overshoot them. Chroma is relative to the most colorful color sRGB has at each lightness and hue, so between and beyond the anchors the scale is as colorful as they are where sRGB allows it, and it fades toward black and white on its own. Hue takes the shorter way around between two anchors, and toward the ends it keeps the nearest anchor's hue, unless `lightHue` or `darkHue` turns it.",
       "`colors(n)` gives n colors with every anchor among them, evenly spaced in lightness between two anchors. The ends are included unless an anchor is within half a step of them.",
     ],
     params: [["colors", "string | string[]", "", "One or more anchor colors with different lightness, any CSS colors."]],
     options: [
       ["lightness", "[min, max]", fmt(defaultSequentialOptions.lightness), "OKLCH lightness of the dark and light ends, widened to include every anchor."],
-      ["endChroma", "[dark, light]", fmt(defaultSequentialOptions.endChroma), "Chroma at the dark and light ends, as a fraction of the nearest anchor's, both relative to the most sRGB allows at that lightness and hue."],
-      ["endHue", "[dark, light]", fmt(defaultSequentialOptions.endHue), "Degrees the hue turns from the nearest anchor to the dark and light ends."],
+      ["lightChroma", "number", fmt(defaultSequentialOptions.lightChroma), "Chroma at the light end, as a fraction of the lightest anchor's, both relative to the most sRGB allows at that lightness and hue."],
+      ["darkChroma", "number", fmt(defaultSequentialOptions.darkChroma), "Chroma at the dark end, as a fraction of the darkest anchor's, like `lightChroma`."],
+      ["lightHue", "number", fmt(defaultSequentialOptions.lightHue), "Degrees the hue turns from the lightest anchor to the light end."],
+      ["darkHue", "number", fmt(defaultSequentialOptions.darkHue), "Degrees the hue turns from the darkest anchor to the dark end."],
       ["reverse", "boolean", fmt(defaultSequentialOptions.reverse), "Go from dark at 0 to light at 1."],
     ],
     returns: {

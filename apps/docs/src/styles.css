@@ -562,6 +562,16 @@ h2 {
   column-gap: 14px;
 }
 
+.pair-label {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin-bottom: 2px;
+}
+
+.pair-label + .slider-pair label {
+  color: var(--ink-3);
+}
+
 .slider-pair .num {
   width: 6ch;
 }

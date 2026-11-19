@@ -10,8 +10,8 @@ from ._oklab import Lab, color_to_oklab, gamut_map, lab_to_hex, lab_to_lch, lch_
 from ._tone import Range
 
 DEFAULT_LIGHTNESS: Range = (0.25, 0.97)
-DEFAULT_END_CHROMA: tuple[float, float] = (1.0, 1.0)
-DEFAULT_END_HUE: tuple[float, float] = (0.0, 0.0)
+DEFAULT_END_CHROMA = 1.0
+DEFAULT_END_HUE = 0.0
 
 # Below this chroma an anchor's hue barely shows, so it takes the hue of a colorful anchor
 _ACHROMATIC = 0.01
@@ -95,8 +95,10 @@ def sequential(
     colors: str | Sequence[str | Sequence[float]],
     *,
     lightness: Sequence[float] = DEFAULT_LIGHTNESS,
-    end_chroma: Sequence[float] = DEFAULT_END_CHROMA,
-    end_hue: Sequence[float] = DEFAULT_END_HUE,
+    light_chroma: float = DEFAULT_END_CHROMA,
+    dark_chroma: float = DEFAULT_END_CHROMA,
+    light_hue: float = DEFAULT_END_HUE,
+    dark_hue: float = DEFAULT_END_HUE,
     reverse: bool = False,
 ) -> Sequential:
     """
@@ -110,10 +112,12 @@ def sequential(
     Args:
         colors: One or more anchor colors with different lightness: CSS colors, or (r, g, b) floats in [0, 1].
         lightness: OKLCH lightness of the dark and light ends, (min, max). Widened to include every anchor.
-        end_chroma: Chroma at the dark and light ends, as a fraction of the nearest anchor's, both relative
-            to the most colorful color sRGB has at that lightness and hue. At 1 the ends are as colorful
-            as the anchor for their lightness, which fades toward black and white.
-        end_hue: Degrees the hue turns from the nearest anchor to the dark and light ends.
+        light_chroma: Chroma at the light end, as a fraction of the lightest anchor's, both relative to the
+            most colorful color sRGB has at that lightness and hue. At 1 the end is as colorful as the
+            anchor for its lightness, which fades toward white.
+        dark_chroma: Chroma at the dark end, as a fraction of the darkest anchor's, like light_chroma.
+        light_hue: Degrees the hue turns from the lightest anchor to the light end.
+        dark_hue: Degrees the hue turns from the darkest anchor to the dark end.
         reverse: Go from dark (t = 0) to light (t = 1) instead of from light to dark.
 
     Returns:
@@ -122,12 +126,12 @@ def sequential(
     lo, hi = (float(x) for x in lightness)
     if not (lo >= 0 and hi <= 1 and lo < hi):
         raise ValueError(f"lightness must be [min, max] with 0 <= min < max <= 1, got [{lo}, {hi}]")
-    dark_chroma, light_chroma = (float(x) for x in end_chroma)
-    if not all(c >= 0 and math.isfinite(c) for c in (dark_chroma, light_chroma)):
-        raise ValueError(f"end_chroma must be finite and at least 0, got [{dark_chroma}, {light_chroma}]")
-    dark_hue, light_hue = (float(x) for x in end_hue)
-    if not (math.isfinite(dark_hue) and math.isfinite(light_hue)):
-        raise ValueError(f"end_hue must be finite, got [{dark_hue}, {light_hue}]")
+    for name, value in {"light_chroma": light_chroma, "dark_chroma": dark_chroma}.items():
+        if not (value >= 0 and math.isfinite(value)):
+            raise ValueError(f"{name} must be finite and at least 0, got {value}")
+    for name, value in {"light_hue": light_hue, "dark_hue": dark_hue}.items():
+        if not math.isfinite(value):
+            raise ValueError(f"{name} must be finite, got {value}")
 
     knots = _anchor_knots([colors] if isinstance(colors, str) else list(colors))
     darkest, lightest = knots[0], knots[-1]
@@ -137,9 +141,9 @@ def sequential(
     dark_gap = darkest.L - L_min
     light_gap = L_max - lightest.L
     if dark_gap > 0:
-        knots.insert(0, _Knot(L_min, dark_chroma * darkest.S, darkest.H + dark_hue))
+        knots.insert(0, _Knot(L_min, float(dark_chroma) * darkest.S, darkest.H + float(dark_hue)))
     if light_gap > 0:
-        knots.append(_Knot(L_max, light_chroma * lightest.S, lightest.H + light_hue))
+        knots.append(_Knot(L_max, float(light_chroma) * lightest.S, lightest.H + float(light_hue)))
     return Sequential(knots, (L_min, L_max), (dark_gap, light_gap), bool(reverse))
 
 

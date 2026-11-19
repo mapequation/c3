@@ -8,13 +8,17 @@ export type SequentialOptions = {
    */
   lightness?: Range;
   /**
-   * Chroma at the dark and light ends, as a fraction of the nearest anchor's, both relative to
-   * the most colorful color sRGB has at that lightness and hue. At 1 the ends are as colorful
-   * as the anchor for their lightness, which fades toward black and white.
+   * Chroma at the light end, as a fraction of the lightest anchor's, both relative to the most
+   * colorful color sRGB has at that lightness and hue. At 1 the end is as colorful as the
+   * anchor for its lightness, which fades toward white.
    */
-  endChroma?: [dark: number, light: number];
-  /** Degrees the hue turns from the nearest anchor to the dark and light ends */
-  endHue?: [dark: number, light: number];
+  lightChroma?: number;
+  /** Chroma at the dark end, as a fraction of the darkest anchor's, like lightChroma */
+  darkChroma?: number;
+  /** Degrees the hue turns from the lightest anchor to the light end */
+  lightHue?: number;
+  /** Degrees the hue turns from the darkest anchor to the dark end */
+  darkHue?: number;
   /** Go from dark (t = 0) to light (t = 1) instead of from light to dark */
   reverse?: boolean;
 };
@@ -32,8 +36,10 @@ export type Sequential = {
 
 export const defaultSequentialOptions = {
   lightness: [0.25, 0.97] as Range,
-  endChroma: [1, 1] as [dark: number, light: number],
-  endHue: [0, 0] as [dark: number, light: number],
+  lightChroma: 1,
+  darkChroma: 1,
+  lightHue: 0,
+  darkHue: 0,
   reverse: false,
 };
 
@@ -62,19 +68,23 @@ type Knot = { L: number; S: number; H: number; anchor?: Lab };
 export function sequential(colors: string | readonly string[], options: SequentialOptions = {}): Sequential {
   const {
     lightness = defaultSequentialOptions.lightness,
-    endChroma = defaultSequentialOptions.endChroma,
-    endHue = defaultSequentialOptions.endHue,
+    lightChroma = defaultSequentialOptions.lightChroma,
+    darkChroma = defaultSequentialOptions.darkChroma,
+    lightHue = defaultSequentialOptions.lightHue,
+    darkHue = defaultSequentialOptions.darkHue,
     reverse = defaultSequentialOptions.reverse,
   } = options;
   const [lo, hi] = lightness;
   if (!(lo >= 0 && hi <= 1 && lo < hi)) {
     throw new RangeError(`lightness must be [min, max] with 0 <= min < max <= 1, got [${lo}, ${hi}]`);
   }
-  if (!endChroma.every((c) => c >= 0 && Number.isFinite(c))) {
-    throw new RangeError(`endChroma must be finite and at least 0, got [${endChroma.join(", ")}]`);
+  for (const [name, value] of Object.entries({ lightChroma, darkChroma })) {
+    if (!(value >= 0 && Number.isFinite(value))) {
+      throw new RangeError(`${name} must be finite and at least 0, got ${value}`);
+    }
   }
-  if (!endHue.every(Number.isFinite)) {
-    throw new RangeError(`endHue must be finite, got [${endHue.join(", ")}]`);
+  for (const [name, value] of Object.entries({ lightHue, darkHue })) {
+    if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite, got ${value}`);
   }
 
   const knots = anchorKnots(typeof colors === "string" ? [colors] : colors);
@@ -85,8 +95,8 @@ export function sequential(colors: string | readonly string[], options: Sequenti
   // Gaps from the outermost anchors to the ends; an anchor at or beyond an end is the end
   const darkGap = darkest.L - Lmin;
   const lightGap = Lmax - lightest.L;
-  if (darkGap > 0) knots.unshift({ L: Lmin, S: endChroma[0] * darkest.S, H: darkest.H + endHue[0] });
-  if (lightGap > 0) knots.push({ L: Lmax, S: endChroma[1] * lightest.S, H: lightest.H + endHue[1] });
+  if (darkGap > 0) knots.unshift({ L: Lmin, S: darkChroma * darkest.S, H: darkest.H + darkHue });
+  if (lightGap > 0) knots.push({ L: Lmax, S: lightChroma * lightest.S, H: lightest.H + lightHue });
 
   const Ls = knots.map((k) => k.L);
   const relative = pchip(Ls, knots.map((k) => k.S));

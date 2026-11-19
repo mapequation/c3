@@ -90,7 +90,7 @@ const blues = sequential("#3b82f6");
 blues(0.5); // "#337df6", from light at 0 to dark at 1
 blues.colors(7); // 7 steps, "#3b82f6" among them
 sequential(["#2a9d8f", "#e9c46a"]).colors(9);
-sequential("#d26202", { endHue: [-15, 40] }).colors(9); // lighter shades turn yellow, darker red
+sequential("#d26202", { lightHue: 40, darkHue: -15 }).colors(9); // lighter shades turn yellow, darker red
 ```
 
 #### `palette(n, options)`
@@ -220,7 +220,7 @@ Chroma is relative to the most colorful color sRGB has at each lightness and hue
 so between and beyond the anchors the scale is as colorful as they are where sRGB allows it,
 and it fades toward black and white on its own.
 Hue takes the shorter way around the hue circle between two anchors,
-and toward the ends it keeps the nearest anchor's hue, unless `endHue` turns it.
+and toward the ends it keeps the nearest anchor's hue, unless `lightHue` or `darkHue` turns it.
 Greys take the hue of the nearest colorful anchor.
 
 It returns a function from `t` in [0, 1] to a hex color, light at 0 and dark at 1, like a d3 interpolator,
@@ -233,8 +233,10 @@ so the ends are included unless an anchor is within half a step of them.
 | Option | Default | |
 |---|---|---|
 | `lightness` | `[0.25, 0.97]` | OKLCH lightness of the dark and light ends, widened to include every anchor |
-| `endChroma` | `[1, 1]` | Chroma at the dark and light ends, as a fraction of the nearest anchor's, both relative to the most sRGB allows at that lightness and hue |
-| `endHue` | `[0, 0]` | Degrees the hue turns from the nearest anchor to the dark and light ends |
+| `lightChroma` | `1` | Chroma at the light end, as a fraction of the lightest anchor's, both relative to the most sRGB allows at that lightness and hue |
+| `darkChroma` | `1` | Chroma at the dark end, as a fraction of the darkest anchor's, like `lightChroma` |
+| `lightHue` | `0` | Degrees the hue turns from the lightest anchor to the light end |
+| `darkHue` | `0` | Degrees the hue turns from the darkest anchor to the dark end |
 | `reverse` | `false` | Go from dark at 0 to light at 1 |
 
 #### Measuring distinctness
