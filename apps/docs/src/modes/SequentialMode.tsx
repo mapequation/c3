@@ -26,6 +26,7 @@ const EXAMPLES: [label: string, colors: string[]][] = [
   ["two colors", ["#2a9d8f", "#e9c46a"]],
   ["three colors", ["#0c2c84", "#41b6c4", "#ffffcc"]],
   ["blue to orange", ["#0b7baa", "#f68758"]],
+  ["near white to brown", ["#fff5eb", "#7f2704"]],
 ];
 
 const TONES = Object.keys(tones) as ToneName[];
@@ -155,8 +156,8 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
           <label className="field">
             <span>Path between seeds</span>
             <select value={path} onChange={(e) => setPath(e.target.value as SequentialPath)}>
-              <option value="arc">Arc around the hue circle (arc)</option>
-              <option value="straight">Straight across, through OKLab (straight)</option>
+              <option value="relative">Share of the sRGB limit (relative)</option>
+              <option value="straight">Straight through OKLab (straight)</option>
             </select>
           </label>
         </fieldset>
@@ -255,11 +256,11 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
                 The chroma (how colorful a color is) along the scale, and below it the scale from <code>t</code> = 0 to 1
                 and the colors of <code>colors(n)</code>. Lightness changes evenly along the scale. The dots are the
                 colors of <code>colors(n)</code>; seeds have a heavier outline. The dashed line is the most chroma sRGB
-                has at each lightness and hue along the scale. Each color keeps the seeds' share of that, so chroma
-                rises where sRGB allows more and fades toward black and white. Chroma at the ends scales that share toward
-                each end, and hue at the ends turns the hue there, in degrees from the nearest seed. A straight path
-                goes from seed to seed in a straight line through OKLab instead, so seeds of very different hue meet
-                in a greyish color rather than in the hues between them.
+                has at each lightness and hue along the scale. The scale keeps the seeds' share of that, so chroma
+                rises where sRGB allows more and fades toward black and white; between seeds of very different hue the
+                share dips, so they meet in a greyish color. Chroma at the ends scales that share toward each end, and
+                hue at the ends turns the hue there, in degrees from the nearest seed. A straight path goes from seed
+                to seed in a straight line through OKLab instead, never more colorful than the seeds.
               </figcaption>
             </figure>
             <figure className="scale-circle">

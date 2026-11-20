@@ -16,7 +16,7 @@ DEFAULT_END_CHROMA = 1.0
 DEFAULT_END_HUE = 0.0
 
 #: How a sequential scale goes from one seed to the next
-SequentialPath = Literal["arc", "straight"]
+SequentialPath = Literal["relative", "straight"]
 
 # Below this chroma an anchor's hue barely shows, so it takes the hue of a colorful anchor
 _ACHROMATIC = 0.01
@@ -53,15 +53,41 @@ def _polar(knots: list[_Knot]) -> Callable[[float], str]:
     return color
 
 
-def _between(anchors: list[_Knot], L: float) -> Lab:
-    """The point at lightness L on the straight line in OKLab between the anchors on either side of it."""
+def _segment(anchors: list[_Knot], L: float) -> tuple[_Knot, _Knot, float]:
+    """The anchors on either side of lightness L, and how far L is from the first to the second."""
     k = 0
     while k < len(anchors) - 2 and L > anchors[k + 1].L:
         k += 1
-    L0, a0, b0 = anchors[k].anchor  # type: ignore[misc]
-    L1, a1, b1 = anchors[k + 1].anchor  # type: ignore[misc]
-    s = (L - L0) / (L1 - L0)
-    return (L, a0 + s * (a1 - a0), b0 + s * (b1 - b0))
+    a, b = anchors[k], anchors[k + 1]
+    return a, b, (L - a.L) / (b.L - a.L)
+
+
+def _straight_between(anchors: list[_Knot], L: float) -> str:
+    """The color at lightness L on the straight line in OKLab between the anchors on either side of it."""
+    a, b, s = _segment(anchors, L)
+    _, a0, b0 = a.anchor  # type: ignore[misc]
+    _, a1, b1 = b.anchor  # type: ignore[misc]
+    return lch_to_hex(lab_to_lch((L, a0 + s * (a1 - a0), b0 + s * (b1 - b0))))
+
+
+def _relative_between(anchors: list[_Knot], L: float) -> str:
+    """
+    The color at lightness L on the straight line between the anchors on either side of it, on a hue
+    circle where each anchor sits at its own hue and its share of the most chroma sRGB has.
+    """
+    a, b, s = _segment(anchors, L)
+    x0, y0 = _share_point(a)
+    x1, y1 = _share_point(b)
+    x = x0 + s * (x1 - x0)
+    y = y0 + s * (y1 - y0)
+    H = math.atan2(y, x) * 180 / math.pi
+    return lch_to_hex((L, math.hypot(x, y) * _max_chroma(L, H), H))
+
+
+def _share_point(knot: _Knot) -> tuple[float, float]:
+    """An anchor at its share of the most chroma sRGB has, at its own hue rather than one it took from another."""
+    h = lab_to_lch(knot.anchor)[2] * math.pi / 180  # type: ignore[arg-type]
+    return knot.S * math.cos(h), knot.S * math.sin(h)
 
 
 def _max_chroma(L: float, H: float) -> float:
@@ -75,19 +101,20 @@ class Sequential:
     from light to dark, or dark to light with reverse.
     """
 
-    __slots__ = ("_knots", "_anchors", "_curved", "_dark", "_light", "_straight", "_range", "_gaps", "_reverse")
+    __slots__ = ("_knots", "_anchors", "_curved", "_dark", "_light", "_between", "_range", "_gaps", "_reverse")
 
     def __init__(
         self, knots: list[_Knot], L_range: Range, gaps: tuple[float, float], reverse: bool, path: SequentialPath
     ):
         self._knots = knots
         self._anchors = [k for k in knots if k.anchor is not None]
+        # With one anchor, smooth curves from end to end through it; with more, each end follows only its
+        # outermost anchor
+        several = len(self._anchors) > 1
         self._curved = _polar(knots)
-        # A straight path goes from seed to seed in straight lines through OKLab, and each end follows
-        # only its outermost seed, not the turn between the seeds
-        self._straight = path == "straight" and len(self._anchors) > 1
-        self._dark = _polar(knots[:2]) if self._straight and gaps[0] > 0 else self._curved
-        self._light = _polar(knots[-2:]) if self._straight and gaps[1] > 0 else self._curved
+        self._dark = _polar(knots[:2]) if several and gaps[0] > 0 else self._curved
+        self._light = _polar(knots[-2:]) if several and gaps[1] > 0 else self._curved
+        self._between = _straight_between if path == "straight" else _relative_between
         self._range = L_range
         self._gaps = gaps
         self._reverse = reverse
@@ -98,13 +125,11 @@ class Sequential:
                 if knot.anchor is not None:
                     return lab_to_hex(knot.anchor)
                 break
-        if not self._straight:
-            return self._curved(L)
         if L < self._anchors[0].L:
             return self._dark(L)
         if L > self._anchors[-1].L:
             return self._light(L)
-        return lch_to_hex(lab_to_lch(_between(self._anchors, L)))
+        return self._between(self._anchors, L)
 
     def __call__(self, t: float) -> str:
         if math.isnan(t):
@@ -146,16 +171,16 @@ def sequential(
     light_hue: float = DEFAULT_END_HUE,
     dark_hue: float = DEFAULT_END_HUE,
     reverse: bool = False,
-    path: SequentialPath = "arc",
+    path: SequentialPath = "relative",
 ) -> Sequential:
     """
     A sequential scale through one or more seed colors, extended to darker and lighter shades.
 
     The seeds, called anchors below, are sorted by lightness. Lightness changes linearly with t, from the light end
-    to the dark end, and hue and chroma follow smooth curves through the anchors, or a straight line through
-    OKLab between them with path="straight". Chroma is
-    relative to the most colorful color sRGB has at each lightness and hue, so the scale stays
-    as colorful as the anchors where sRGB allows it, and fades toward black and white.
+    to the dark end. Chroma is relative to the most colorful color sRGB has at each lightness and hue, so the
+    scale stays as colorful as the anchors where sRGB allows it, and fades toward black and white. Between
+    anchors the scale goes in a straight line across the hue circle in those terms, or through OKLab with
+    path="straight"; toward the ends hue and chroma follow smooth curves from the outermost anchors.
 
     Args:
         seeds: Colors the scale goes through, with different lightness: CSS colors, or (r, g, b) floats
@@ -174,10 +199,12 @@ def sequential(
         light_hue: Degrees the hue turns from the lightest seed to the light end.
         dark_hue: Degrees the hue turns from the darkest seed to the dark end.
         reverse: Go from dark (t = 0) to light (t = 1) instead of from light to dark.
-        path: How the scale goes from one seed to the next. "arc" bends around the hue circle the short way
-            and keeps the seeds' share of the most chroma sRGB has, so seeds of very different hue pass through
-            vivid colors in the hues between them. "straight" cuts across in a straight line through OKLab, so
-            the colors between such seeds turn greyish instead. The ends follow the outermost seeds either way.
+        path: How the scale goes from one seed to the next. "relative" goes in a straight line across the hue
+            circle with each seed at its share of the most chroma sRGB has: seeds of similar hue keep their
+            share, so the scale is as colorful as they are where sRGB allows it, and seeds of very different
+            hue, like blue and orange, meet in a greyish color. "straight" goes in a straight line through
+            OKLab, so no color between two seeds is more colorful than they are, and next to a near-white seed
+            the colors are pale. The ends follow the outermost seeds either way.
 
     Returns:
         A callable from t in [0, 1] to a hex color, with colors(n) for n steps.
@@ -191,8 +218,8 @@ def sequential(
     for name, value in {"light_hue": light_hue, "dark_hue": dark_hue}.items():
         if not math.isfinite(value):
             raise ValueError(f"{name} must be finite, got {value}")
-    if path not in ("arc", "straight"):
-        raise ValueError(f'Unknown path: {path!r}, use "arc" or "straight"')
+    if path not in ("relative", "straight"):
+        raise ValueError(f'Unknown path: {path!r}, use "relative" or "straight"')
 
     if isinstance(seeds, str):
         raise TypeError("seeds takes a sequence of colors, not a single color")
@@ -234,11 +261,6 @@ def _anchor_knots(colors: list) -> list[_Knot]:
         else:
             knot.H = previous
 
-    # Unwrap hues so that consecutive anchors take the shortest way around the hue circle,
-    # with the same steps as JS, where % keeps the sign
-    for a, b in zip(knots, knots[1:]):
-        d = math.fmod(math.fmod(b.H - a.H, 360) + 540, 360) - 180
-        b.H = a.H + d
     return knots
 
 

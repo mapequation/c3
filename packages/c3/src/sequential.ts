@@ -3,7 +3,7 @@ import { palette, type HueSource } from "./palette.js";
 import type { Range, ToneOption } from "./tone.js";
 
 /** How a sequential scale goes from one seed to the next */
-export type SequentialPath = "arc" | "straight";
+export type SequentialPath = "relative" | "straight";
 
 export type SequentialOptions = {
   /**
@@ -37,10 +37,12 @@ export type SequentialOptions = {
   /** Go from dark (t = 0) to light (t = 1) instead of from light to dark */
   reverse?: boolean;
   /**
-   * How the scale goes from one seed to the next. "arc" (default) bends around the hue circle the short
-   * way and keeps the seeds' share of the most chroma sRGB has, so seeds of very different hue pass through
-   * vivid colors in the hues between them. "straight" cuts across in a straight line through OKLab, so the
-   * colors between such seeds turn greyish instead. The ends follow the outermost seeds either way.
+   * How the scale goes from one seed to the next. "relative" (default) goes in a straight line across the
+   * hue circle with each seed at its share of the most chroma sRGB has: seeds of similar hue keep their
+   * share, so the scale is as colorful as they are where sRGB allows it, and seeds of very different hue,
+   * like blue and orange, meet in a greyish color. "straight" goes in a straight line through OKLab, so no
+   * color between two seeds is more colorful than they are, and next to a near-white seed the colors are
+   * pale. The ends follow the outermost seeds either way.
    */
   path?: SequentialPath;
 };
@@ -63,7 +65,7 @@ export const defaultSequentialOptions = {
   lightHue: 0,
   darkHue: 0,
   reverse: false,
-  path: "arc" as SequentialPath,
+  path: "relative" as SequentialPath,
 };
 
 // Below this chroma an anchor's hue barely shows, so it takes the hue of a colorful anchor
@@ -81,9 +83,11 @@ type Knot = { L: number; S: number; H: number; anchor?: Lab };
 /**
  * A sequential scale through one or more seed colors, extended to darker and lighter shades.
  * The seeds, called anchors below, are sorted by lightness. Lightness changes linearly with t,
- * from the light end to the dark end, and hue and chroma follow smooth curves through the
- * anchors. Chroma is relative to the most colorful color sRGB has at each lightness and hue, so
- * the scale stays as colorful as the anchors where sRGB allows it, and fades toward black and white.
+ * from the light end to the dark end. Chroma is relative to the most colorful color sRGB has at each
+ * lightness and hue, so the scale stays as colorful as the anchors where sRGB allows it, and fades
+ * toward black and white. Between anchors the scale goes in a straight line across the hue circle
+ * in those terms, or through OKLab with the straight path; toward the ends hue and chroma follow
+ * smooth curves from the outermost anchors.
  * @param options Seed colors (or the tone, hue and offset of one), lightness range, chroma and
  * hue at the ends, and direction
  * @returns a function from t in [0, 1] to a hex color, with colors(n) for n steps
@@ -114,7 +118,9 @@ export function sequential(options: SequentialOptions = {}): Sequential {
   for (const [name, value] of Object.entries({ lightHue, darkHue })) {
     if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite, got ${value}`);
   }
-  if (path !== "arc" && path !== "straight") throw new RangeError(`Unknown path: ${path}, use "arc" or "straight"`);
+  if (path !== "relative" && path !== "straight") {
+    throw new RangeError(`Unknown path: ${path}, use "relative" or "straight"`);
+  }
 
   if (typeof seeds === "string") throw new TypeError("seeds takes an array of colors, not a single color");
   // Without seeds, the first color palette() would give
@@ -130,20 +136,19 @@ export function sequential(options: SequentialOptions = {}): Sequential {
   if (lightGap > 0) knots.push({ L: Lmax, S: lightChroma * lightest.S, H: lightest.H + lightHue });
 
   const anchors = knots.filter((k) => k.anchor);
+  // With one anchor, smooth curves from end to end through it; with more, each end follows only its
+  // outermost anchor
   const curved = polar(knots);
-  // A straight path goes from seed to seed in straight lines through OKLab, and each end follows
-  // only its outermost seed, not the turn between the seeds
-  const straight = path === "straight" && anchors.length > 1;
-  const dark = straight && darkGap > 0 ? polar(knots.slice(0, 2)) : curved;
-  const light = straight && lightGap > 0 ? polar(knots.slice(-2)) : curved;
+  const dark = anchors.length > 1 && darkGap > 0 ? polar(knots.slice(0, 2)) : curved;
+  const light = anchors.length > 1 && lightGap > 0 ? polar(knots.slice(-2)) : curved;
+  const between = path === "straight" ? straightBetween : relativeBetween;
 
   const colorAt = (L: number) => {
     const knot = knots.find((k) => k.L === L);
     if (knot?.anchor) return labToHex(knot.anchor);
-    if (!straight) return curved(L);
     if (L < darkest.L) return dark(L);
     if (L > lightest.L) return light(L);
-    return lchToHex(labToLch(between(anchors, L)));
+    return between(anchors, L);
   };
 
   const scale = (t: number) => {
@@ -194,12 +199,6 @@ function anchorKnots(colors: readonly string[]): Knot[] {
     else knot.H = previous;
   }
 
-  // Unwrap hues so that consecutive anchors take the shortest way around the hue circle
-  for (let i = 1; i < knots.length; ++i) {
-    const a = knots[i - 1]!.H;
-    const d = ((((knots[i]!.H - a) % 360) + 540) % 360) - 180;
-    knots[i]!.H = a + d;
-  }
   return knots;
 }
 
@@ -217,14 +216,41 @@ function polar(knots: Knot[]) {
   };
 }
 
-/** The point at lightness L on the straight line in OKLab between the anchors on either side of it */
-function between(anchors: Knot[], L: number): Lab {
+/** The anchors on either side of lightness L, and how far L is from the first to the second */
+function segment(anchors: Knot[], L: number): [Knot, Knot, number] {
   let k = 0;
   while (k < anchors.length - 2 && L > anchors[k + 1]!.L) ++k;
-  const [L0, a0, b0] = anchors[k]!.anchor!;
-  const [L1, a1, b1] = anchors[k + 1]!.anchor!;
-  const s = (L - L0) / (L1 - L0);
-  return [L, a0 + s * (a1 - a0), b0 + s * (b1 - b0)];
+  const a = anchors[k]!;
+  const b = anchors[k + 1]!;
+  return [a, b, (L - a.L) / (b.L - a.L)];
+}
+
+/** The color at lightness L on the straight line in OKLab between the anchors on either side of it */
+function straightBetween(anchors: Knot[], L: number) {
+  const [a, b, s] = segment(anchors, L);
+  const [, a0, b0] = a.anchor!;
+  const [, a1, b1] = b.anchor!;
+  return lchToHex(labToLch([L, a0 + s * (a1 - a0), b0 + s * (b1 - b0)]));
+}
+
+/**
+ * The color at lightness L on the straight line between the anchors on either side of it, on a hue
+ * circle where each anchor sits at its own hue and its share of the most chroma sRGB has
+ */
+function relativeBetween(anchors: Knot[], L: number) {
+  const [a, b, s] = segment(anchors, L);
+  const [x0, y0] = sharePoint(a);
+  const [x1, y1] = sharePoint(b);
+  const x = x0 + s * (x1 - x0);
+  const y = y0 + s * (y1 - y0);
+  const H = (Math.atan2(y, x) * 180) / Math.PI;
+  return lchToHex([L, Math.hypot(x, y) * maxChroma(L, H), H]);
+}
+
+/** An anchor at its share of the most chroma sRGB has, at its own hue rather than one it took from another */
+function sharePoint(knot: Knot): [number, number] {
+  const h = (labToLch(knot.anchor!)[2] * Math.PI) / 180;
+  return [knot.S * Math.cos(h), knot.S * Math.sin(h)];
 }
 
 /** The most chroma a color can have in sRGB at lightness L and hue H */

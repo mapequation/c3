@@ -642,7 +642,7 @@ describe("sequential()", () => {
     const seeds = ["#0b7baa", "#f68758"];
     const [blue, orange] = seeds.map(parseOklab) as [Lab, Lab];
     const straight = sequential({ seeds, path: "straight" });
-    const curved = sequential({ seeds });
+    const relative = sequential({ seeds });
     for (let i = 0; i <= 40; ++i) {
       const t = i / 40;
       const [L] = parseOklab(straight(t));
@@ -651,14 +651,41 @@ describe("sequential()", () => {
         const line = blue.map((x, k) => x + s * (orange[k]! - x)) as Lab;
         expect(labDistance(parseOklab(straight(t)), line)).toBeLessThan(0.005);
       } else {
-        // The ends follow the outermost seeds as on the arc
-        expect(straight(t)).toBe(curved(t));
+        // The ends follow the outermost seeds as on the relative path
+        expect(straight(t)).toBe(relative(t));
       }
     }
-    // No color between the seeds is more colorful than they are, unlike the turn through magenta
+    // No color between the seeds is more colorful than they are
     const middle = straight.colors(8)[3]!;
     expect(chroma(middle)).toBeLessThan(Math.min(chroma(seeds[0]!), chroma(seeds[1]!)));
-    expect(chroma(curved.colors(8)[3]!)).toBeGreaterThan(Math.max(chroma(seeds[0]!), chroma(seeds[1]!)));
+  });
+
+  it("goes in a straight line across the hue circle in shares of the sRGB limit between seeds", () => {
+    const share = (hex: string) => {
+      const [L, C, H] = parseOklch(hex);
+      return C / gamutMap([L, 0.5, H])[1];
+    };
+    // A color on a hue circle at its hue and its share of the most chroma sRGB has
+    const point = (hex: string) => {
+      const h = (parseOklch(hex)[2] * Math.PI) / 180;
+      return [share(hex) * Math.cos(h), share(hex) * Math.sin(h)] as const;
+    };
+    for (const [dark, light] of [["#0b7baa", "#f68758"], ["#743100", "#ffda7d"]] as const) {
+      const scale = sequential({ seeds: [light, dark] });
+      const [L0, L1] = [lightness(dark), lightness(light)];
+      const [[x0, y0], [x1, y1]] = [point(dark), point(light)];
+      for (let i = 0; i <= 40; ++i) {
+        const color = scale(i / 40);
+        const L = lightness(color);
+        if (L <= L0 || L >= L1) continue;
+        const s = (L - L0) / (L1 - L0);
+        const [x, y] = point(color);
+        expect(Math.hypot(x - x0 - s * (x1 - x0), y - y0 - s * (y1 - y0))).toBeLessThan(0.03);
+      }
+    }
+    // Blue and orange, almost opposite in hue, meet in a greyish color rather than a vivid violet
+    const middle = sequential({ seeds: ["#0b7baa", "#f68758"] }).colors(8)[3]!;
+    expect(chroma(middle)).toBeLessThan(0.03);
   });
 
   it("makes no difference with a straight path and a single seed", () => {
@@ -680,7 +707,7 @@ describe("sequential()", () => {
     expect(() => sequential({ seeds: ["red"], darkChroma: -1 })).toThrow("darkChroma must be");
     expect(() => sequential({ seeds: ["red"], lightChroma: Infinity })).toThrow("lightChroma must be");
     expect(() => sequential({ seeds: ["red"], lightHue: NaN })).toThrow("lightHue must be");
-    expect(() => sequential({ seeds: ["red"], path: "lab" as never })).toThrow("Unknown path");
+    expect(() => sequential({ seeds: ["red"], path: "arc" as never })).toThrow("Unknown path");
     expect(() => sequential({ seeds: ["red"] })(NaN)).toThrow(RangeError);
     expect(() => sequential({ seeds: ["not a color"] })).toThrow("Invalid color");
   });

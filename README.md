@@ -92,7 +92,7 @@ blues.colors(7); // 7 steps, "#3b82f6" among them
 sequential({ seeds: ["#2a9d8f", "#e9c46a"] }).colors(9);
 sequential({ seeds: ["#d26202"], lightHue: 40, darkHue: -15 }).colors(9); // lighter shades turn yellow, darker red
 sequential({ offset: 30 }).colors(9); // through palette({ offset: 30 })'s first color
-sequential({ seeds: ["#0b7baa", "#f68758"], path: "straight" }).colors(9); // blue to orange through grey, not magenta
+sequential({ seeds: ["#fff5eb", "#7f2704"], path: "straight" }).colors(9); // paler oranges than the default
 ```
 
 #### `palette(n, options)`
@@ -219,19 +219,19 @@ The seeds are sorted by lightness, and the scale goes through each of them as an
 Without seeds, it goes through the first color `palette()` gives with the same `tone`, `hue` and `offset`,
 blue by default.
 Lightness changes linearly from the light end to the dark end, so equal steps in the data look about equally different.
-Hue and chroma follow smooth curves through the anchors that never overshoot them.
 Chroma is relative to the most colorful color sRGB has at each lightness and hue,
-so between and beyond the anchors the scale is as colorful as they are where sRGB allows it,
-and it fades toward black and white on its own.
-Hue takes the shorter way around the hue circle between two anchors,
-and toward the ends it keeps the nearest anchor's hue, unless `lightHue` or `darkHue` turns it.
+so the scale is as colorful as the anchors where sRGB allows it, and it fades toward black and white on its own.
+
+Between two anchors, the default `path: "relative"` goes in a straight line across the hue circle,
+with each anchor at its hue and its share of the most chroma sRGB has there.
+Anchors of similar hue keep their share, so a light yellow and a dark brown meet in vivid oranges.
+Anchors of very different hue, such as blue and orange, meet in a greyish color, as in cividis,
+rather than passing through vivid colors in the hues between them.
+With `path: "straight"` the scale instead goes in a straight line through OKLab,
+so no color between two anchors is more colorful than they are, and next to a near-white anchor the colors are pale.
+Toward the ends the scale keeps the nearest anchor's hue and share,
+unless `lightHue`, `darkHue`, `lightChroma` or `darkChroma` changes them.
 Greys take the hue of the nearest colorful anchor.
-Between anchors of very different hue, such as blue and orange, that way passes through the hues between them,
-and where sRGB allows more chroma, as at magenta, a vivid color neither anchor has shows up in a short stretch.
-That is the default `path: "arc"`, which bends around the hue circle.
-With `path: "straight"` the scale instead cuts across it in a straight line through OKLab from one anchor to the next,
-so the colors between such anchors turn greyish, as in cividis, and no new hue shows up.
-The ends follow the outermost anchors either way.
 
 It returns a function from `t` in [0, 1] to a hex color, light at 0 and dark at 1, like a d3 interpolator,
 so it works with d3's `scaleSequential` and as `palette()`'s `hue`.
@@ -252,7 +252,7 @@ so the ends are included unless an anchor is within half a step of them.
 | `lightHue` | `0` | Degrees the hue turns from the lightest seed to the light end |
 | `darkHue` | `0` | Degrees the hue turns from the darkest seed to the dark end |
 | `reverse` | `false` | Go from dark at 0 to light at 1 |
-| `path` | `"arc"` | How the scale goes from one seed to the next: `"arc"` around the hue circle, keeping the seeds' share of the most chroma sRGB has, or `"straight"` across it in a straight line through OKLab |
+| `path` | `"relative"` | How the scale goes from one seed to the next: `"relative"` in a straight line across the hue circle with each seed at its share of the most chroma sRGB has, or `"straight"` in a straight line through OKLab |
 
 #### Measuring distinctness
 
