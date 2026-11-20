@@ -7,6 +7,7 @@ import pytest
 
 import c3
 from c3._color import parse_rgb
+from c3._oklab import gamut_map
 from c3._palette import _hue_source
 from c3._schemes import turbo
 
@@ -132,3 +133,81 @@ def test_zero_flows_count_as_the_smallest_positive_flow_on_their_level():
     colors = c3.hierarchy(with_zero)
     assert [m["color"] for m in colors.modules] == [m["color"] for m in c3.hierarchy(smallest).modules]
     assert len({colors([2]), colors([2, 1]), colors([2, 2])}) == 3
+
+
+def test_sequential_goes_through_the_first_palette_color_without_seeds():
+    assert c3.palette(1)[0] in c3.sequential().colors(8)
+    assert c3.sequential(seeds=[]).colors(8) == c3.sequential().colors(8)
+    assert c3.palette(1, hue="Turbo", offset=90)[0] in c3.sequential(hue="Turbo", offset=90).colors(8)
+    with pytest.raises(TypeError, match="not a single color"):
+        c3.sequential(seeds="red")
+
+
+def test_sequential_accepts_lists_tuples_and_rgb_floats():
+    scale = c3.sequential(seeds=["#2a9d8f", "#e9c46a"], lightness=[0.3, 0.95])
+    assert scale.colors(9) == c3.sequential(seeds=("#2a9d8f", "#e9c46a")).colors(9)
+    r, g, b = parse_rgb("steelblue")
+    assert c3.sequential(seeds=[(r / 255, g / 255, b / 255)]).colors(7) == c3.sequential(seeds=["steelblue"]).colors(7)
+    assert repr(c3.sequential(seeds=["#e9c46a", "#2a9d8f"])) == "Sequential(#2a9d8f, #e9c46a)"
+
+
+def test_sequential_goes_in_a_straight_line_through_oklab_with_a_straight_path():
+    seeds = ["#0b7baa", "#f68758"]
+    blue, orange = (c3.oklab(c) for c in seeds)
+    straight = c3.sequential(seeds=seeds, path="straight")
+    relative = c3.sequential(seeds=seeds)
+    for i in range(41):
+        t = i / 40
+        lab = c3.oklab(straight(t))
+        if blue[0] < lab[0] < orange[0]:
+            s = (lab[0] - blue[0]) / (orange[0] - blue[0])
+            line = [x + s * (y - x) for x, y in zip(blue, orange)]
+            assert math.dist(lab, line) < 0.005
+        else:
+            assert straight(t) == relative(t)
+    assert c3.sequential(seeds=["#3b82f6"], path="straight").colors(9) == c3.sequential(seeds=["#3b82f6"]).colors(9)
+
+
+def test_sequential_goes_in_a_straight_line_across_the_hue_circle_in_shares_of_the_srgb_limit():
+    def point(hex_color):
+        L, C, H = c3.oklch(hex_color)
+        share = C / gamut_map((L, 0.5, H))[1]
+        return share * math.cos(math.radians(H)), share * math.sin(math.radians(H))
+
+    for dark, light in [("#0b7baa", "#f68758"), ("#743100", "#ffda7d")]:
+        scale = c3.sequential(seeds=[light, dark])
+        L0, L1 = c3.oklch(dark)[0], c3.oklch(light)[0]
+        (x0, y0), (x1, y1) = point(dark), point(light)
+        for i in range(41):
+            color = scale(i / 40)
+            L = c3.oklch(color)[0]
+            if L0 < L < L1:
+                s = (L - L0) / (L1 - L0)
+                x, y = point(color)
+                assert math.hypot(x - x0 - s * (x1 - x0), y - y0 - s * (y1 - y0)) < 0.03
+    # Blue and orange, almost opposite in hue, meet in a greyish color rather than a vivid violet
+    assert c3.oklch(c3.sequential(seeds=["#0b7baa", "#f68758"]).colors(8)[3])[1] < 0.03
+
+
+def test_sequential_works_as_a_hue_source():
+    colors = c3.palette(6, hue=c3.sequential(seeds=["#2a9d8f", "#e9c46a"]))
+    assert len(colors) == 6 and all(HEX.match(c) for c in colors)
+
+
+@pytest.mark.parametrize(
+    "call, message",
+    [
+        (lambda: c3.sequential(seeds=["red", "#ff0000"]), "different lightness"),
+        (lambda: c3.sequential(seeds=["red"], lightness=(0.8, 0.2)), "lightness must be"),
+        (lambda: c3.sequential(seeds=["red"], dark_chroma=-1), "dark_chroma must be"),
+        (lambda: c3.sequential(seeds=["red"], light_chroma=math.inf), "light_chroma must be"),
+        (lambda: c3.sequential(seeds=["red"], light_hue=math.nan), "light_hue must be"),
+        (lambda: c3.sequential(seeds=["red"], path="arc"), "Unknown path"),
+        (lambda: c3.sequential(seeds=["red"])(math.nan), "t must be"),
+        (lambda: c3.sequential(seeds=["red"]).colors(True), "n must be"),
+        (lambda: c3.sequential(seeds=["red", "blue"]).colors(1), "n must be at least 2"),
+    ],
+)
+def test_sequential_raises_value_errors(call, message):
+    with pytest.raises(ValueError, match=message):
+        call()

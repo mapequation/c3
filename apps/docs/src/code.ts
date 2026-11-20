@@ -113,6 +113,24 @@ function pyCode(fn: string, args: unknown[]) {
   return `${head}\n${[...comments, ...lines].join("\n")}`;
 }
 
+/**
+ * sequential() in JS and Python: the scale, its color halfway along, then n colors from it
+ * @param middle the scale's color at t = 0.5
+ */
+export function sequentialCode(options: object, n: number, middle: string): ByLang {
+  const { js, py } = callCode("sequential", options);
+  // The call is the code after the imports; it never holds an empty line
+  const split = (code: string) => [code.slice(0, code.lastIndexOf("\n\n")), code.slice(code.lastIndexOf("\n\n") + 2)];
+  const [jsHead, jsCall] = split(js);
+  const [pyHead, pyCall] = split(py);
+  const [first, last] = (options as { reverse?: boolean }).reverse ? ["dark", "light"] : ["light", "dark"];
+  const along = `t from 0 (${first}) to 1 (${last})`;
+  return {
+    js: `${jsHead}\n\nconst scale = ${jsCall}\nscale(0.5); // "${middle}", ${along}\nscale.colors(${n});`,
+    py: `${pyHead}\n\nscale = ${pyCall}\nscale(0.5)  # '${middle}', ${along}\ncolors = scale.colors(${n})`,
+  };
+}
+
 /** Source code for a library call in JS and Python, leaving out an empty options object */
 export function callCode(fn: string, ...args: unknown[]): ByLang {
   return { js: jsCode(fn, args), py: pyCode(fn, args) };

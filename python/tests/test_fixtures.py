@@ -73,6 +73,12 @@ def run(case):
             "modules": colors.modules,
             "lookup": [{"path": item["path"], "color": colors(item["path"])} for item in case["expected"]["lookup"]],
         }
+    if fn == "sequential":
+        scale = c3.sequential(*args, **options)
+        return {
+            "samples": [scale(i / 10) for i in range(11)],
+            "steps": [{"n": step["n"], "colors": scale.colors(step["n"])} for step in case["expected"]["steps"]],
+        }
     if fn == "inferTone":
         return c3.infer_tone(*args)
     if fn == "oklab":
@@ -92,6 +98,7 @@ def test_fixtures_cover_the_public_api():
     assert {case["fn"] for case in CASES} == {
         "palette",
         "hierarchy",
+        "sequential",
         "inferTone",
         "oklab",
         "oklch",

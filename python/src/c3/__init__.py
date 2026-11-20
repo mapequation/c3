@@ -13,6 +13,7 @@ from ._oklab import parse_oklab as oklab
 from ._oklab import parse_oklch as oklch
 from ._palette import EndZone, HueSource, Method, palette
 from ._schemes import Scheme, SchemeName
+from ._sequential import Sequential, SequentialPath, sequential
 from ._swatches import swatches
 from ._tone import PartialTone, Range, Tone, ToneName, ToneOption, infer_tone, tones
 
@@ -24,6 +25,7 @@ except PackageNotFoundError:  # pragma: no cover
 __all__ = [
     "palette",
     "hierarchy",
+    "sequential",
     "tones",
     "infer_tone",
     "swatches",
@@ -42,6 +44,8 @@ __all__ = [
     "Range",
     "Scheme",
     "SchemeName",
+    "Sequential",
+    "SequentialPath",
     "Tone",
     "ToneName",
     "ToneOption",

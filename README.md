@@ -12,6 +12,7 @@ A library to generate distinct categorical colors, written in TypeScript.
 * **Unlimited colors**: Generate as many colors you want
 * **Any color scheme**: Hues come from the OKLCH hue circle or any [d3](https://github.com/d3/d3-scale-chromatic) color scheme.
 * **Tones**: Vivid, bright, strong, deep, dark, soft, pastel or muted colors, or your own lightness and chroma ranges.
+* **Sequential scales**: Extend one or more colors to darker and lighter shades, for ordered data.
 * **Deterministic**: You always get the same colors for the same requested number of colors.
 * **Consistent**: If you increase the number of colors, it doesn't change the list of colors you already have.
 * **Fast**: `n` colors take time proportional to `n log(n)`. Choosing colors by distance, as with seeds, takes longer but stays within milliseconds for hundreds of colors.
@@ -60,7 +61,7 @@ A large module gets a large ball, with room for many distinct children.
 ### Usage
 
 ```js
-import { palette, hierarchy, tones, swatches } from "@mapequation/c3";
+import { palette, hierarchy, sequential, tones, swatches } from "@mapequation/c3";
 
 // The first 20 colors of the sequence, in the default strong tone
 palette(20);
@@ -83,6 +84,15 @@ const color = hierarchy([
   { path: [2, 1], flow: 0.1 },
 ]);
 color([1, 2]);
+
+// A sequential scale through a color, extended to darker and lighter shades
+const blues = sequential({ seeds: ["#3b82f6"] });
+blues(0.5); // "#3c83f6", from light at 0 to dark at 1
+blues.colors(7); // 7 steps, "#3b82f6" among them
+sequential({ seeds: ["#2a9d8f", "#e9c46a"] }).colors(9);
+sequential({ seeds: ["#d26202"], lightHue: 40, darkHue: -15 }).colors(9); // lighter shades turn yellow, darker red
+sequential({ offset: 30 }).colors(9); // through palette({ offset: 30 })'s first color
+sequential({ seeds: ["#fff5eb", "#7f2704"], path: "straight" }).colors(9); // paler oranges than the default
 ```
 
 #### `palette(n, options)`
@@ -202,6 +212,48 @@ Its `modules` property lists every module depth first with `path`, `flow`, `colo
 Adding a module never changes its earlier siblings or the modules above its level.
 With module flows given, other modules only change if the new module is now closest to them, and then only their children change.
 
+#### `sequential(options)`
+
+A sequential scale for ordered data, through one or more seed colors and extended to darker and lighter shades.
+The seeds are sorted by lightness, and the scale goes through each of them as an anchor.
+Without seeds, it goes through the first color `palette()` gives with the same `tone`, `hue` and `offset`,
+blue by default.
+Lightness changes linearly from the light end to the dark end, so equal steps in the data look about equally different.
+Chroma is relative to the most colorful color sRGB has at each lightness and hue,
+so the scale is as colorful as the anchors where sRGB allows it, and it fades toward black and white on its own.
+
+Between two anchors, the default `path: "relative"` goes in a straight line across the hue circle,
+with each anchor at its hue and its share of the most chroma sRGB has there.
+Anchors of similar hue keep their share, so a light yellow and a dark brown meet in vivid oranges.
+Anchors of very different hue, such as blue and orange, meet in a greyish color, as in cividis,
+rather than passing through vivid colors in the hues between them.
+With `path: "straight"` the scale instead goes in a straight line through OKLab,
+so no color between two anchors is more colorful than they are, and next to a near-white anchor the colors are pale.
+Toward the ends the scale keeps the nearest anchor's hue and share,
+unless `lightHue`, `darkHue`, `lightChroma` or `darkChroma` changes them.
+Greys take the hue of the nearest colorful anchor.
+
+It returns a function from `t` in [0, 1] to a hex color, light at 0 and dark at 1, like a d3 interpolator,
+so it works with d3's `scaleSequential` and as `palette()`'s `hue`.
+Its `colors(n)` method gives `n` colors in the same order, and every anchor is among them.
+Between two anchors they are evenly spaced in lightness, and each one goes where the colors are farthest apart,
+so the ends are included unless an anchor is within half a step of them.
+`n` must be at least the number of anchors.
+
+| Option | Default | |
+|---|---|---|
+| `seeds` | | Colors the scale goes through, any CSS colors with different lightness |
+| `tone` | `"strong"` | Without seeds: lightness and chroma of the color the scale goes through, as in `palette()` |
+| `hue` | `"Oklch"` | Without seeds: where its hue comes from, as in `palette()` |
+| `offset` | `245` on `"Oklch"`, `0` on a scheme | Without seeds: where on the hue source it sits, as in `palette()` |
+| `lightness` | `[0.3, 0.95]` | OKLCH lightness of the dark and light ends, widened to include every seed |
+| `lightChroma` | `1` | Chroma at the light end, as a fraction of the lightest seed's, both relative to the most sRGB allows at that lightness and hue |
+| `darkChroma` | `1` | Chroma at the dark end, as a fraction of the darkest seed's, like `lightChroma` |
+| `lightHue` | `0` | Degrees the hue turns from the lightest seed to the light end |
+| `darkHue` | `0` | Degrees the hue turns from the darkest seed to the dark end |
+| `reverse` | `false` | Go from dark at 0 to light at 1 |
+| `path` | `"relative"` | How the scale goes from one seed to the next: `"relative"` in a straight line across the hue circle with each seed at its share of the most chroma sRGB has, or `"straight"` in a straight line through OKLab |
+
 #### Measuring distinctness
 
 `distance(a, b)` is the distance between two colors in OKLab, from 0 for equal colors to about 1 between black and white.
@@ -217,6 +269,7 @@ For many colors, widen the tone's `lightness` and `chroma`, or add an end zone.
 A pure Python port is in [`python/`](python): `pip install c3-colors`, imported as `c3`.
 It gives the same colors as the npm package, checked against shared fixtures (within rounding).
 The API is the same with options as snake_case keyword arguments, like `c3.palette(10, tone="pastel", lightness_offset=3)`.
+`c3.sequential()` returns a `Sequential` object, callable with `t` and with a `colors(n)` method.
 The hue source is `"Oklch"`, the d3 schemes `"Turbo"`, `"Sinebow"` or `"Rainbow"`, or any callable such as a matplotlib colormap.
 Its version numbers follow the npm package, and the shared fixtures are in `fixtures/c3.json`.
 The [tutorial notebook](python/examples/tutorial.ipynb) shows it with matplotlib, geopandas, networkx and Infomap.

@@ -3,12 +3,12 @@
  * public API that the Python port (python/) checks against, so both give the same colors.
  * Regenerate with `pnpm --filter @mapequation/c3 fixtures`.
  */
-import { distance, hierarchy, inferTone, oklab, oklch, palette, swatches, tones } from "../src/index.js";
-import type { HierarchyOptions, Module, PaletteOptions } from "../src/index.js";
+import { distance, hierarchy, inferTone, oklab, oklch, palette, sequential, swatches, tones } from "../src/index.js";
+import type { HierarchyOptions, Module, PaletteOptions, SequentialOptions } from "../src/index.js";
 
 export type FixtureCase = {
   name: string;
-  fn: "palette" | "hierarchy" | "inferTone" | "oklab" | "oklch" | "distance" | "tones" | "swatches";
+  fn: "palette" | "hierarchy" | "sequential" | "inferTone" | "oklab" | "oklch" | "distance" | "tones" | "swatches";
   args: unknown[];
   options: Record<string, unknown>;
   expected: unknown;
@@ -63,6 +63,22 @@ function hierarchyCase(tree: string, modules: Module[], options: HierarchyOption
     expected: {
       modules: colors.modules,
       lookup: paths.map((path) => ({ path, color: colors(path) ?? null })),
+    },
+  };
+}
+
+function sequentialCase(options: SequentialOptions = {}): FixtureCase {
+  const scale = sequential(options);
+  // Without seeds, the scale goes through one palette color
+  const anchors = Math.max(1, options.seeds?.length ?? 0);
+  return {
+    name: `sequential${describeOptions(options)}`,
+    fn: "sequential",
+    args: [],
+    options,
+    expected: {
+      samples: Array.from({ length: 11 }, (_, i) => scale(i / 10)),
+      steps: [anchors, anchors + 1, anchors + 2, 7, 11, 24].map((n) => ({ n, colors: scale.colors(n) })),
     },
   };
 }
@@ -237,6 +253,35 @@ export function fixtureCases(): FixtureCase[] {
     hierarchyCase("three levels", trees["three levels"]!, { padding: 0, tone: "deep", offset: 30 }),
     hierarchyCase("three levels", trees["three levels"]!, { method: "lookahead", end: { midpoint: 3 } }),
     hierarchyCase("zero flows", trees["zero flows"]!, { method: "farthest" }),
+  );
+
+  // Sequential scales
+  add(
+    sequentialCase({ seeds: ["#3b82f6"] }),
+    sequentialCase(),
+    sequentialCase({ offset: 30 }),
+    sequentialCase({ tone: "pastel" }),
+    sequentialCase({ hue: "Turbo", offset: 90 }),
+    sequentialCase({ seeds: ["steelblue"], lightness: [0.3, 0.9] }),
+    sequentialCase({ seeds: ["#2a9d8f", "#e9c46a"] }),
+    sequentialCase({ seeds: ["#ffffcc", "#41b6c4", "#0c2c84"] }),
+    sequentialCase({ seeds: ["#333", "steelblue"] }),
+    sequentialCase({ seeds: ["#808080"] }),
+    sequentialCase({ seeds: ["#ffffff"] }),
+    sequentialCase({ seeds: ["#000000"] }),
+    sequentialCase({ seeds: ["#e41a1c", "#ffff33"] }),
+    sequentialCase({ seeds: ["#ff00ff", "#ff8000"] }),
+    sequentialCase({ seeds: ["#ef4444"], lightChroma: 0, reverse: true }),
+    sequentialCase({ seeds: ["#ef4444"], lightChroma: 0.1, darkChroma: 0.5 }),
+    sequentialCase({ seeds: ["#d26202"], lightHue: 40, darkHue: -15 }),
+    sequentialCase({ seeds: ["#ffda7d", "#743100"] }),
+    sequentialCase({ seeds: ["#2b9bea", "#0c2c84"], lightHue: -30, darkHue: 20, lightChroma: 0.5, darkChroma: 1.5 }),
+    sequentialCase({ seeds: ["#7b3294", "#c2a5cf", "#f7f7f7"], lightness: [0.2, 0.99] }),
+    sequentialCase({ seeds: SET1 }),
+    sequentialCase({ seeds: ["#0b7baa", "#f68758"], path: "straight" }),
+    sequentialCase({ seeds: ["#ffffcc", "#41b6c4", "#0c2c84"], path: "straight" }),
+    sequentialCase({ seeds: ["#2b9bea", "#0c2c84"], path: "straight", lightHue: -30, darkHue: 20, lightChroma: 0.5, darkChroma: 1.5 }),
+    sequentialCase({ seeds: ["#333", "steelblue"], path: "straight", reverse: true }),
   );
 
   // Tones from colors

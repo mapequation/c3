@@ -533,7 +533,19 @@ h2 {
   transform: rotate(90deg);
 }
 
-.controls .hint {
+.controls /* A fieldset that only groups controls, to disable them together */
+fieldset.plain {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+fieldset.plain:disabled {
+  opacity: 0.5;
+}
+
+.hint {
   margin-bottom: 8px;
   font-size: 12px;
   line-height: 1.4;
@@ -560,6 +572,49 @@ h2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   column-gap: 14px;
+}
+
+/* A row for each property and a column for each end. Each row is two grid rows,
+   the numbers above the sliders, so the labels line up with the sliders */
+.end-sliders {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto 1fr 1fr;
+  column-gap: 12px;
+  margin-bottom: 6px;
+}
+
+.end-label,
+.end-cell {
+  grid-row: span 2;
+  display: grid;
+  grid-template-rows: subgrid;
+}
+
+.end-head {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.end-label > span {
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  /* The sliders' bottom margin, so the label is centered on them */
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.end-cell .num {
+  justify-self: end;
+  width: 6ch;
+}
+
+.end-cell input[type="range"] {
+  width: 100%;
+  margin: 2px 0 6px;
+  accent-color: var(--ink-2);
 }
 
 .slider-pair .num {
@@ -795,6 +850,76 @@ figcaption {
 .polar-dot.seed {
   stroke: var(--ink);
   stroke-width: 2.5;
+}
+
+.examples {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.scale-plot {
+  display: block;
+  width: 100%;
+}
+
+/* The sequential scale with its swatches, and the color circle beside it when there is room */
+.scale-views {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.scale-figure {
+  flex: 1 1 440px;
+  max-width: 600px;
+}
+
+/* Under the gradient bar, as wide as it: the plot's left and right margins over its width */
+.scale-figure .swatch-panel {
+  margin: 8px calc(100% * 12 / 520) 0 calc(100% * 56 / 520);
+}
+
+/* Keep 8 swatches a row beside the circle, a little narrower than elsewhere */
+@container (min-width: 360px) {
+  .scale-figure .swatches {
+    --lg: 8;
+    --md: 16;
+    --sm: 32;
+  }
+}
+
+/* Narrower swatches, so the hex label fits */
+.scale-figure .swatch span {
+  left: 4px;
+  font-size: 10px;
+}
+
+.scale-circle {
+  flex: 0 1 280px;
+}
+
+/* The most chroma sRGB has at a lightness and hue */
+.gamut-line {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 3;
+}
+
+.polar-path {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.scale-line {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 2;
+  stroke-linejoin: round;
 }
 
 .colorbar {

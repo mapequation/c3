@@ -1,4 +1,4 @@
-import { defaultEndZone, defaultHierarchyOptions, defaultPaletteOptions, defaultTone } from "@mapequation/c3/internal";
+import { defaultEndZone, defaultHierarchyOptions, defaultPaletteOptions, defaultSequentialOptions, defaultTone } from "@mapequation/c3/internal";
 import { snake } from "./code";
 import type { ByLang } from "./lang";
 
@@ -215,6 +215,42 @@ export const API: ApiEntry[] = [
     example: {
       js: `const color = hierarchy([\n  { path: [1, 1], flow: 0.3 },\n  { path: [1, 2], flow: 0.2 },\n  { path: [2, 1], flow: 0.1 },\n]);\ncolor([1, 2]); // a color near module 1's\ncolor([1, 2, 7]); // node 7 in module 1:2, the same color`,
       py: `color = c3.hierarchy([\n    {"path": [1, 1], "flow": 0.3},\n    {"path": [1, 2], "flow": 0.2},\n    {"path": [2, 1], "flow": 0.1},\n])\ncolor([1, 2])  # a color near module 1's\ncolor([1, 2, 7])  # node 7 in module 1:2, the same color\n[m["color"] for m in color.modules]  # all module colors, depth first`,
+    },
+  },
+  {
+    name: "sequential",
+    signature: { js: "sequential(options?): (t) => string", py: "sequential(**options) -> Sequential" },
+    description: [
+      "A sequential scale for ordered data, through one or more seed colors and extended to darker and lighter shades. The seeds are sorted by lightness, and the scale goes through each of them as an anchor. Without seeds, it goes through the first color `palette()` gives with the same `tone`, `hue` and `offset`, blue by default. Lightness changes linearly with `t`, from the light end to the dark end, so equal steps in the data look about equally different. Chroma is relative to the most colorful color sRGB has at each lightness and hue, so the scale is as colorful as the anchors where sRGB allows it, and it fades toward black and white on its own. Between two anchors, the default `path: \"relative\"` goes in a straight line across the hue circle, with each anchor at its hue and its share of the most chroma sRGB has there: anchors of similar hue keep their share, so a light yellow and a dark brown meet in vivid oranges, and anchors of very different hue, such as blue and orange, meet in a greyish color rather than passing through vivid colors in the hues between them. With `path: \"straight\"` the scale goes in a straight line through OKLab instead, so no color between two anchors is more colorful than they are. Toward the ends the scale keeps the nearest anchor's hue and share, unless `lightHue`, `darkHue`, `lightChroma` or `darkChroma` changes them.",
+      "`colors(n)` gives n colors with every anchor among them, evenly spaced in lightness between two anchors. The ends are included unless an anchor is within half a step of them.",
+    ],
+    params: [],
+    options: [
+      ["seeds", "string[]", "", "Colors the scale goes through, any CSS colors with different lightness."],
+      ["tone", "ToneName | string[] | Partial<Tone>", '"strong"', "Without seeds: lightness and chroma of the color the scale goes through, as in `palette()`."],
+      ["hue", '"Oklch" | SchemeName | (t) => string', fmt(defaultPaletteOptions.hue), "Without seeds: where its hue comes from, as in `palette()`."],
+      ["offset", "number", `${defaultPaletteOptions.offset} on "Oklch", 0 on a scheme`, "Without seeds: where on the hue source it sits, in degrees, as in `palette()`."],
+      ["lightness", "[min, max]", fmt(defaultSequentialOptions.lightness), "OKLCH lightness of the dark and light ends, widened to include every seed."],
+      ["lightChroma", "number", fmt(defaultSequentialOptions.lightChroma), "Chroma at the light end, as a fraction of the lightest seed's, both relative to the most sRGB allows at that lightness and hue."],
+      ["darkChroma", "number", fmt(defaultSequentialOptions.darkChroma), "Chroma at the dark end, as a fraction of the darkest seed's, like `lightChroma`."],
+      ["lightHue", "number", fmt(defaultSequentialOptions.lightHue), "Degrees the hue turns from the lightest seed to the light end."],
+      ["darkHue", "number", fmt(defaultSequentialOptions.darkHue), "Degrees the hue turns from the darkest seed to the dark end."],
+      ["reverse", "boolean", fmt(defaultSequentialOptions.reverse), "Go from dark at 0 to light at 1."],
+      [
+        "path",
+        '"relative" | "straight"',
+        fmt(defaultSequentialOptions.path),
+        'How the scale goes from one seed to the next: "relative" in a straight line across the hue circle with each seed at its share of the most chroma sRGB has, or "straight" in a straight line through OKLab, never more colorful than the seeds. The ends follow the outermost seeds either way.',
+      ],
+    ],
+    returns: {
+      js: "A function from `t` in [0, 1] to a hex color, light at 0 and dark at 1, like a d3 interpolator. Its `colors(n)` method returns n hex colors in the same order, for n at least the number of seeds. Throws if two seeds have the same lightness.",
+      py: "A `Sequential`, callable from `t` in [0, 1] to a hex color, light at 0 and dark at 1. Its `colors(n)` method returns n hex colors in the same order, for n at least the number of seeds. Raises `ValueError` if two seeds have the same lightness.",
+    },
+    python: "The result is a `Sequential` object rather than a function. Seeds can also be (r, g, b) floats in [0, 1].",
+    example: {
+      js: `const blues = sequential({ seeds: ["#3b82f6"] });\nblues(0.5); // "#3c83f6"\nblues.colors(7); // 7 steps, "#3b82f6" among them\nsequential({ seeds: ["#2a9d8f", "#e9c46a"] }).colors(9);\nsequential({ offset: 30 }).colors(9); // through palette({ offset: 30 })'s first color\nsequential({ seeds: ["#fff5eb", "#7f2704"], path: "straight" }).colors(9); // paler oranges than the default`,
+      py: `blues = c3.sequential(seeds=["#3b82f6"])\nblues(0.5)  # '#3c83f6'\nblues.colors(7)  # 7 steps, '#3b82f6' among them\nc3.sequential(seeds=["#2a9d8f", "#e9c46a"]).colors(9)\nc3.sequential(offset=30).colors(9)  # through palette(offset=30)'s first color\nc3.sequential(seeds=["#fff5eb", "#7f2704"], path="straight").colors(9)  # paler oranges than the default`,
     },
   },
   {

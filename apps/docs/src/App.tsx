@@ -4,6 +4,7 @@ import { SchemesMode } from "./modes/SchemesMode";
 import { PaletteMode } from "./modes/PaletteMode";
 import { SeedsMode } from "./modes/SeedsMode";
 import { HierarchyMode } from "./modes/HierarchyMode";
+import { SequentialMode } from "./modes/SequentialMode";
 import { ApiReference } from "./components/ApiReference";
 import { Code } from "./components/Code";
 import { HowItWorks } from "./components/HowItWorks";
@@ -64,6 +65,14 @@ const MODES = [
     about:
       "Color nested modules, like an Infomap tree. Top modules get palette() colors weighted by flow, their share of the whole. Children get colors as far apart as possible within their parent's ball: all colors within a radius of the parent's color in OKLab.",
     Mode: HierarchyMode,
+  },
+  {
+    id: "sequential",
+    label: "Sequential",
+    fn: "sequential()",
+    about:
+      "A sequential scale for ordered data through one or more seed colors, or without seeds through the first palette() color, extended to darker and lighter shades. Lightness changes evenly from light to dark, the colors stay as colorful as the seeds where sRGB allows it, and colors(n) gives n steps with every seed among them.",
+    Mode: SequentialMode,
   },
   {
     // Keeps its old id, so links to #schemes still work

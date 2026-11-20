@@ -1,5 +1,5 @@
 import { Fragment, useDeferredValue, useId, useMemo, useState } from "react";
-import { inferTone, oklch, palette, swatches, type PaletteOptions, type Tone } from "@mapequation/c3";
+import { inferTone, palette, swatches, type PaletteOptions, type Tone } from "@mapequation/c3";
 import { defaultPaletteOptions, defaultTone } from "@mapequation/c3/internal";
 import { Group, ModeLayout, ToneControls, Slider } from "../components/Controls";
 import { PolarPlot } from "../components/PolarPlot";
@@ -13,25 +13,14 @@ import { UsMap } from "../components/UsMap";
 import { firstDifference } from "../quality";
 import { callCode } from "../code";
 import { DIVISIONS, STATES } from "../us";
-import { isMural, timed, toneOption, unlessDefault } from "../util";
+import { isMural, parseColors, timed, toneOption, unlessDefault } from "../util";
 
 const MURAL = swatches.mural.join("\n");
 const METHODS = ["farthest", "lookahead"] as const;
 
-/** Split on new lines and on commas outside parentheses, so rgb(1, 2, 3) stays whole */
+/** The seed colors, with the mural preset as swatches.mural, so the code shows it by name */
 function parseSeeds(text: string) {
-  const valid: string[] = [];
-  const invalid: string[] = [];
-  for (const item of text.split(/\n|,(?![^(]*\))/)) {
-    const color = item.trim();
-    if (!color) continue;
-    try {
-      oklch(color);
-      valid.push(color);
-    } catch {
-      invalid.push(color);
-    }
-  }
+  const { valid, invalid } = parseColors(text);
   return { valid: isMural(valid) ? swatches.mural : valid, invalid };
 }
 
