@@ -1,6 +1,5 @@
 import { Activity, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { palette } from "@mapequation/c3";
-import { SchemesMode } from "./modes/SchemesMode";
 import { PaletteMode } from "./modes/PaletteMode";
 import { SeedsMode } from "./modes/SeedsMode";
 import { HierarchyMode } from "./modes/HierarchyMode";
@@ -34,8 +33,6 @@ const FEATURES: [string, ReactNode][] = [
 function Call({ code }: { code: string | ByLang }) {
   return <code>{pick(code, useLang())}</code>;
 }
-
-const SCHEME_CALL = { js: "palette({ hue: scheme })", py: "palette(hue=scheme)" };
 
 const MODES = [
   {
@@ -74,26 +71,12 @@ const MODES = [
       "A sequential scale for ordered data through one or more seed colors, or without seeds through the first palette() color, extended to darker and lighter shades. Lightness changes evenly from light to dark, the colors stay as colorful as the seeds where sRGB allows it, and colors(n) gives n steps with every seed among them.",
     Mode: SequentialMode,
   },
-  {
-    // Keeps its old id, so links to #schemes still work
-    id: "schemes",
-    label: "Schemes",
-    fn: SCHEME_CALL,
-    about: (
-      <>
-        Compare a d3 color scheme's own colors at the Cantor stops with <Call code={SCHEME_CALL} />, which takes only
-        the hues from the scheme and sets lightness and chroma from the tone, keeping colors farther apart for every
-        scheme.
-      </>
-    ),
-    Mode: SchemesMode,
-  },
 ] as const;
 
 type ModeId = (typeof MODES)[number]["id"];
 
-/** Old tab ids, so links to them still work */
-const ALIASES: Record<string, ModeId> = { extend: "seeds" };
+/** Old tab ids, so links to them still work; the Palette tab shows a scheme's own colors */
+const ALIASES: Record<string, ModeId> = { extend: "seeds", schemes: "palette" };
 
 const markers = palette(FEATURES.length);
 

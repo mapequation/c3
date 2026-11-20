@@ -10,6 +10,19 @@ const LEVELS = Math.ceil(Math.log2(MAX_STOPS));
 const LEVEL_HEIGHT = (WIDTH - 5) / (LEVELS + 1);
 const BAR = 4;
 const PAD = 4;
+const BAND = 14;
+const BAND_GAP = 6;
+
+/** A left-to-right gradient through colors sampled evenly along [0, 1] */
+function Gradient({ id, colors }: { id: string; colors: string[] }) {
+  return (
+    <linearGradient id={id}>
+      {colors.map((c, j) => (
+        <stop key={j} offset={(j + 0.5) / colors.length} stopColor={c} />
+      ))}
+    </linearGradient>
+  );
+}
 
 type Row = { intervals: Interval[]; level: number; sub: number; split: number };
 
@@ -42,33 +55,34 @@ const y = ({ level, sub }: Row) => LEVEL_HEIGHT * (level + sub / 2 ** Math.max(0
  * Hovering a dot highlights its color in the other views; hovered colors get a ring.
  * @param colors the colors picked at the stops, in order
  * @param strip colors sampled evenly along [0, 1], showing what each stop position maps to
+ * @param band optional colors sampled the same way, drawn as a thin band above, like a scheme's own colors
  */
 export function ColorCantor({
   colors,
   strip,
+  band,
   hovered = NONE,
   onHover,
-}: { colors: string[]; strip: string[] } & Partial<Hover>) {
+}: { colors: string[]; strip: string[]; band?: string[] } & Partial<Hover>) {
   const id = useId().replace(/[^\w-]/g, "");
   const shown = Math.min(colors.length, rows.length);
   const at = (i: number) => [x(rows[i].split), y(rows[i]) + BAR / 2] as const;
+  const top = band ? BAND + BAND_GAP : 0;
 
   return (
     <svg
       className="cantor"
-      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      viewBox={`0 0 ${SIZE} ${SIZE + top}`}
       role="img"
-      aria-label="The first 16 Cantor stops over the hues they take"
+      aria-label={`The first 16 Cantor stops over the hues they take${band ? ", below the scheme's own colors" : ""}`}
       {...(onHover && delegatedHover(onHover))}
     >
       <defs>
-        <linearGradient id={id}>
-          {strip.map((c, j) => (
-            <stop key={j} offset={(j + 0.5) / strip.length} stopColor={c} />
-          ))}
-        </linearGradient>
+        <Gradient id={id} colors={strip} />
+        {band && <Gradient id={`${id}-band`} colors={band} />}
       </defs>
-      <g transform={`translate(${MARGIN},${MARGIN})`}>
+      {band && <rect x={MARGIN} y={MARGIN} width={WIDTH} height={BAND} fill={`url(#${id}-band)`} />}
+      <g transform={`translate(${MARGIN},${MARGIN + top})`}>
         <rect width={WIDTH} height={(LEVELS + 1) * LEVEL_HEIGHT} fill={`url(#${id})`} />
         {rows.map((row, i) =>
           row.intervals.map(({ start, end }, j) => {
