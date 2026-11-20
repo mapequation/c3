@@ -1,6 +1,15 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { oklch, palette, type PaletteOptions, type SchemeName, type Tone } from "@mapequation/c3";
-import { defaultOffset, defaultPaletteOptions, defaultTone, endZone, getScheme } from "@mapequation/c3/internal";
+import {
+  defaultOffset,
+  defaultPaletteOptions,
+  defaultTone,
+  endZone,
+  gamutMap,
+  getScheme,
+  paletteTones,
+  toneColor,
+} from "@mapequation/c3/internal";
 import { Check, Group, ModeLayout, ToneControls, SchemeOptions, Slider } from "../components/Controls";
 import { ColorCantor } from "../components/ColorCantor";
 import { PolarPlot } from "../components/PolarPlot";
@@ -19,14 +28,44 @@ import { schemeTone, timed, toneOption, unlessDefault } from "../util";
 const STRIP_SAMPLES = 64;
 const METHODS = ["sequence", "farthest", "lookahead"] as const;
 
-/** The hue palette() takes at each point of [0, 1], shown at a fixed lightness and chroma */
-function hueStrip({ hue = defaultPaletteOptions.hue, offset = defaultOffset(hue), reverse = false }: PaletteOptions) {
+/** The hue on the OKLCH hue circle at point p of [0, 1] */
+const circleHue = (offset: number, reverse: boolean, p: number) => (((offset + (reverse ? 360 : -360) * p) % 360) + 360) % 360;
+
+/** The most colorful color of hue h that sRGB has, at whatever lightness that takes */
+function cusp(h: number) {
+  let [bestL, bestC] = [0, 0];
+  for (let L = 0.3; L <= 0.98; L += 0.01) {
+    const [, C] = gamutMap([L, 0.4, h]);
+    if (C > bestC) [bestL, bestC] = [L, C];
+  }
+  return `oklch(${bestL.toFixed(2)} ${bestC.toFixed(3)} ${h.toFixed(1)})`;
+}
+
+/** The hue palette() takes at each point of [0, 1], at the middle lightness and chroma of the tone for that hue */
+function hueStrip(options: PaletteOptions) {
+  const { hue = defaultPaletteOptions.hue, offset = defaultOffset(hue), reverse = false } = options;
   const scheme = hue === "Oklch" ? null : typeof hue === "string" ? getScheme(hue) : hue;
+  const { top } = paletteTones(options);
   return Array.from({ length: STRIP_SAMPLES }, (_, k) => {
     const p = (k + 0.5) / STRIP_SAMPLES;
     const t = (p + offset / 360) % 1;
-    const h = scheme ? oklch(scheme(reverse ? 1 - t : t))[2] : (((offset + (reverse ? 360 : -360) * p) % 360) + 360) % 360;
-    return `oklch(0.8 0.1 ${h.toFixed(1)})`;
+    const h = scheme ? oklch(scheme(reverse ? 1 - t : t))[2] : circleHue(offset, reverse, p);
+    const [L, a, b] = toneColor(top, h, 0.5, 0.5);
+    return `oklab(${L.toFixed(3)} ${a.toFixed(3)} ${b.toFixed(3)})`;
+  });
+}
+
+/**
+ * The hue source itself at the same points as the hue strip: a scheme's own colors, or on
+ * "Oklch", each hue at its most colorful. palette() keeps only the hue of either.
+ */
+function sourceBand({ hue = defaultPaletteOptions.hue, offset = defaultOffset(hue), reverse = false }: PaletteOptions) {
+  const scheme = hue === "Oklch" ? null : typeof hue === "string" ? getScheme(hue) : hue;
+  return Array.from({ length: STRIP_SAMPLES }, (_, k) => {
+    const p = (k + 0.5) / STRIP_SAMPLES;
+    if (!scheme) return cusp(circleHue(offset, reverse, p));
+    const t = (p + offset / 360) % 1;
+    return scheme(reverse ? 1 - t : t);
   });
 }
 
@@ -81,6 +120,7 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
       // Only the sequence method fades; the others switch at once.
       endZone: on ? firstDifference(options.method ? hex : palette(n, { ...options, end: { ...endZone(options.end), steepness: Infinity } }), other) : -1,
       strip: hueStrip(options),
+      band: sourceBand(options),
       inOrder: !options.method,
       code: callCode("palette", n, options),
       // The same palette, one color per area of the map
@@ -130,11 +170,13 @@ export function PaletteMode({ n, setN }: { n: number; setN: (n: number) => void 
     <ModeLayout n={n} setN={setN} controls={controls}>
       <div className="figures">
         <figure>
-          <ColorCantor colors={result.hex} strip={result.strip} {...hover} />
+          <ColorCantor colors={result.hex} strip={result.strip} band={result.band} {...hover} />
           <figcaption>
             The first 16 Cantor stops, one row each. Each color takes the hue behind its stop, from the{" "}
             {scheme ? "scheme" : "hue circle"} shifted by Offset. Lightness and chroma come from their own sequences, within
-            the tone.
+            the tone; the background shows the middle of the tone.
+            {" "}The band on top is {scheme ? "the scheme's own colors" : "each hue at its most colorful"}: palette() keeps only
+            the hue.
             {!result.inOrder && " With this method, colors are taken out of order, so a dot can differ from the hue behind it."}
           </figcaption>
         </figure>
