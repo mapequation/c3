@@ -651,7 +651,7 @@ describe("sequential()", () => {
         const line = blue.map((x, k) => x + s * (orange[k]! - x)) as Lab;
         expect(labDistance(parseOklab(straight(t)), line)).toBeLessThan(0.005);
       } else {
-        // The ends follow the outermost seeds as on the hue path
+        // The ends follow the outermost seeds as on the arc
         expect(straight(t)).toBe(curved(t));
       }
     }

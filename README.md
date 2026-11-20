@@ -228,7 +228,8 @@ and toward the ends it keeps the nearest anchor's hue, unless `lightHue` or `dar
 Greys take the hue of the nearest colorful anchor.
 Between anchors of very different hue, such as blue and orange, that way passes through the hues between them,
 and where sRGB allows more chroma, as at magenta, a vivid color neither anchor has shows up in a short stretch.
-With `path: "straight"` the scale instead goes in a straight line through OKLab from one anchor to the next,
+That is the default `path: "arc"`, which bends around the hue circle.
+With `path: "straight"` the scale instead cuts across it in a straight line through OKLab from one anchor to the next,
 so the colors between such anchors turn greyish, as in cividis, and no new hue shows up.
 The ends follow the outermost anchors either way.
 
@@ -251,7 +252,7 @@ so the ends are included unless an anchor is within half a step of them.
 | `lightHue` | `0` | Degrees the hue turns from the lightest seed to the light end |
 | `darkHue` | `0` | Degrees the hue turns from the darkest seed to the dark end |
 | `reverse` | `false` | Go from dark at 0 to light at 1 |
-| `path` | `"hue"` | How the scale goes from one seed to the next: `"hue"` around the hue circle, or `"straight"` in a straight line through OKLab |
+| `path` | `"arc"` | How the scale goes from one seed to the next: `"arc"` around the hue circle, keeping the seeds' share of the most chroma sRGB has, or `"straight"` across it in a straight line through OKLab |
 
 #### Measuring distinctness
 

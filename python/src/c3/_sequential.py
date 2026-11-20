@@ -16,7 +16,7 @@ DEFAULT_END_CHROMA = 1.0
 DEFAULT_END_HUE = 0.0
 
 #: How a sequential scale goes from one seed to the next
-SequentialPath = Literal["hue", "straight"]
+SequentialPath = Literal["arc", "straight"]
 
 # Below this chroma an anchor's hue barely shows, so it takes the hue of a colorful anchor
 _ACHROMATIC = 0.01
@@ -146,7 +146,7 @@ def sequential(
     light_hue: float = DEFAULT_END_HUE,
     dark_hue: float = DEFAULT_END_HUE,
     reverse: bool = False,
-    path: SequentialPath = "hue",
+    path: SequentialPath = "arc",
 ) -> Sequential:
     """
     A sequential scale through one or more seed colors, extended to darker and lighter shades.
@@ -174,10 +174,10 @@ def sequential(
         light_hue: Degrees the hue turns from the lightest seed to the light end.
         dark_hue: Degrees the hue turns from the darkest seed to the dark end.
         reverse: Go from dark (t = 0) to light (t = 1) instead of from light to dark.
-        path: How the scale goes from one seed to the next. "hue" turns the hue the short way around and
-            keeps the seeds' share of the most chroma sRGB has, so seeds of very different hue pass through
-            the hues between them. "straight" goes in a straight line through OKLab, so the colors between
-            such seeds turn greyish instead. The ends follow the outermost seeds either way.
+        path: How the scale goes from one seed to the next. "arc" bends around the hue circle the short way
+            and keeps the seeds' share of the most chroma sRGB has, so seeds of very different hue pass through
+            vivid colors in the hues between them. "straight" cuts across in a straight line through OKLab, so
+            the colors between such seeds turn greyish instead. The ends follow the outermost seeds either way.
 
     Returns:
         A callable from t in [0, 1] to a hex color, with colors(n) for n steps.
@@ -191,8 +191,8 @@ def sequential(
     for name, value in {"light_hue": light_hue, "dark_hue": dark_hue}.items():
         if not math.isfinite(value):
             raise ValueError(f"{name} must be finite, got {value}")
-    if path not in ("hue", "straight"):
-        raise ValueError(f'Unknown path: {path!r}, use "hue" or "straight"')
+    if path not in ("arc", "straight"):
+        raise ValueError(f'Unknown path: {path!r}, use "arc" or "straight"')
 
     if isinstance(seeds, str):
         raise TypeError("seeds takes a sequence of colors, not a single color")

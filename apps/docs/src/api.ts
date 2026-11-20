@@ -221,7 +221,7 @@ export const API: ApiEntry[] = [
     name: "sequential",
     signature: { js: "sequential(options?): (t) => string", py: "sequential(**options) -> Sequential" },
     description: [
-      "A sequential scale for ordered data, through one or more seed colors and extended to darker and lighter shades. The seeds are sorted by lightness, and the scale goes through each of them as an anchor. Without seeds, it goes through the first color `palette()` gives with the same `tone`, `hue` and `offset`, blue by default. Lightness changes linearly with `t`, from the light end to the dark end, so equal steps in the data look about equally different. Hue and chroma follow smooth curves through the anchors that never overshoot them. Chroma is relative to the most colorful color sRGB has at each lightness and hue, so between and beyond the anchors the scale is as colorful as they are where sRGB allows it, and it fades toward black and white on its own. Hue takes the shorter way around between two anchors, and toward the ends it keeps the nearest anchor's hue, unless `lightHue` or `darkHue` turns it. Between anchors of very different hue, such as blue and orange, that way passes through the hues between them, and where sRGB allows more chroma a vivid color neither anchor has shows up; with `path: \"straight\"` the scale goes in a straight line through OKLab from one anchor to the next instead, so those colors turn greyish and no new hue shows up.",
+      "A sequential scale for ordered data, through one or more seed colors and extended to darker and lighter shades. The seeds are sorted by lightness, and the scale goes through each of them as an anchor. Without seeds, it goes through the first color `palette()` gives with the same `tone`, `hue` and `offset`, blue by default. Lightness changes linearly with `t`, from the light end to the dark end, so equal steps in the data look about equally different. Hue and chroma follow smooth curves through the anchors that never overshoot them. Chroma is relative to the most colorful color sRGB has at each lightness and hue, so between and beyond the anchors the scale is as colorful as they are where sRGB allows it, and it fades toward black and white on its own. Hue takes the shorter way around between two anchors, and toward the ends it keeps the nearest anchor's hue, unless `lightHue` or `darkHue` turns it. Between anchors of very different hue, such as blue and orange, that way, the default `path: \"arc\"`, passes through the hues between them, and where sRGB allows more chroma a vivid color neither anchor has shows up; with `path: \"straight\"` the scale cuts across the hue circle in a straight line through OKLab from one anchor to the next instead, so those colors turn greyish and no new hue shows up.",
       "`colors(n)` gives n colors with every anchor among them, evenly spaced in lightness between two anchors. The ends are included unless an anchor is within half a step of them.",
     ],
     params: [],
@@ -238,9 +238,9 @@ export const API: ApiEntry[] = [
       ["reverse", "boolean", fmt(defaultSequentialOptions.reverse), "Go from dark at 0 to light at 1."],
       [
         "path",
-        '"hue" | "straight"',
+        '"arc" | "straight"',
         fmt(defaultSequentialOptions.path),
-        'How the scale goes from one seed to the next: "hue" around the hue circle, keeping the seeds\' share of the most chroma sRGB has, or "straight" in a straight line through OKLab, greyish between seeds of very different hue. The ends follow the outermost seeds either way.',
+        'How the scale goes from one seed to the next: "arc" around the hue circle, keeping the seeds\' share of the most chroma sRGB has, or "straight" across it in a straight line through OKLab, greyish between seeds of very different hue. The ends follow the outermost seeds either way.',
       ],
     ],
     returns: {

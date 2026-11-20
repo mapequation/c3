@@ -3,7 +3,7 @@ import { palette, type HueSource } from "./palette.js";
 import type { Range, ToneOption } from "./tone.js";
 
 /** How a sequential scale goes from one seed to the next */
-export type SequentialPath = "hue" | "straight";
+export type SequentialPath = "arc" | "straight";
 
 export type SequentialOptions = {
   /**
@@ -37,10 +37,10 @@ export type SequentialOptions = {
   /** Go from dark (t = 0) to light (t = 1) instead of from light to dark */
   reverse?: boolean;
   /**
-   * How the scale goes from one seed to the next. "hue" (default) turns the hue the short way around
-   * and keeps the seeds' share of the most chroma sRGB has, so seeds of very different hue pass through
-   * the hues between them. "straight" goes in a straight line through OKLab, so the colors between
-   * such seeds turn greyish instead. The ends follow the outermost seeds either way.
+   * How the scale goes from one seed to the next. "arc" (default) bends around the hue circle the short
+   * way and keeps the seeds' share of the most chroma sRGB has, so seeds of very different hue pass through
+   * vivid colors in the hues between them. "straight" cuts across in a straight line through OKLab, so the
+   * colors between such seeds turn greyish instead. The ends follow the outermost seeds either way.
    */
   path?: SequentialPath;
 };
@@ -63,7 +63,7 @@ export const defaultSequentialOptions = {
   lightHue: 0,
   darkHue: 0,
   reverse: false,
-  path: "hue" as SequentialPath,
+  path: "arc" as SequentialPath,
 };
 
 // Below this chroma an anchor's hue barely shows, so it takes the hue of a colorful anchor
@@ -114,7 +114,7 @@ export function sequential(options: SequentialOptions = {}): Sequential {
   for (const [name, value] of Object.entries({ lightHue, darkHue })) {
     if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite, got ${value}`);
   }
-  if (path !== "hue" && path !== "straight") throw new RangeError(`Unknown path: ${path}, use "hue" or "straight"`);
+  if (path !== "arc" && path !== "straight") throw new RangeError(`Unknown path: ${path}, use "arc" or "straight"`);
 
   if (typeof seeds === "string") throw new TypeError("seeds takes an array of colors, not a single color");
   // Without seeds, the first color palette() would give

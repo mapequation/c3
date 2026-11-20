@@ -155,8 +155,8 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
           <label className="field">
             <span>Path between seeds</span>
             <select value={path} onChange={(e) => setPath(e.target.value as SequentialPath)}>
-              <option value="hue">Around the hue circle (hue)</option>
-              <option value="straight">Straight through OKLab (straight)</option>
+              <option value="arc">Arc around the hue circle (arc)</option>
+              <option value="straight">Straight across, through OKLab (straight)</option>
             </select>
           </label>
         </fieldset>
