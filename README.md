@@ -92,6 +92,8 @@ blues.colors(7); // 7 steps, "#3b82f6" among them
 sequential({ seeds: ["#2a9d8f", "#e9c46a"] }).colors(9);
 sequential({ seeds: ["#d26202"], lightHue: 40, darkHue: -15 }).colors(9); // lighter shades turn yellow, darker red
 sequential({ offset: 30 }).colors(9); // through palette({ offset: 30 })'s first color
+sequential({ hue: "Viridis" }).colors(9); // Viridis from light to dark
+sequential({ hue: "Viridis", lightness: [0.55, 0.97], lightChroma: 0.6, darkChroma: 0.6 }).colors(9); // a lighter, softer Viridis
 sequential({ seeds: ["#fff5eb", "#7f2704"], path: "straight" }).colors(9); // paler oranges than the default
 ```
 
@@ -216,8 +218,8 @@ With module flows given, other modules only change if the new module is now clos
 
 A sequential scale for ordered data, through one or more seed colors and extended to darker and lighter shades.
 The seeds are sorted by lightness, and the scale goes through each of them as an anchor.
-Without seeds, it goes through the first color `palette()` gives with the same `tone`, `hue` and `offset`,
-blue by default.
+Without seeds, it goes through the first color `palette()` gives with the same `tone` and `offset`,
+blue by default, or follows the d3 scheme given as `hue`.
 Lightness changes linearly from the light end to the dark end, so equal steps in the data look about equally different.
 Chroma is relative to the most colorful color sRGB has at each lightness and hue,
 so the scale is as colorful as the anchors where sRGB allows it, and it fades toward black and white on its own.
@@ -233,26 +235,34 @@ Toward the ends the scale keeps the nearest anchor's hue and share,
 unless `lightHue`, `darkHue`, `lightChroma` or `darkChroma` changes them.
 Greys take the hue of the nearest colorful anchor.
 
+With a scheme as `hue`, such as `"Viridis"` or `"Blues"`, the scale follows the scheme,
+by default with its own colors from light to dark, evenly spaced in lightness.
+`lightness` stretches the scheme, keeping each color's hue and share of the most chroma sRGB has,
+and `lightChroma`, `darkChroma`, `lightHue` and `darkHue` scale its chroma and turn its hue,
+each changing evenly from one end to the other.
+The scheme's lightness must go one way, so the diverging schemes, Turbo, Rainbow and Sinebow throw.
+
 It returns a function from `t` in [0, 1] to a hex color, light at 0 and dark at 1, like a d3 interpolator,
 so it works with d3's `scaleSequential` and as `palette()`'s `hue`.
 Its `colors(n)` method gives `n` colors in the same order, and every anchor is among them.
 Between two anchors they are evenly spaced in lightness, and each one goes where the colors are farthest apart,
 so the ends are included unless an anchor is within half a step of them.
 `n` must be at least the number of anchors.
+On a scheme, they are evenly spaced from end to end.
 
 | Option | Default | |
 |---|---|---|
 | `seeds` | | Colors the scale goes through, any CSS colors with different lightness |
-| `tone` | `"strong"` | Without seeds: lightness and chroma of the color the scale goes through, as in `palette()` |
-| `hue` | `"Oklch"` | Without seeds: where its hue comes from, as in `palette()` |
-| `offset` | `245` on `"Oklch"`, `0` on a scheme | Without seeds: where on the hue source it sits, as in `palette()` |
-| `lightness` | `[0.3, 0.95]` | OKLCH lightness of the dark and light ends, widened to include every seed |
-| `lightChroma` | `1` | Chroma at the light end, as a fraction of the lightest seed's, both relative to the most sRGB allows at that lightness and hue |
+| `tone` | `"strong"` | Without seeds or a scheme: lightness and chroma of the color the scale goes through, as in `palette()` |
+| `hue` | `"Oklch"` | Without seeds: a d3 scheme name or interpolator to follow, whose lightness goes one way, or `"Oklch"` for a scale through the first color of `palette()` |
+| `offset` | `245` | Without seeds or a scheme: where on the OKLCH hue circle the color sits, as in `palette()` |
+| `lightness` | `[0.3, 0.95]`, a scheme's own | OKLCH lightness of the dark and light ends, widened to include every seed. A scheme is stretched to fit it |
+| `lightChroma` | `1` | Chroma at the light end, as a fraction of the lightest seed's, both relative to the most sRGB allows at that lightness and hue. With a scheme, a fraction of its own, changing evenly from `darkChroma` |
 | `darkChroma` | `1` | Chroma at the dark end, as a fraction of the darkest seed's, like `lightChroma` |
-| `lightHue` | `0` | Degrees the hue turns from the lightest seed to the light end |
-| `darkHue` | `0` | Degrees the hue turns from the darkest seed to the dark end |
+| `lightHue` | `0` | Degrees the hue turns from the lightest seed to the light end. With a scheme, degrees its hue turns at the light end, changing evenly from `darkHue` |
+| `darkHue` | `0` | Degrees the hue turns from the darkest seed to the dark end, like `lightHue` |
 | `reverse` | `false` | Go from dark at 0 to light at 1 |
-| `path` | `"relative"` | How the scale goes from one seed to the next: `"relative"` in a straight line across the hue circle with each seed at its share of the most chroma sRGB has, or `"straight"` in a straight line through OKLab |
+| `path` | `"relative"` | How the scale goes from one seed to the next: `"relative"` in a straight line across the hue circle with each seed at its share of the most chroma sRGB has, or `"straight"` in a straight line through OKLab. Not used with a scheme |
 
 #### Measuring distinctness
 
@@ -271,6 +281,7 @@ It gives the same colors as the npm package, checked against shared fixtures (wi
 The API is the same with options as snake_case keyword arguments, like `c3.palette(10, tone="pastel", lightness_offset=3)`.
 `c3.sequential()` returns a `Sequential` object, callable with `t` and with a `colors(n)` method.
 The hue source is `"Oklch"`, the d3 schemes `"Turbo"`, `"Sinebow"` or `"Rainbow"`, or any callable such as a matplotlib colormap.
+None of the three named schemes goes one way in lightness, so for `sequential()` to follow a scheme, pass a colormap such as `matplotlib.colormaps["viridis"]`.
 Its version numbers follow the npm package, and the shared fixtures are in `fixtures/c3.json`.
 The [tutorial notebook](python/examples/tutorial.ipynb) shows it with matplotlib, geopandas, networkx and Infomap.
 

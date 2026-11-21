@@ -63,7 +63,11 @@ A `Sequential` scale also works as a `hue` source, and `matplotlib.colors.Listed
 import matplotlib
 
 c3.palette(10, hue=matplotlib.colormaps["viridis"])
+c3.sequential(hue=matplotlib.colormaps["viridis"]).colors(9)  # viridis from light to dark
+c3.sequential(hue=matplotlib.colormaps["viridis"], lightness=(0.55, 0.97), light_chroma=0.6, dark_chroma=0.6)  # lighter, softer
 ```
+
+In `palette()` and `hierarchy()` the scheme gives only the hues. `sequential()` without seeds follows the whole scheme instead: its own colors by default, from light to dark, stretched to `lightness` when you give it, with `light_chroma`, `dark_chroma`, `light_hue` and `dark_hue` scaling its chroma and turning its hue evenly from end to end. The scheme's lightness must go one way, so `"Turbo"`, `"Sinebow"`, `"Rainbow"` and diverging colormaps raise a `ValueError` there.
 
 matplotlib is not a dependency. The other d3 scheme names the npm package accepts raise a `ValueError`; pass the scheme as a callable instead.
 

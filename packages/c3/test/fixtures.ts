@@ -3,6 +3,7 @@
  * public API that the Python port (python/) checks against, so both give the same colors.
  * Regenerate with `pnpm --filter @mapequation/c3 fixtures`.
  */
+import * as d3 from "d3-scale-chromatic";
 import { distance, hierarchy, inferTone, oklab, oklch, palette, sequential, swatches, tones } from "../src/index.js";
 import type { HierarchyOptions, Module, PaletteOptions, SequentialOptions } from "../src/index.js";
 
@@ -81,6 +82,19 @@ function sequentialCase(options: SequentialOptions = {}): FixtureCase {
       steps: [anchors, anchors + 1, anchors + 2, 7, 11, 24].map((n) => ({ n, colors: scale.colors(n) })),
     },
   };
+}
+
+// A scheme as a list of colors, read like d3's 256-color schemes; Python builds the same from the fixture
+const ramp = (colors: readonly string[]) => (t: number) =>
+  colors[Math.max(0, Math.min(colors.length - 1, Math.floor(t * colors.length)))]!;
+
+const VIRIDIS = Array.from({ length: 256 }, (_, i) => d3.interpolateViridis(i / 255));
+const CUBEHELIX = Array.from({ length: 256 }, (_, i) => d3.interpolateCubehelixDefault(i / 255));
+
+/** A scale that follows a scheme, given in the fixture as its colors */
+function schemeCase(label: string, colors: readonly string[], options: SequentialOptions = {}): FixtureCase {
+  const fixture = sequentialCase({ ...options, hue: ramp(colors) });
+  return { ...fixture, name: `sequential ${label}${describeOptions(options)}`, options: { ...options, hue: { ramp: colors } } };
 }
 
 const call = (fn: FixtureCase["fn"], args: unknown[], expected: unknown, name = `${fn} ${JSON.stringify(args)}`): FixtureCase => ({
@@ -261,7 +275,6 @@ export function fixtureCases(): FixtureCase[] {
     sequentialCase(),
     sequentialCase({ offset: 30 }),
     sequentialCase({ tone: "pastel" }),
-    sequentialCase({ hue: "Turbo", offset: 90 }),
     sequentialCase({ seeds: ["steelblue"], lightness: [0.3, 0.9] }),
     sequentialCase({ seeds: ["#2a9d8f", "#e9c46a"] }),
     sequentialCase({ seeds: ["#ffffcc", "#41b6c4", "#0c2c84"] }),
@@ -282,6 +295,13 @@ export function fixtureCases(): FixtureCase[] {
     sequentialCase({ seeds: ["#ffffcc", "#41b6c4", "#0c2c84"], path: "straight" }),
     sequentialCase({ seeds: ["#2b9bea", "#0c2c84"], path: "straight", lightHue: -30, darkHue: 20, lightChroma: 0.5, darkChroma: 1.5 }),
     sequentialCase({ seeds: ["#333", "steelblue"], path: "straight", reverse: true }),
+    schemeCase("Viridis", VIRIDIS),
+    schemeCase("Viridis", VIRIDIS, { reverse: true }),
+    schemeCase("Viridis", VIRIDIS, { lightness: [0.55, 0.97], lightChroma: 0.6, darkChroma: 0.6 }),
+    schemeCase("YlGnBu", d3.schemeYlGnBu[9]!),
+    schemeCase("YlGnBu", d3.schemeYlGnBu[9]!, { lightness: [0.2, 0.9], lightHue: 30, darkHue: -20 }),
+    schemeCase("Greys", d3.schemeGreys[9]!, { lightChroma: 2 }),
+    schemeCase("CubehelixDefault", CUBEHELIX, { lightness: [0.2, 0.9], darkChroma: 1.5 }),
   );
 
   // Tones from colors

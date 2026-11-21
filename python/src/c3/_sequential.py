@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from typing import Callable, Literal
 
 from ._oklab import Lab, color_to_oklab, gamut_map, lab_to_hex, lab_to_lch, lch_to_hex
-from ._palette import HueSource, palette
+from ._palette import HueSource, _is_oklch, palette
+from ._schemes import Scheme, get_scheme
 from ._tone import Range, ToneOption
 
 DEFAULT_LIGHTNESS: Range = (0.3, 0.95)
@@ -26,6 +27,12 @@ _MAX_CHROMA = 0.5
 
 # Relative tolerance for comparing step sizes, so near-ties break the same in every language
 _TIE = 1e-9
+
+# Places a scheme is read at, one per color of d3's 256-color schemes
+_SCHEME_STEPS = 256
+
+# How far a scheme's lightness may turn back, from rounding to 8-bit colors, and still count as one way
+_SCHEME_WOBBLE = 0.02
 
 
 @dataclass
@@ -159,13 +166,104 @@ class Sequential:
         return f"Sequential({anchors})"
 
 
+@dataclass
+class _SharePoint:
+    """A color's lightness, and its share of the most chroma sRGB has as a point on the hue circle."""
+
+    L: float
+    x: float
+    y: float
+
+
+def _scheme_points(hue: str | Scheme) -> list[_SharePoint]:
+    """
+    A scheme's colors from dark to light as share points, read at evenly spaced places,
+    with lightness that never goes down. Raises if the scheme's lightness goes up and down,
+    or doesn't change.
+    """
+    scheme = get_scheme(hue)
+    points = []
+    for i in range(_SCHEME_STEPS):
+        L, C, H = lab_to_lch(color_to_oklab(scheme(i / (_SCHEME_STEPS - 1))))
+        max_chroma = _max_chroma(L, H)
+        S = min(1.0, C / max_chroma) if max_chroma > 0 else 0.0
+        h = H * math.pi / 180
+        points.append(_SharePoint(L, S * math.cos(h), S * math.sin(h)))
+    if points[0].L > points[-1].L:
+        points.reverse()
+
+    name = hue if isinstance(hue, str) else "The scheme"
+    top = points[0].L
+    for point in points:
+        if point.L < top - _SCHEME_WOBBLE:
+            raise ValueError(f"{name} isn't sequential: its lightness goes up and down")
+        top = max(top, point.L)
+        point.L = top
+    if not top > points[0].L:
+        raise ValueError(f"{name} isn't sequential: its lightness doesn't change")
+    return points
+
+
+class _SchemeSequential(Sequential):
+    """
+    A sequential scale that follows a scheme by lightness, stretched to the lightness range, with each
+    color's share of the most chroma sRGB has scaled and its hue turned, evenly from the dark end to the light end.
+    """
+
+    __slots__ = ("_points", "_ends", "_name")
+
+    def __init__(
+        self,
+        points: list[_SharePoint],
+        L_range: Range,
+        ends: tuple[float, float, float, float],
+        reverse: bool,
+        name: str,
+    ):
+        self._points = points
+        self._range = L_range
+        self._ends = ends  # light chroma, dark chroma, light hue, dark hue
+        self._reverse = reverse
+        self._name = name
+
+    def _color_at(self, L: float) -> str:
+        points = self._points
+        light_chroma, dark_chroma, light_hue, dark_hue = self._ends
+        lo, hi = self._range
+        darkest, lightest = points[0].L, points[-1].L
+        # From the dark end (0) to the light end (1), and the scheme's own lightness there
+        u = (L - lo) / (hi - lo)
+        source = darkest + u * (lightest - darkest)
+        k = 1
+        while k < len(points) - 1 and points[k].L < source:
+            k += 1
+        p, q = points[k - 1], points[k]
+        s = min(1.0, max(0.0, (source - p.L) / (q.L - p.L))) if q.L > p.L else 0.0
+        x = p.x + s * (q.x - p.x)
+        y = p.y + s * (q.y - p.y)
+        H = math.atan2(y, x) * 180 / math.pi + dark_hue + u * (light_hue - dark_hue)
+        share = (dark_chroma + u * (light_chroma - dark_chroma)) * math.hypot(x, y)
+        return lch_to_hex((L, share * _max_chroma(L, H), H))
+
+    def colors(self, n: int) -> list[str]:
+        """n colors evenly spaced from end to end, in the order of t, or the middle for one."""
+        if isinstance(n, bool) or not isinstance(n, int) or n < 0:
+            raise ValueError(f"n must be a whole number of at least 0, got {n}")
+        if n == 1:
+            return [self(0.5)]
+        return [self(i / (n - 1)) for i in range(n)]
+
+    def __repr__(self) -> str:
+        return f"Sequential({self._name})"
+
+
 def sequential(
     *,
     seeds: Sequence[str | Sequence[float]] = (),
     tone: ToneOption | None = None,
     hue: HueSource = "Oklch",
     offset: float | None = None,
-    lightness: Sequence[float] = DEFAULT_LIGHTNESS,
+    lightness: Sequence[float] | None = None,
     light_chroma: float = DEFAULT_END_CHROMA,
     dark_chroma: float = DEFAULT_END_CHROMA,
     light_hue: float = DEFAULT_END_HUE,
@@ -182,34 +280,45 @@ def sequential(
     anchors the scale goes in a straight line across the hue circle in those terms, or through OKLab with
     path="straight"; toward the ends hue and chroma follow smooth curves from the outermost anchors.
 
+    Without seeds, a scheme given as hue is followed instead: by default the scale has the scheme's colors, from
+    light to dark, evenly spaced in lightness. The lightness range stretches the scheme, keeping each color's hue
+    and chroma relative to the sRGB limit, and the chroma and hue at the ends scale chroma and turn hue, changing
+    evenly from one end to the other.
+
     Args:
         seeds: Colors the scale goes through, with different lightness: CSS colors, or (r, g, b) floats
-            in [0, 1]. Without seeds, the scale goes through the first color of palette() with the same
-            tone, hue and offset.
-        tone: Lightness and chroma of the color the scale goes through without seeds, as in palette().
-        hue: Where the hue comes from without seeds, as in palette(): "Oklch", or a d3 color scheme name
-            or interpolator.
-        offset: Where on the hue source the color sits without seeds, as in palette(). Default 245 (blue)
-            on "Oklch" and 0 on a scheme.
-        lightness: OKLCH lightness of the dark and light ends, (min, max). Widened to include every seed.
+            in [0, 1]. Without seeds, the scale follows the scheme given as hue, or goes through the first
+            color of palette() with the same tone and offset.
+        tone: Lightness and chroma of the color the scale goes through without seeds or a scheme, as in palette().
+        hue: Without seeds, a scheme for a scale that follows it: a callable from t in [0, 1] to a color, like
+            matplotlib.colormaps["viridis"]. Or "Oklch" (default) for a scale through the first color of
+            palette(). The scheme's lightness must go one way, from light to dark or dark to light, so not
+            "Turbo", "Rainbow", "Sinebow" or a diverging colormap.
+        offset: Where on the OKLCH hue circle the color sits without seeds or a scheme, as in palette().
+            Default 245 (blue).
+        lightness: OKLCH lightness of the dark and light ends, (min, max). Default (0.3, 0.95), widened to
+            include every seed. With a scheme, the scheme's own by default, and the scheme is stretched to
+            fit one you give.
         light_chroma: Chroma at the light end, as a fraction of the lightest seed's, both relative to the
             most colorful color sRGB has at that lightness and hue. At 1 the end is as colorful as the
-            seed for its lightness, which fades toward white.
+            seed for its lightness, which fades toward white. With a scheme, a fraction of the scheme's own
+            chroma, changing evenly from dark_chroma at the dark end.
         dark_chroma: Chroma at the dark end, as a fraction of the darkest seed's, like light_chroma.
-        light_hue: Degrees the hue turns from the lightest seed to the light end.
-        dark_hue: Degrees the hue turns from the darkest seed to the dark end.
+        light_hue: Degrees the hue turns from the lightest seed to the light end. With a scheme, degrees the
+            scheme's hue turns at the light end, changing evenly from dark_hue at the dark end.
+        dark_hue: Degrees the hue turns from the darkest seed to the dark end, like light_hue.
         reverse: Go from dark (t = 0) to light (t = 1) instead of from light to dark.
         path: How the scale goes from one seed to the next. "relative" goes in a straight line across the hue
             circle with each seed at its share of the most chroma sRGB has: seeds of similar hue keep their
             share, so the scale is as colorful as they are where sRGB allows it, and seeds of very different
             hue, like blue and orange, meet in a greyish color. "straight" goes in a straight line through
             OKLab, so no color between two seeds is more colorful than they are, and next to a near-white seed
-            the colors are pale. The ends follow the outermost seeds either way.
+            the colors are pale. The ends follow the outermost seeds either way. Not used with a scheme.
 
     Returns:
         A callable from t in [0, 1] to a hex color, with colors(n) for n steps.
     """
-    lo, hi = (float(x) for x in lightness)
+    lo, hi = (float(x) for x in (DEFAULT_LIGHTNESS if lightness is None else lightness))
     if not (lo >= 0 and hi <= 1 and lo < hi):
         raise ValueError(f"lightness must be [min, max] with 0 <= min < max <= 1, got [{lo}, {hi}]")
     for name, value in {"light_chroma": light_chroma, "dark_chroma": dark_chroma}.items():
@@ -223,6 +332,12 @@ def sequential(
 
     if isinstance(seeds, str):
         raise TypeError("seeds takes a sequence of colors, not a single color")
+    if len(seeds) == 0 and not _is_oklch(hue):
+        points = _scheme_points(hue)
+        L_range = (points[0].L, points[-1].L) if lightness is None else (lo, hi)
+        ends = (float(light_chroma), float(dark_chroma), float(light_hue), float(dark_hue))
+        name = hue if isinstance(hue, str) else getattr(hue, "name", "scheme")
+        return _SchemeSequential(points, L_range, ends, bool(reverse), name)
     # Without seeds, the first color palette() would give
     knots = _anchor_knots(list(seeds) if len(seeds) > 0 else palette(1, tone=tone, hue=hue, offset=offset))
     darkest, lightest = knots[0], knots[-1]

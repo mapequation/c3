@@ -1,5 +1,6 @@
-import { gamutMap, labToHex, labToLch, lchToHex, parseOklab, type Lab } from "./oklab.js";
+import { gamutMap, labToHex, labToLch, lchToHex, parseOklab, parseOklch, type Lab } from "./oklab.js";
 import { palette, type HueSource } from "./palette.js";
+import { getScheme, type Scheme, type SchemeName } from "./schemes.js";
 import type { Range, ToneOption } from "./tone.js";
 
 /** How a sequential scale goes from one seed to the next */
@@ -8,31 +9,42 @@ export type SequentialPath = "relative" | "straight";
 export type SequentialOptions = {
   /**
    * Colors the scale goes through, any CSS colors with different lightness, sorted by lightness.
-   * Without seeds, the scale goes through the first color of palette() with the same tone, hue and offset.
+   * Without seeds, the scale follows the scheme given as hue, or goes through the first color of
+   * palette() with the same tone and offset.
    */
   seeds?: readonly string[];
-  /** Lightness and chroma of the color the scale goes through without seeds, as in palette() */
+  /** Lightness and chroma of the color the scale goes through without seeds or a scheme, as in palette() */
   tone?: ToneOption;
-  /** Where the hue comes from without seeds, as in palette(): "Oklch" (default), or a d3 color scheme name or interpolator */
+  /**
+   * Without seeds, a d3 color scheme name or interpolator for a scale that follows the scheme, like
+   * "Viridis" or "Blues", or "Oklch" (default) for a scale through the first color of palette(). The
+   * scheme's lightness must go one way, from light to dark or dark to light, so not "Turbo",
+   * "Rainbow", "Sinebow" or a diverging scheme.
+   */
   hue?: HueSource;
-  /** Where on the hue source the color sits without seeds, as in palette(). Default 245 (blue) on "Oklch" and 0 on a scheme */
+  /** Where on the OKLCH hue circle the color sits without seeds or a scheme, as in palette(). Default 245 (blue) */
   offset?: number;
   /**
    * OKLCH lightness of the dark and light ends, [min, max], where 0 is black and 1 is white.
-   * Widened to include every seed.
+   * Widened to include every seed. With a scheme, the scheme's own by default, and the scheme is
+   * stretched to fit one you give.
    */
   lightness?: Range;
   /**
    * Chroma at the light end, as a fraction of the lightest seed's, both relative to the most
    * colorful color sRGB has at that lightness and hue. At 1 the end is as colorful as the
-   * seed for its lightness, which fades toward white.
+   * seed for its lightness, which fades toward white. With a scheme, a fraction of the scheme's
+   * own chroma, changing evenly from darkChroma at the dark end.
    */
   lightChroma?: number;
   /** Chroma at the dark end, as a fraction of the darkest seed's, like lightChroma */
   darkChroma?: number;
-  /** Degrees the hue turns from the lightest seed to the light end */
+  /**
+   * Degrees the hue turns from the lightest seed to the light end. With a scheme, degrees the
+   * scheme's hue turns at the light end, changing evenly from darkHue at the dark end.
+   */
   lightHue?: number;
-  /** Degrees the hue turns from the darkest seed to the dark end */
+  /** Degrees the hue turns from the darkest seed to the dark end, like lightHue */
   darkHue?: number;
   /** Go from dark (t = 0) to light (t = 1) instead of from light to dark */
   reverse?: boolean;
@@ -42,7 +54,7 @@ export type SequentialOptions = {
    * share, so the scale is as colorful as they are where sRGB allows it, and seeds of very different hue,
    * like blue and orange, meet in a greyish color. "straight" goes in a straight line through OKLab, so no
    * color between two seeds is more colorful than they are, and next to a near-white seed the colors are
-   * pale. The ends follow the outermost seeds either way.
+   * pale. The ends follow the outermost seeds either way. Not used with a scheme.
    */
   path?: SequentialPath;
 };
@@ -54,6 +66,7 @@ export type Sequential = {
    * n colors in the order of t, evenly spaced in lightness between the seeds and
    * toward the ends. Every seed is among them, so n must be at least the number of seeds.
    * The ends are included unless the nearest seed is within half a step of them.
+   * With a scheme, n colors evenly spaced from end to end, or the middle for one.
    */
   colors(n: number): string[];
 };
@@ -77,6 +90,12 @@ const MAX_CHROMA = 0.5;
 // Relative tolerance for comparing step sizes, so near-ties break the same in every language
 const TIE = 1e-9;
 
+// Places a scheme is read at, one per color of d3's 256-color schemes
+const SCHEME_STEPS = 256;
+
+// How far a scheme's lightness may turn back, from rounding to 8-bit colors, and still count as one way
+const SCHEME_WOBBLE = 0.02;
+
 // S is chroma relative to the most colorful color sRGB has at the knot's lightness and hue
 type Knot = { L: number; S: number; H: number; anchor?: Lab };
 
@@ -88,8 +107,13 @@ type Knot = { L: number; S: number; H: number; anchor?: Lab };
  * toward black and white. Between anchors the scale goes in a straight line across the hue circle
  * in those terms, or through OKLab with the straight path; toward the ends hue and chroma follow
  * smooth curves from the outermost anchors.
- * @param options Seed colors (or the tone, hue and offset of one), lightness range, chroma and
- * hue at the ends, and direction
+ *
+ * Without seeds, a d3 scheme given as hue is followed instead: by default the scale has the scheme's
+ * colors, from light to dark, evenly spaced in lightness. The lightness range stretches the scheme,
+ * keeping each color's hue and chroma relative to the sRGB limit, and the chroma and hue at the
+ * ends scale chroma and turn hue, changing evenly from one end to the other.
+ * @param options Seed colors, a scheme to follow or the tone, hue and offset of one color,
+ * lightness range, chroma and hue at the ends, and direction
  * @returns a function from t in [0, 1] to a hex color, with colors(n) for n steps
  */
 export function sequential(options: SequentialOptions = {}): Sequential {
@@ -123,6 +147,9 @@ export function sequential(options: SequentialOptions = {}): Sequential {
   }
 
   if (typeof seeds === "string") throw new TypeError("seeds takes an array of colors, not a single color");
+  if (seeds.length === 0 && hue !== undefined && hue !== "Oklch") {
+    return schemeScale(schemePoints(hue), options.lightness, { lightChroma, darkChroma, lightHue, darkHue }, reverse);
+  }
   // Without seeds, the first color palette() would give
   const knots = anchorKnots(seeds.length > 0 ? seeds : palette(1, { tone, hue, offset }));
   const darkest = knots[0]!;
@@ -170,6 +197,93 @@ export function sequential(options: SequentialOptions = {}): Sequential {
       n,
     ).map(colorAt);
     return reverse ? hex : hex.reverse();
+  };
+
+  return scale;
+}
+
+/** A color's lightness, and its share of the most chroma sRGB has as a point on the hue circle */
+type SharePoint = { L: number; x: number; y: number };
+
+/**
+ * A scheme's colors from dark to light as share points, read at evenly spaced places,
+ * with lightness that never goes down
+ * @throws if the scheme's lightness goes up and down, or doesn't change
+ */
+function schemePoints(hue: Scheme | SchemeName): SharePoint[] {
+  const scheme = typeof hue === "string" ? getScheme(hue) : hue;
+  if (!scheme) throw new Error(`Unknown color scheme: ${hue}`);
+  const points = Array.from({ length: SCHEME_STEPS }, (_, i) => {
+    const [L, C, H] = parseOklch(scheme(i / (SCHEME_STEPS - 1)));
+    const max = maxChroma(L, H);
+    const S = max > 0 ? Math.min(1, C / max) : 0;
+    const h = (H * Math.PI) / 180;
+    return { L, x: S * Math.cos(h), y: S * Math.sin(h) };
+  });
+  if (points[0]!.L > points[points.length - 1]!.L) points.reverse();
+
+  const name = typeof hue === "string" ? hue : "The scheme";
+  let top = points[0]!.L;
+  for (const point of points) {
+    if (point.L < top - SCHEME_WOBBLE) throw new RangeError(`${name} isn't sequential: its lightness goes up and down`);
+    top = Math.max(top, point.L);
+    point.L = top;
+  }
+  if (!(top > points[0]!.L)) throw new RangeError(`${name} isn't sequential: its lightness doesn't change`);
+  return points;
+}
+
+/**
+ * The lightness range a scale that follows the scheme has by default, [darkest, lightest]
+ * @throws if the scheme isn't sequential
+ */
+export function schemeLightness(hue: Scheme | SchemeName): Range {
+  const points = schemePoints(hue);
+  return [points[0]!.L, points[points.length - 1]!.L];
+}
+
+/**
+ * A scale that follows a scheme by lightness, stretched to the lightness range, with each color's
+ * share of the most chroma sRGB has scaled and its hue turned, evenly from the dark end to the light end
+ */
+function schemeScale(
+  points: SharePoint[],
+  lightness: Range | undefined,
+  ends: { lightChroma: number; darkChroma: number; lightHue: number; darkHue: number },
+  reverse: boolean,
+): Sequential {
+  const { lightChroma, darkChroma, lightHue, darkHue } = ends;
+  const darkest = points[0]!.L;
+  const lightest = points[points.length - 1]!.L;
+  const [lo, hi] = lightness ?? [darkest, lightest];
+
+  const colorAt = (L: number) => {
+    // From the dark end (0) to the light end (1), and the scheme's own lightness there
+    const u = (L - lo) / (hi - lo);
+    const source = darkest + u * (lightest - darkest);
+    let k = 1;
+    while (k < points.length - 1 && points[k]!.L < source) ++k;
+    const p = points[k - 1]!;
+    const q = points[k]!;
+    const s = q.L > p.L ? Math.min(1, Math.max(0, (source - p.L) / (q.L - p.L))) : 0;
+    const x = p.x + s * (q.x - p.x);
+    const y = p.y + s * (q.y - p.y);
+    const H = (Math.atan2(y, x) * 180) / Math.PI + darkHue + u * (lightHue - darkHue);
+    const share = (darkChroma + u * (lightChroma - darkChroma)) * Math.hypot(x, y);
+    return lchToHex([L, share * maxChroma(L, H), H]);
+  };
+
+  const scale = (t: number) => {
+    if (Number.isNaN(t)) throw new RangeError("t must be a number in [0, 1], got NaN");
+    const u = Math.min(1, Math.max(0, t));
+    return colorAt(reverse ? lo + (hi - lo) * u : hi - (hi - lo) * u);
+  };
+
+  // From end to end, or the middle for a single color
+  scale.colors = (n: number) => {
+    if (!Number.isInteger(n) || n < 0) throw new RangeError(`n must be a whole number of at least 0, got ${n}`);
+    if (n === 1) return [scale(0.5)];
+    return Array.from({ length: n }, (_, i) => scale(i / (n - 1)));
   };
 
   return scale;

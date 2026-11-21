@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { distance, hierarchy, inferTone, palette, sequential, swatches, tones, type Module, type ModuleColor } from "../src/index.js";
-import { defaultTone, endLightness, getScheme, stops, vanDerCorput } from "../src/internal.js";
+import { defaultTone, endLightness, getScheme, schemeLightness, stops, vanDerCorput } from "../src/internal.js";
 import { gamutMap, labDistance, parseOklab, parseOklch, type Lab } from "../src/oklab.js";
 
 const beforeZones: Record<string, string[]> = JSON.parse(
@@ -515,6 +515,9 @@ describe("hierarchy()", () => {
 
 describe("sequential()", () => {
   const lightness = (hex: string) => parseOklch(hex)[0];
+  // Signed degrees from hue b to hue a, the short way around
+  const hueTurn = (a: number, b: number) => ((a - b + 540) % 360) - 180;
+  const hueDifference = (a: number, b: number) => Math.abs(hueTurn(a, b));
   const chroma = (hex: string) => parseOklch(hex)[1];
 
   it("goes from light to dark through the anchor, linearly in lightness", () => {
@@ -551,11 +554,74 @@ describe("sequential()", () => {
   it("goes through the first palette color without seeds", () => {
     expect(sequential().colors(8)).toContain(palette(1)[0]);
     expect(sequential({ seeds: [] }).colors(8)).toEqual(sequential().colors(8));
-    for (const options of [{ offset: 30 }, { tone: "pastel" as const }, { hue: "Turbo" as const, offset: 90 }]) {
+    for (const options of [{ offset: 30 }, { tone: "pastel" as const }]) {
       expect(sequential(options).colors(8)).toContain(palette(1, options)[0]);
     }
-    // Seeds win over the hue source
+    // Seeds win over the hue source, a scheme too
     expect(sequential({ seeds: ["#3b82f6"], offset: 30 }).colors(8)).toEqual(sequential({ seeds: ["#3b82f6"] }).colors(8));
+    expect(sequential({ seeds: ["#3b82f6"], hue: "Turbo" }).colors(8)).toEqual(sequential({ seeds: ["#3b82f6"] }).colors(8));
+  });
+
+  it("follows a scheme from light to dark, evenly spaced in lightness", () => {
+    const viridis = sequential({ hue: "Viridis" });
+    expect(distance(viridis(0), "#fde725")).toBeLessThan(0.005);
+    expect(distance(viridis(1), "#440154")).toBeLessThan(0.005);
+    expect(sequential({ hue: "Viridis", reverse: true }).colors(5)).toEqual(viridis.colors(5).reverse());
+    const Ls = viridis.colors(9).map(lightness);
+    const gaps = Ls.slice(1).map((L, i) => Ls[i]! - L);
+    expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThan(0.01);
+
+    // Each of the scheme's colors where the scale has its lightness, whichever way the scheme goes
+    for (const name of ["Viridis", "YlGnBu", "Blues", "Cividis", "Greys"] as const) {
+      const scheme = getScheme(name);
+      const scale = sequential({ hue: name, reverse: true });
+      const [lo, hi] = schemeLightness(name);
+      for (let i = 0; i <= 32; ++i) {
+        const color = scheme(i / 32);
+        expect(distance(scale((lightness(color) - lo) / (hi - lo)), color)).toBeLessThan(0.005);
+      }
+    }
+    // An interpolator works like its name
+    expect(sequential({ hue: getScheme("Blues") }).colors(7)).toEqual(sequential({ hue: "Blues" }).colors(7));
+  });
+
+  it("stretches a scheme to the lightness range, keeping its hue", () => {
+    const viridis = sequential({ hue: "Viridis" });
+    const stretched = sequential({ hue: "Viridis", lightness: [0.5, 0.97] });
+    expect(lightness(stretched(0))).toBeCloseTo(0.97, 2);
+    expect(lightness(stretched(1))).toBeCloseTo(0.5, 2);
+    for (const t of [0.25, 0.5, 0.75]) {
+      expect(hueDifference(parseOklch(stretched(t))[2], parseOklch(viridis(t))[2])).toBeLessThan(2);
+    }
+  });
+
+  it("scales a scheme's chroma and turns its hue evenly from end to end", () => {
+    const viridis = sequential({ hue: "Viridis" });
+    const muted = sequential({ hue: "Viridis", lightChroma: 0.5, darkChroma: 0.5 });
+    const turned = sequential({ hue: "Viridis", lightHue: 40 });
+    for (const t of [0.25, 0.5, 0.75]) {
+      expect(parseOklch(muted(t))[1] / parseOklch(viridis(t))[1]).toBeCloseTo(0.5, 1);
+      expect(lightness(muted(t))).toBeCloseTo(lightness(viridis(t)), 2);
+      // 40 degrees at the light end (t = 0), none at the dark end
+      const turn = hueTurn(parseOklch(turned(t))[2], parseOklch(viridis(t))[2]);
+      expect(Math.abs(turn - 40 * (1 - t))).toBeLessThan(2);
+    }
+  });
+
+  it("gives a scheme's colors from end to end, or its middle for one", () => {
+    const blues = sequential({ hue: "Blues" });
+    expect(blues.colors(0)).toEqual([]);
+    expect(blues.colors(1)).toEqual([blues(0.5)]);
+    expect(blues.colors(2)).toEqual([blues(0), blues(1)]);
+    expect(blues.colors(5)).toEqual([0, 0.25, 0.5, 0.75, 1].map(blues));
+  });
+
+  it("throws for a scheme whose lightness goes up and down", () => {
+    for (const hue of ["Turbo", "Rainbow", "Sinebow", "RdBu", "Spectral"] as const) {
+      expect(() => sequential({ hue })).toThrow(`${hue} isn't sequential: its lightness goes up and down`);
+    }
+    expect(() => sequential({ hue: () => "#808080" })).toThrow("The scheme isn't sequential: its lightness doesn't change");
+    expect(() => sequential({ hue: "Nope" as never })).toThrow("Unknown color scheme");
   });
 
   it("gives the anchors alone, then the ends where the gap is largest", () => {

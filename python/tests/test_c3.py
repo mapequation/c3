@@ -138,7 +138,9 @@ def test_zero_flows_count_as_the_smallest_positive_flow_on_their_level():
 def test_sequential_goes_through_the_first_palette_color_without_seeds():
     assert c3.palette(1)[0] in c3.sequential().colors(8)
     assert c3.sequential(seeds=[]).colors(8) == c3.sequential().colors(8)
-    assert c3.palette(1, hue="Turbo", offset=90)[0] in c3.sequential(hue="Turbo", offset=90).colors(8)
+    assert c3.palette(1, offset=30)[0] in c3.sequential(offset=30).colors(8)
+    # Seeds win over the hue source, a scheme too
+    assert c3.sequential(seeds=["#3b82f6"], hue="Turbo").colors(8) == c3.sequential(seeds=["#3b82f6"]).colors(8)
     with pytest.raises(TypeError, match="not a single color"):
         c3.sequential(seeds="red")
 
@@ -189,6 +191,41 @@ def test_sequential_goes_in_a_straight_line_across_the_hue_circle_in_shares_of_t
     assert c3.oklch(c3.sequential(seeds=["#0b7baa", "#f68758"]).colors(8)[3])[1] < 0.03
 
 
+def test_sequential_follows_a_scheme_from_light_to_dark():
+    blue = c3.sequential(seeds=["#1d4ed8"])
+    # A sequential scale as the scheme: following it gives it back, with the same lightness range
+    scale = c3.sequential(hue=blue)
+    for i in range(11):
+        assert c3.distance(scale(i / 10), blue(i / 10)) < 0.005
+    assert c3.sequential(hue=blue, reverse=True).colors(5) == scale.colors(5)[::-1]
+    assert scale.colors(0) == []
+    assert scale.colors(1) == [scale(0.5)]
+    assert scale.colors(5) == [scale(t) for t in (0, 0.25, 0.5, 0.75, 1)]
+    assert repr(scale) == "Sequential(scheme)"
+
+    # A colormap that gives (r, g, b, a) floats, like matplotlib's
+    def colormap(t):
+        color = blue(t)
+        return tuple(int(color[i : i + 2], 16) / 255 for i in (1, 3, 5)) + (1.0,)
+
+    assert c3.sequential(hue=colormap).colors(7) == scale.colors(7)
+
+
+def test_sequential_stretches_and_retones_a_scheme():
+    blue = c3.sequential(seeds=["#1d4ed8"])
+    scale = c3.sequential(hue=blue)
+    stretched = c3.sequential(hue=blue, lightness=(0.5, 0.97))
+    assert c3.oklch(stretched(0))[0] == pytest.approx(0.97, abs=0.005)
+    assert c3.oklch(stretched(1))[0] == pytest.approx(0.5, abs=0.005)
+    muted = c3.sequential(hue=blue, light_chroma=0.5, dark_chroma=0.5)
+    turned = c3.sequential(hue=blue, light_hue=40)
+    for t in (0.25, 0.5, 0.75):
+        assert c3.oklch(muted(t))[1] / c3.oklch(scale(t))[1] == pytest.approx(0.5, abs=0.05)
+        # 40 degrees at the light end (t = 0), none at the dark end
+        turn = (c3.oklch(turned(t))[2] - c3.oklch(scale(t))[2] + 540) % 360 - 180
+        assert turn == pytest.approx(40 * (1 - t), abs=2)
+
+
 def test_sequential_works_as_a_hue_source():
     colors = c3.palette(6, hue=c3.sequential(seeds=["#2a9d8f", "#e9c46a"]))
     assert len(colors) == 6 and all(HEX.match(c) for c in colors)
@@ -203,6 +240,9 @@ def test_sequential_works_as_a_hue_source():
         (lambda: c3.sequential(seeds=["red"], light_chroma=math.inf), "light_chroma must be"),
         (lambda: c3.sequential(seeds=["red"], light_hue=math.nan), "light_hue must be"),
         (lambda: c3.sequential(seeds=["red"], path="arc"), "Unknown path"),
+        (lambda: c3.sequential(hue="Turbo"), "Turbo isn't sequential: its lightness goes up and down"),
+        (lambda: c3.sequential(hue=lambda t: "#808080"), "The scheme isn't sequential: its lightness doesn't change"),
+        (lambda: c3.sequential(hue="Viridis"), "Unknown color scheme"),
         (lambda: c3.sequential(seeds=["red"])(math.nan), "t must be"),
         (lambda: c3.sequential(seeds=["red"]).colors(True), "n must be"),
         (lambda: c3.sequential(seeds=["red", "blue"]).colors(1), "n must be at least 2"),
