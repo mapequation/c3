@@ -68,7 +68,7 @@ const MODES = [
     label: "Sequential",
     fn: "sequential()",
     about:
-      "A sequential scale for ordered data through one or more seed colors, or without seeds through the first palette() color, extended to darker and lighter shades. Lightness changes evenly from light to dark, the colors stay as colorful as the seeds where sRGB allows it, and colors(n) gives n steps with every seed among them.",
+      "A sequential scale for ordered data through one or more seed colors, extended to darker and lighter shades, or without seeds through the first palette() color or along a scheme such as Viridis, which you can stretch and retone. Lightness changes evenly from light to dark, the colors stay as colorful as the seeds where sRGB allows it, and colors(n) gives n steps with every seed among them.",
     Mode: SequentialMode,
   },
 ] as const;

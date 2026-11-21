@@ -1,5 +1,5 @@
 import { Fragment, useId, useState, type ReactNode } from "react";
-import { tones, type Range, type Tone, type ToneName } from "@mapequation/c3";
+import { tones, type Range, type SchemeName, type Tone, type ToneName } from "@mapequation/c3";
 import { SCHEMES, toneName } from "../util";
 
 type SliderProps = {
@@ -222,14 +222,18 @@ export function ToneControls({
 }
 
 /** The d3 schemes as select options, grouped by kind */
-export function SchemeOptions() {
-  return Object.entries(SCHEMES).map(([group, names]) => (
-    <optgroup key={group} label={group}>
-      {names.map((name) => (
-        <option key={name}>{name}</option>
-      ))}
-    </optgroup>
-  ));
+/** The schemes as options by group, or only those that pass the filter, leaving out empty groups */
+export function SchemeOptions({ filter }: { filter?: (name: SchemeName) => boolean }) {
+  return Object.entries(SCHEMES).map(([group, names]) => {
+    const shown = filter ? names.filter(filter) : names;
+    return shown.length === 0 ? null : (
+      <optgroup key={group} label={group}>
+        {shown.map((name) => (
+          <option key={name}>{name}</option>
+        ))}
+      </optgroup>
+    );
+  });
 }
 
 export function ModeLayout({
