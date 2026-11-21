@@ -18,7 +18,7 @@ import { Swatches } from "../components/Swatches";
 import { CodeSnippet } from "../components/CodeSnippet";
 import { useHover } from "../components/Hover";
 import { sequentialCode } from "../code";
-import { parseColors, unlessDefault } from "../util";
+import { parseColors, SCHEMES, unlessDefault } from "../util";
 
 const EXAMPLES: [label: string, colors: string[]][] = [
   ["none", []],
@@ -35,18 +35,27 @@ const SAMPLES = 200;
 
 const sameRange = (a: readonly number[], b: readonly number[]) => a[0] === b[0] && a[1] === b[1];
 
-/** The lightness range a scale has by default: a scheme's own, else the default */
-const defaultRange = (scheme?: SchemeName): Range => (scheme ? schemeLightness(scheme) : defaultSequentialOptions.lightness);
+/**
+ * The lightness range of each scheme a scale can follow, one whose lightness goes one way. Found once,
+ * as each check reads the scheme at 256 places, which on every render made each change of n slow.
+ */
+const SCHEME_LIGHTNESS = new Map(
+  Object.values(SCHEMES)
+    .flat()
+    .flatMap((name): [SchemeName, Range][] => {
+      try {
+        return [[name, schemeLightness(name)]];
+      } catch {
+        return [];
+      }
+    }),
+);
 
-/** Whether a scale can follow the scheme: its lightness goes one way */
-function followable(name: SchemeName) {
-  try {
-    schemeLightness(name);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const followable = (name: SchemeName) => SCHEME_LIGHTNESS.has(name);
+
+/** The lightness range a scale has by default: a scheme's own, else the default */
+const defaultRange = (scheme?: SchemeName): Range =>
+  (scheme && SCHEME_LIGHTNESS.get(scheme)) || defaultSequentialOptions.lightness;
 
 // Few colors, so the steps are easy to tell apart; for a smooth scale call it with t instead
 const DEFAULT_N = 8;
