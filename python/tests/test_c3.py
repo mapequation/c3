@@ -2,6 +2,7 @@
 
 import math
 import re
+import typing
 
 import pytest
 
@@ -9,7 +10,7 @@ import c3
 from c3._color import parse_rgb
 from c3._oklab import gamut_map
 from c3._palette import _hue_source
-from c3._schemes import turbo
+from c3._schemes import SCHEMES, turbo
 
 HEX = re.compile(r"^#[0-9a-f]{6}$")
 
@@ -52,8 +53,18 @@ def test_matplotlib_colormap():
 
 
 def test_unknown_scheme_names_the_supported_ones():
-    with pytest.raises(ValueError, match=r'"Turbo", "Sinebow", "Rainbow".*callable'):
-        c3.palette(5, hue="Viridis")
+    with pytest.raises(ValueError, match=r'"BrBG", .*"Viridis", "Rainbow", "Sinebow".*callable'):
+        c3.palette(5, hue="Magma")
+
+
+def test_scheme_names_match_the_named_schemes():
+    assert typing.get_args(c3.SchemeName) == tuple(SCHEMES)
+
+
+def test_named_schemes_match_d3():
+    # d3 runs a B-spline through ColorBrewer's colors, where matplotlib interpolates them linearly
+    assert [SCHEMES["Greys"](t) for t in (0.1, 0.5, 0.75)] == ["rgb(242, 242, 242)", "rgb(151, 151, 151)", "rgb(80, 80, 80)"]
+    assert [SCHEMES["Viridis"](t) for t in (0, 0.5, 1)] == ["#440154", "#21918c", "#fde725"]
 
 
 @pytest.mark.parametrize(
@@ -242,7 +253,7 @@ def test_sequential_works_as_a_hue_source():
         (lambda: c3.sequential(seeds=["red"], path="arc"), "Unknown path"),
         (lambda: c3.sequential(hue="Turbo"), "Turbo isn't sequential: its lightness goes up and down"),
         (lambda: c3.sequential(hue=lambda t: "#808080"), "The scheme isn't sequential: its lightness doesn't change"),
-        (lambda: c3.sequential(hue="Viridis"), "Unknown color scheme"),
+        (lambda: c3.sequential(hue="Magma"), "Unknown color scheme"),
         (lambda: c3.sequential(seeds=["red"])(math.nan), "t must be"),
         (lambda: c3.sequential(seeds=["red"]).colors(True), "n must be"),
         (lambda: c3.sequential(seeds=["red", "blue"]).colors(1), "n must be at least 2"),

@@ -57,19 +57,21 @@ A `Sequential` scale also works as a `hue` source, and `matplotlib.colors.Listed
 
 ### Hue sources
 
-`hue` is `"Oklch"` (the OKLCH hue circle, the default), one of the d3 color schemes `"Turbo"`, `"Sinebow"` or `"Rainbow"`, or any callable from `t` in [0, 1] to a color. The callable can return a CSS color string like `"#rrggbb"` or `"rgb(r, g, b)"`, or a sequence of floats in [0, 1] (alpha is ignored), the convention of matplotlib colormaps:
+`hue` is `"Oklch"` (the OKLCH hue circle, the default), the name of a d3 color scheme, or any callable from `t` in [0, 1] to a color. The names are the ones the npm package accepts, with the same colors: `"Viridis"`, `"Cividis"`, `"CubehelixDefault"`, `"Turbo"`, `"Rainbow"` and `"Sinebow"`, and the ColorBrewer schemes, sequential (`"Blues"`, `"Greys"`, `"YlGnBu"`, …) and diverging (`"RdBu"`, `"Spectral"`, …). The callable can return a CSS color string like `"#rrggbb"` or `"rgb(r, g, b)"`, or a sequence of floats in [0, 1] (alpha is ignored), the convention of matplotlib colormaps:
 
 ```python
+c3.palette(10, hue="Viridis")
+c3.sequential(hue="Viridis").colors(9)  # viridis from light to dark
+c3.sequential(hue="Viridis", lightness=(0.55, 0.97), light_chroma=0.6, dark_chroma=0.6)  # lighter, softer
+
 import matplotlib
 
-c3.palette(10, hue=matplotlib.colormaps["viridis"])
-c3.sequential(hue=matplotlib.colormaps["viridis"]).colors(9)  # viridis from light to dark
-c3.sequential(hue=matplotlib.colormaps["viridis"], lightness=(0.55, 0.97), light_chroma=0.6, dark_chroma=0.6)  # lighter, softer
+c3.sequential(hue=matplotlib.colormaps["magma"]).colors(9)  # any colormap
 ```
 
-In `palette()` and `hierarchy()` the scheme gives only the hues. `sequential()` without seeds follows the whole scheme instead: its own colors by default, from light to dark, stretched to `lightness` when you give it, with `light_chroma`, `dark_chroma`, `light_hue` and `dark_hue` scaling its chroma and turning its hue evenly from end to end. The scheme's lightness must go one way, so `"Turbo"`, `"Sinebow"`, `"Rainbow"` and diverging colormaps raise a `ValueError` there.
+In `palette()` and `hierarchy()` the scheme gives only the hues. `sequential()` without seeds follows the whole scheme instead: its own colors by default, from light to dark, stretched to `lightness` when you give it, with `light_chroma`, `dark_chroma`, `light_hue` and `dark_hue` scaling its chroma and turning its hue evenly from end to end. The scheme's lightness must go one way, so `"Turbo"`, `"Sinebow"`, `"Rainbow"` and diverging schemes like `"RdBu"` raise a `ValueError` there.
 
-matplotlib is not a dependency. The other d3 scheme names the npm package accepts raise a `ValueError`; pass the scheme as a callable instead.
+matplotlib is not a dependency. A ColorBrewer scheme by name can differ slightly from the matplotlib colormap of the same name: like d3, c3 runs a B-spline through ColorBrewer's colors, where matplotlib interpolates them linearly.
 
 ### Development
 

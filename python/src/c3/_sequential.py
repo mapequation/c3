@@ -290,10 +290,10 @@ def sequential(
             in [0, 1]. Without seeds, the scale follows the scheme given as hue, or goes through the first
             color of palette() with the same tone and offset.
         tone: Lightness and chroma of the color the scale goes through without seeds or a scheme, as in palette().
-        hue: Without seeds, a scheme for a scale that follows it: a callable from t in [0, 1] to a color, like
-            matplotlib.colormaps["viridis"]. Or "Oklch" (default) for a scale through the first color of
-            palette(). The scheme's lightness must go one way, from light to dark or dark to light, so not
-            "Turbo", "Rainbow", "Sinebow" or a diverging colormap.
+        hue: Without seeds, a scheme for a scale that follows it: a d3 scheme name like "Viridis" or "Blues",
+            or a callable from t in [0, 1] to a color, like matplotlib.colormaps["magma"]. Or "Oklch" (default)
+            for a scale through the first color of palette(). The scheme's lightness must go one way, from light
+            to dark or dark to light, so not "Turbo", "Rainbow", "Sinebow" or a diverging scheme like "RdBu".
         offset: Where on the OKLCH hue circle the color sits without seeds or a scheme, as in palette().
             Default 245 (blue).
         lightness: OKLCH lightness of the dark and light ends, (min, max). Default (0.3, 0.95), widened to

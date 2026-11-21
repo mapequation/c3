@@ -280,8 +280,7 @@ A pure Python port is in [`python/`](python): `pip install c3-colors`, imported 
 It gives the same colors as the npm package, checked against shared fixtures (within rounding).
 The API is the same with options as snake_case keyword arguments, like `c3.palette(10, tone="pastel", lightness_offset=3)`.
 `c3.sequential()` returns a `Sequential` object, callable with `t` and with a `colors(n)` method.
-The hue source is `"Oklch"`, the d3 schemes `"Turbo"`, `"Sinebow"` or `"Rainbow"`, or any callable such as a matplotlib colormap.
-None of the three named schemes goes one way in lightness, so for `sequential()` to follow a scheme, pass a colormap such as `matplotlib.colormaps["viridis"]`.
+The hue source is `"Oklch"`, any d3 scheme name the npm package accepts, with the same colors, or any callable such as a matplotlib colormap.
 Its version numbers follow the npm package, and the shared fixtures are in `fixtures/c3.json`.
 The [tutorial notebook](python/examples/tutorial.ipynb) shows it with matplotlib, geopandas, networkx and Infomap.
 

@@ -158,7 +158,7 @@ def palette(
     :param tone: A tone name like "strong" or "pastel", colors to infer the tone from, or tone
         fields over the base tone. The base tone is inferred from seeds, else from a scheme's
         colors (with the default lightness), else the default "strong".
-    :param hue: "Oklch" for the OKLCH hue circle, "Turbo", "Sinebow" or "Rainbow", or any
+    :param hue: "Oklch" for the OKLCH hue circle, a d3 scheme name like "Turbo" or "Viridis", or any
         callable from t in [0, 1] to a CSS color string or (r, g, b[, a]) floats in [0, 1]
     :param offset: Where on the hue source the first color sits, in degrees: its hue on "Oklch",
         and on a scheme, 360 is the whole scheme. Default 245 (blue) on "Oklch" and 0 on a scheme.

@@ -6,6 +6,7 @@
 import * as d3 from "d3-scale-chromatic";
 import { distance, hierarchy, inferTone, oklab, oklch, palette, sequential, swatches, tones } from "../src/index.js";
 import type { HierarchyOptions, Module, PaletteOptions, SequentialOptions } from "../src/index.js";
+import { SCHEME_NAMES } from "../src/schemes.js";
 
 export type FixtureCase = {
   name: string;
@@ -203,6 +204,8 @@ export function fixtureCases(): FixtureCase[] {
     paletteCase(12, { hue: "Rainbow", tone: { tilt: 0 } }),
     paletteCase([1, 2, 3, 4, 5], { hue: "Sinebow" }),
   );
+  // Every named scheme, with the tone palette() infers from it
+  for (const hue of SCHEME_NAMES) add(paletteCase(12, { hue }));
 
   // Sequence offsets
   add(
@@ -302,6 +305,12 @@ export function fixtureCases(): FixtureCase[] {
     schemeCase("YlGnBu", d3.schemeYlGnBu[9]!, { lightness: [0.2, 0.9], lightHue: 30, darkHue: -20 }),
     schemeCase("Greys", d3.schemeGreys[9]!, { lightChroma: 2 }),
     schemeCase("CubehelixDefault", CUBEHELIX, { lightness: [0.2, 0.9], darkChroma: 1.5 }),
+    // The same schemes by name
+    sequentialCase({ hue: "Viridis" }),
+    sequentialCase({ hue: "YlGnBu", lightness: [0.2, 0.9], lightHue: 30, darkHue: -20 }),
+    sequentialCase({ hue: "Greys", lightChroma: 2 }),
+    sequentialCase({ hue: "CubehelixDefault", reverse: true }),
+    sequentialCase({ hue: "Cividis" }),
   );
 
   // Tones from colors
