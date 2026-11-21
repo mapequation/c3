@@ -2,7 +2,7 @@ import * as schemes from "d3-scale-chromatic";
 
 // Scheme names from d3-scale-chromatic
 // https://raw.githubusercontent.com/d3/d3-scale-chromatic/main/src/index.js
-const SCHEME_NAMES = [
+export const SCHEME_NAMES = [
   // diverging
   "BrBG",
   "PRGn",
