@@ -74,6 +74,10 @@ def run(case):
             "lookup": [{"path": item["path"], "color": colors(item["path"])} for item in case["expected"]["lookup"]],
         }
     if fn == "sequential":
+        if isinstance(options.get("hue"), dict):
+            # A scheme given as its colors, read like d3's 256-color schemes
+            colors = options["hue"]["ramp"]
+            options["hue"] = lambda t: colors[max(0, min(len(colors) - 1, math.floor(t * len(colors))))]
         scale = c3.sequential(*args, **options)
         return {
             "samples": [scale(i / 10) for i in range(11)],

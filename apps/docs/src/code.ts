@@ -123,11 +123,17 @@ export function sequentialCode(options: object, n: number, middle: string): ByLa
   const split = (code: string) => [code.slice(0, code.lastIndexOf("\n\n")), code.slice(code.lastIndexOf("\n\n") + 2)];
   const [jsHead, jsCall] = split(js);
   const [pyHead, pyCall] = split(py);
+  // Comments the call starts with, like the one on matplotlib colormaps, go above the assignment
+  const assign = (call: string, to: string) => {
+    const lines = call.split("\n");
+    const k = lines.findIndex((line) => !/^\s*(#|\/\/)/.test(line));
+    return [...lines.slice(0, k), to + lines.slice(k).join("\n")].join("\n");
+  };
   const [first, last] = (options as { reverse?: boolean }).reverse ? ["dark", "light"] : ["light", "dark"];
   const along = `t from 0 (${first}) to 1 (${last})`;
   return {
-    js: `${jsHead}\n\nconst scale = ${jsCall}\nscale(0.5); // "${middle}", ${along}\nscale.colors(${n});`,
-    py: `${pyHead}\n\nscale = ${pyCall}\nscale(0.5)  # '${middle}', ${along}\ncolors = scale.colors(${n})`,
+    js: `${jsHead}\n\n${assign(jsCall, "const scale = ")}\nscale(0.5); // "${middle}", ${along}\nscale.colors(${n});`,
+    py: `${pyHead}\n\n${assign(pyCall, "scale = ")}\nscale(0.5)  # '${middle}', ${along}\ncolors = scale.colors(${n})`,
   };
 }
 

@@ -10,7 +10,7 @@ import {
   type SequentialPath,
   type ToneName,
 } from "@mapequation/c3";
-import { defaultOffset, defaultPaletteOptions, defaultSequentialOptions } from "@mapequation/c3/internal";
+import { defaultOffset, defaultPaletteOptions, defaultSequentialOptions, schemeLightness } from "@mapequation/c3/internal";
 import { Check, EndSliders, Group, ModeLayout, SchemeOptions, Slider } from "../components/Controls";
 import { PolarPlot } from "../components/PolarPlot";
 import { ScalePlot } from "../components/ScalePlot";
@@ -18,7 +18,7 @@ import { Swatches } from "../components/Swatches";
 import { CodeSnippet } from "../components/CodeSnippet";
 import { useHover } from "../components/Hover";
 import { sequentialCode } from "../code";
-import { parseColors, unlessDefault } from "../util";
+import { parseColors, SCHEMES, unlessDefault } from "../util";
 
 const EXAMPLES: [label: string, colors: string[]][] = [
   ["none", []],
@@ -35,6 +35,28 @@ const SAMPLES = 200;
 
 const sameRange = (a: readonly number[], b: readonly number[]) => a[0] === b[0] && a[1] === b[1];
 
+/**
+ * The lightness range of each scheme a scale can follow, one whose lightness goes one way. Found once,
+ * as each check reads the scheme at 256 places, which on every render made each change of n slow.
+ */
+const SCHEME_LIGHTNESS = new Map(
+  Object.values(SCHEMES)
+    .flat()
+    .flatMap((name): [SchemeName, Range][] => {
+      try {
+        return [[name, schemeLightness(name)]];
+      } catch {
+        return [];
+      }
+    }),
+);
+
+const followable = (name: SchemeName) => SCHEME_LIGHTNESS.has(name);
+
+/** The lightness range a scale has by default: a scheme's own, else the default */
+const defaultRange = (scheme?: SchemeName): Range =>
+  (scheme && SCHEME_LIGHTNESS.get(scheme)) || defaultSequentialOptions.lightness;
+
 // Few colors, so the steps are easy to tell apart; for a smooth scale call it with t instead
 const DEFAULT_N = 8;
 
@@ -46,7 +68,8 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
   const [source, setSource] = useState<"Oklch" | SchemeName>(defaultPaletteOptions.hue);
   const [offset, setOffset] = useState(defaultOffset(defaultPaletteOptions.hue));
   const [tone, setTone] = useState<ToneName | "auto">("auto");
-  const [lightness, setLightness] = useState<Range>(defaultSequentialOptions.lightness);
+  // Unset for the default, which a scheme has of its own
+  const [lightnessSet, setLightness] = useState<Range>();
   const [lightChroma, setLightChroma] = useState(defaultSequentialOptions.lightChroma);
   const [darkChroma, setDarkChroma] = useState(defaultSequentialOptions.darkChroma);
   const [lightHue, setLightHue] = useState(defaultSequentialOptions.lightHue);
@@ -62,15 +85,19 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
   const noSeeds = seeds.length === 0;
   // The path only matters between seeds
   const between = seeds.length > 1;
+  // Without seeds, a scheme is followed; tone and offset are for one color on the OKLCH hue circle
+  const scheme = noSeeds && source !== "Oklch" ? source : undefined;
+  const defaultLightness = useMemo(() => defaultRange(scheme), [scheme]);
+  const lightness = lightnessSet ?? defaultLightness;
 
   const options = useMemo<SequentialOptions>(
     () => ({
       seeds: noSeeds ? undefined : seeds,
-      // The hue source only matters without seeds
+      // The hue source only matters without seeds, and tone and offset only on the hue circle
       hue: noSeeds ? unlessDefault(source, defaultPaletteOptions.hue) : undefined,
-      offset: noSeeds ? unlessDefault(offset, defaultOffset(source)) : undefined,
-      tone: noSeeds && tone !== "auto" ? tone : undefined,
-      lightness: sameRange(lightness, defaultSequentialOptions.lightness) ? undefined : lightness,
+      offset: noSeeds && !scheme ? unlessDefault(offset, defaultOffset(source)) : undefined,
+      tone: noSeeds && !scheme && tone !== "auto" ? tone : undefined,
+      lightness: sameRange(lightness, defaultLightness) ? undefined : lightness,
       lightChroma: unlessDefault(lightChroma, defaultSequentialOptions.lightChroma),
       darkChroma: unlessDefault(darkChroma, defaultSequentialOptions.darkChroma),
       lightHue: unlessDefault(lightHue, defaultSequentialOptions.lightHue),
@@ -78,7 +105,7 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
       reverse: unlessDefault(reverse, defaultSequentialOptions.reverse),
       path: between ? unlessDefault(path, defaultSequentialOptions.path) : undefined,
     }),
-    [noSeeds, between, seeds, source, offset, tone, lightness, lightChroma, darkChroma, lightHue, darkHue, reverse, path],
+    [noSeeds, between, scheme, seeds, source, offset, tone, lightness, defaultLightness, lightChroma, darkChroma, lightHue, darkHue, reverse, path],
   );
 
   const deferred = useDeferredValue(useMemo(() => ({ n, options }), [n, options]));
@@ -86,14 +113,17 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
     const { n, options } = deferred;
     try {
       const scale = sequential(options);
-      // The colors the scale goes through: the seeds, or the palette color without them
-      const anchors = options.seeds ?? palette(1, { hue: options.hue, offset: options.offset, tone: options.tone });
+      // The scheme the scale follows, from the deferred options so it matches them
+      const followed = !options.seeds && options.hue !== undefined && options.hue !== "Oklch" ? options.hue : undefined;
+      // The colors the scale goes through: the seeds, none on a scheme, or the palette color
+      const anchors =
+        options.seeds ?? (followed ? [] : palette(1, { hue: options.hue, offset: options.offset, tone: options.tone }));
       // colors(n) holds every anchor, so never fewer colors than anchors
       const count = Math.max(n, anchors.length);
       const steps = scale.colors(count);
       // Each step's place on the scale, from its lightness
       const Ls = anchors.map((c) => oklch(c)[0]);
-      const [lo, hi] = options.lightness ?? defaultSequentialOptions.lightness;
+      const [lo, hi] = options.lightness ?? defaultRange(followed as SchemeName | undefined);
       const Lmin = Math.min(lo, ...Ls);
       const Lmax = Math.max(hi, ...Ls);
       const positions = steps.map((c) => {
@@ -101,7 +131,7 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
         return options.reverse ? 1 - t : t;
       });
       // With as many colors as anchors, colors() gives the anchors as hex
-      const anchorHex = new Set(scale.colors(anchors.length));
+      const anchorHex = new Set(anchors.length > 0 ? scale.colors(anchors.length) : []);
       return {
         steps,
         positions,
@@ -165,9 +195,11 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
 
       <Group legend="Without seeds">
         <p className="hint">
-          {noSeeds
-            ? "The scale goes through the first color of palette() with this hue source, offset and tone."
-            : "Used only without seeds: the scale then goes through the first color of palette() with these."}
+          {!noSeeds
+            ? "Used only without seeds: the scale then follows a scheme, or goes through the first color of palette() with this offset and tone."
+            : scheme
+              ? "The scale follows the scheme, from light to dark. Lightness, chroma and hue below stretch and retone it."
+              : "The scale goes through the first color of palette() with this offset and tone."}
         </p>
         <fieldset className="plain" disabled={!noSeeds}>
           <label className="field">
@@ -178,22 +210,26 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
                 const next = e.target.value as typeof source;
                 setSource(next);
                 setOffset(defaultOffset(next));
+                // Each scheme has its own lightness range
+                setLightness(undefined);
               }}
             >
               <option value="Oklch">Oklch (OKLCH hue circle)</option>
-              <SchemeOptions />
+              <SchemeOptions filter={followable} />
             </select>
           </label>
-          <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={360} />
-          <label className="field">
-            <span>Tone</span>
-            <select value={tone} onChange={(e) => setTone(e.target.value as typeof tone)}>
-              <option value="auto">{source === "Oklch" ? "Auto (strong)" : "Auto (from the scheme)"}</option>
-              {TONES.map((name) => (
-                <option key={name}>{name}</option>
-              ))}
-            </select>
-          </label>
+          <fieldset className="plain" disabled={!!scheme}>
+            <Slider label="Offset" value={offset} onChange={setOffset} min={0} max={360} />
+            <label className="field">
+              <span>Tone</span>
+              <select value={tone} onChange={(e) => setTone(e.target.value as typeof tone)}>
+                <option value="auto">Auto (strong)</option>
+                {TONES.map((name) => (
+                  <option key={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+          </fieldset>
         </fieldset>
       </Group>
 
@@ -260,7 +296,9 @@ export function SequentialMode(_props: { n: number; setN: (n: number) => void })
                 rises where sRGB allows more and fades toward black and white; between seeds of very different hue the
                 share dips, so they meet in a greyish color. Chroma at the ends scales that share toward each end, and
                 hue at the ends turns the hue there, in degrees from the nearest seed. A straight path goes from seed
-                to seed in a straight line through OKLab instead, never more colorful than the seeds.
+                to seed in a straight line through OKLab instead, never more colorful than the seeds. A scheme is
+                followed with its own colors; the lightness range stretches it, and chroma and hue at the ends scale
+                its share and turn its hue, changing evenly from one end to the other.
               </figcaption>
             </figure>
             <figure className="scale-circle">
